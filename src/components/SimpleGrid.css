@@ -1,0 +1,77 @@
+.simple-grid-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.simple-grid-container h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.canvas-section {
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.canvas-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.fabric-canvas {
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
+}
+
+.fabric-canvas:hover {
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.simple-grid-wrapper {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Увеличиваем высоту заголовка для многоуровневых заголовков */
+.simple-grid-wrapper :global(.dvn-header) {
+  height: 90px !important;
+}
+
+.simple-grid-wrapper :global(.dvn-header-row) {
+  height: 90px !important;
+}
+
+/* Скрываем стандартные границы заголовков - они рисуются кастомным кодом */
+.simple-grid-wrapper :global(.dvn-header) {
+  border: none !important;
+}
+
+.simple-grid-wrapper :global(.dvn-header-cell) {
+  border-right: none !important;
+  border-left: none !important;
+}
+
+/* Курсор pointer для ячеек с кнопками */
+.simple-grid-wrapper :global([data-testid*="cell"]:has-text("button")) {
+  cursor: pointer !important;
+}
+
+/* Альтернативный способ через CSS для колонки 4 */
+.simple-grid-wrapper :global(canvas) {
+  cursor: inherit;
+}
+

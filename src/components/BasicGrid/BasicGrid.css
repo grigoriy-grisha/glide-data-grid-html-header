@@ -1,0 +1,407 @@
+.basic-grid-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.basic-grid-wrapper {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  position: relative;
+  overflow: hidden;
+  padding: 36px 0 0;
+  box-sizing: border-box;
+}
+
+.basic-grid-top-scroll {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  height: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.basic-grid-top-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.basic-grid-top-scroll::-webkit-scrollbar-thumb {
+  background: #adb8cf;
+  border-radius: 999px;
+}
+
+.basic-grid-top-scroll-content {
+  height: 12px;
+}
+
+.basic-grid-wrapper :global(.dvn-scrollbar-horizontal) {
+  display: none !important;
+}
+
+.basic-grid-html-header {
+  display: flex;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.basic-grid-header-row-marker {
+  background: #f3f6fc;
+  border-right: 1px solid #e0e0e0;
+  width: 46px !important;
+}
+
+.basic-grid-header-content {
+  overflow: hidden;
+}
+
+.basic-grid-header-content-inner {
+  position: relative;
+  height: 100%;
+  will-change: transform;
+}
+
+.basic-grid-header-level {
+  position: relative;
+  width: 100%;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.basic-grid-header-level:last-child {
+  border-bottom: none;
+}
+
+.basic-grid-header-cell {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid #e0e0e0;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+}
+
+.basic-grid-header-cell--clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.basic-grid-header-cell--clickable:hover {
+  box-shadow: inset 0 0 0 999px rgba(21, 101, 192, 0.08);
+}
+
+.basic-grid-header-cell--clickable:focus-visible {
+  outline: 2px solid #1565c0;
+  outline-offset: 2px;
+}
+
+.basic-grid-header-cell--sorted {
+  box-shadow: inset 0 -2px 0 #1565c0;
+}
+
+.basic-grid-header-cell--selected {
+  outline: 2px solid #1e88e5;
+  outline-offset: -2px;
+}
+
+.basic-grid-header-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.basic-grid-header-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background-color: #1e88e5;
+  color: #ffffff;
+}
+
+.basic-grid-header-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.basic-grid-header-card--stacked {
+  align-items: flex-start;
+}
+
+.basic-grid-header-card--compact {
+  gap: 4px;
+}
+
+.basic-grid-header-card-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.basic-grid-header-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  flex: 0 0 auto;
+}
+
+.basic-grid-header-card-icon--blue {
+  background: linear-gradient(135deg, #1565c0, #42a5f5);
+}
+
+.basic-grid-header-card-icon--purple {
+  background: linear-gradient(135deg, #7e57c2, #ab47bc);
+}
+
+.basic-grid-header-card-icon--amber {
+  background: linear-gradient(135deg, #fb8c00, #ffb74d);
+}
+
+.basic-grid-header-card-icon--green {
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+}
+
+.basic-grid-header-card-icon--teal {
+  background: linear-gradient(135deg, #00897b, #26c6da);
+}
+
+.basic-grid-header-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.basic-grid-header-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basic-grid-header-card-subtitle {
+  font-size: 10px;
+  color: #61718a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basic-grid-header-chip {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background-color: #1e88e5;
+  color: #ffffff;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.basic-grid-header-card-main .basic-grid-header-chip {
+  margin-left: auto;
+}
+
+.basic-grid-header-chip--green {
+  background-color: #2e7d32;
+}
+
+.basic-grid-header-chip--amber {
+  background-color: #ffb300;
+  color: #2f1b00;
+}
+
+.basic-grid-header-chip--purple {
+  background-color: #7e57c2;
+}
+
+.basic-grid-header-chip--teal {
+  background-color: #00897b;
+}
+
+.basic-grid-header-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.basic-grid-header-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 52px;
+}
+
+.basic-grid-header-metric-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.basic-grid-header-metric-label {
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #90a4c3;
+}
+
+.basic-grid-header-card--compact .basic-grid-header-card-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.basic-grid-header-card--compact .basic-grid-header-card-title {
+  font-size: 11px;
+}
+
+.basic-grid-header-card--compact .basic-grid-header-card-subtitle {
+  font-size: 9px;
+}
+
+.basic-grid-header-sort-indicator {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.basic-grid-body {
+  overflow: hidden;
+}
+
+.basic-grid-wrapper :global(.dvn-header),
+.basic-grid-wrapper :global(.dvn-header-cell) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: none !important;
+}
+
+.basic-grid-html-header {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.basic-grid-header-cell--draggable {
+  cursor: grab;
+}
+
+.basic-grid-header-cell--dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  box-shadow:
+    0 12px 20px rgba(21, 101, 192, 0.2),
+    0 4px 8px rgba(21, 101, 192, 0.12);
+  transform: scale(1.02) translateY(-2px);
+  z-index: 2;
+}
+
+.basic-grid-header-cell--drag-placeholder {
+  opacity: 0.45;
+  transform: scale(0.98);
+  filter: blur(0.1px);
+}
+
+.basic-grid-header-cell--drop-indicator::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #42a5f5, #1e88e5);
+  box-shadow: 0 0 6px rgba(30, 136, 229, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.basic-grid-header-cell--drop-before::before,
+.basic-grid-header-cell--drop-after::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 999px;
+  background-color: #1e88e5;
+}
+
+.basic-grid-header-cell--drop-before::before {
+  left: 2px;
+}
+
+.basic-grid-header-cell--drop-after::after {
+  right: 2px;
+}
+
+.basic-grid-header-cell--drop-before.basic-grid-header-cell--drop-indicator::before {
+  left: -3px;
+  transform: translateX(-6px);
+}
+
+.basic-grid-header-cell--drop-after.basic-grid-header-cell--drop-indicator::before {
+  right: -3px;
+  transform: translateX(6px);
+}
+
+.basic-grid-header-cell--drop-before.basic-grid-header-cell--drop-indicator::before,
+.basic-grid-header-cell--drop-after.basic-grid-header-cell--drop-indicator::before {
+  opacity: 1;
+}
+
+.basic-grid-header-cell--drop-before::before,
+.basic-grid-header-cell--drop-after::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 999px;
+  background-color: #1e88e5;
+}
+
+.basic-grid-header-cell--drop-before::before {
+  left: 2px;
+}
+
+.basic-grid-header-cell--drop-after::after {
+  right: 2px;
+}
+
