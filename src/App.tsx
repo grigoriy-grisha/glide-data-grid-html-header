@@ -1,4 +1,13 @@
-import { BasicGrid, BasicGridCellChange, BasicGridColumn, BasicGridSelectOption, createColumn } from './components/BasicGrid'
+const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'
+
+import {
+  BasicGrid,
+  BasicGridCellChange,
+  BasicGridColumn,
+  BasicGridRowSelectionChange,
+  BasicGridSelectOption,
+  createColumn,
+} from './components/BasicGrid'
 import './App.css'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
@@ -805,6 +814,8 @@ const networkData: NetworkNode[] = [
 
 function App() {
   const [editableGridRows, setEditableGridRows] = useState<DataRow[]>(() => basicGridRows.map(cloneDataRow))
+  const [selectedEmployees, setSelectedEmployees] = useState<DataRow[]>([])
+  const [selectedNetworkNodes, setSelectedNetworkNodes] = useState<NetworkNode[]>([])
 
   const handleEditableCellChange = useCallback((change: BasicGridCellChange<DataRow>) => {
     if (!change.accessorPath) {
@@ -827,6 +838,14 @@ function App() {
       nextRows[targetIndex] = updatedRow
       return nextRows
     })
+  }, [])
+
+  const handleRowSelectionChange = useCallback((selection: BasicGridRowSelectionChange<DataRow>) => {
+    setSelectedEmployees(selection.rows)
+  }, [])
+
+  const handleNetworkSelectionChange = useCallback((selection: BasicGridRowSelectionChange<NetworkNode>) => {
+    setSelectedNetworkNodes(selection.rows)
   }, [])
 
   // Пример использования кастомных React компонентов в ячейках с поддержкой состояния и кликов
@@ -1042,15 +1061,50 @@ function App() {
             />
           </div>
           <div className="data-grid-section">
+            <h2 className="section-title">Selectable Grid</h2>
+            <p className="section-description">
+              Нажмите на чекбоксы в первой колонке, чтобы выбрать сотрудников и передать список наружу.
+            </p>
+            <div className="selected-rows-panel">
+              <div className="selected-rows-count">
+                {selectedEmployees.length > 0
+                  ? `Выбрано сотрудников: ${selectedEmployees.length}`
+                  : 'Выберите хотя бы одну строку'}
+              </div>
+              {selectedEmployees.length}
+            </div>
+            <BasicGrid<DataRow>
+              columns={basicGridColumns}
+              rows={basicGridRows}
+              height={420}
+              headerRowHeight={54}
+              enableRowSelection
+              showRowMarkers={false}
+              onRowSelectionChange={handleRowSelectionChange}
+            />
+          </div>
+          <div className="data-grid-section">
             <h2 className="section-title">Network Tree Grid</h2>
             <p className="section-description">
               Древовидное представление инфраструктуры с вложенными узлами
             </p>
+            <div className="selected-rows-panel">
+              <div className="selected-rows-count">
+                {selectedNetworkNodes.length > 0
+                  ? `Выбрано узлов: ${selectedNetworkNodes.length}`
+                  : 'Выберите узел или ветку'}
+              </div>
+           
+            </div>
             <BasicGrid<NetworkNode>
               columns={networkColumns}
               rows={networkData}
               height={360}
               headerRowHeight={48}
+              enableRowSelection
+              showRowMarkers={false}
+              onRowSelectionChange={handleNetworkSelectionChange}
+              getRowSelectable={isTreeNodeSelectable}
               treeOptions={{
                 treeColumnId: 'name',
                 childrenKey: 'items',

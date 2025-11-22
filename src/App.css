@@ -197,6 +197,48 @@
   font-style: italic;
 }
 
+.selected-rows-panel {
+  margin: 1.5rem auto 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  max-width: 720px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.selected-rows-count {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4c1d95;
+  text-align: center;
+}
+
+.selected-rows-list {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.selected-row-chip {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(76, 29, 149, 0.15);
+  font-size: 0.9rem;
+  color: #312e81;
+  backdrop-filter: blur(4px);
+}
+
+.selected-rows-empty {
+  margin-top: 0.75rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 768px) {
   .logo {
     font-size: 2rem;

@@ -8,6 +8,7 @@ export type {
   BasicGridTreeOptions,
   BasicGridCellChange,
   BasicGridSelectOption,
+  BasicGridRowSelectionChange,
 } from './types'
 export {
   animateNumericValue,

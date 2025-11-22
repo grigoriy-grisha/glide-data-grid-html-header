@@ -62,6 +62,7 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
   height?: number
   headerRowHeight?: number
   rowMarkerWidth?: number
+  showRowMarkers?: boolean
   scrollbarReserve?: number
   className?: string
   enableColumnReorder?: boolean
@@ -70,6 +71,9 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
   treeOptions?: BasicGridTreeOptions<RowType>
   editable?: boolean
   onCellChange?: (change: BasicGridCellChange<RowType>) => void
+  enableRowSelection?: boolean
+  onRowSelectionChange?: (selection: BasicGridRowSelectionChange<RowType>) => void
+  getRowSelectable?: (row: RowType) => boolean
 }
 
 export interface BasicGridCellChange<RowType> {
@@ -83,6 +87,11 @@ export interface BasicGridCellChange<RowType> {
 }
 
 export type SortDirection = 'asc' | 'desc'
+
+export interface BasicGridRowSelectionChange<RowType = Record<string, unknown>> {
+  rows: RowType[]
+  rowIndexes: number[]
+}
 
 export interface ColumnSelectionRange {
   start: number

@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DataEditor, {
+  CompactSelection,
   GridCellKind,
   type CellClickedEventArgs,
   type CustomRenderer,
   type EditableGridCell,
   type GridCell,
   type Item,
+  type DataEditorProps,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
-import type { BasicGridProps } from './types'
+import type { BasicGridColumn, BasicGridProps } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
@@ -35,6 +37,43 @@ const EMPTY_TEXT_CELL: GridCell = {
   allowOverlay: false,
 }
 
+const SELECTION_COLUMN_ID = '__basic-grid-selection__'
+
+const createRowSelectionFromIndexes = (indexes: number[]) => {
+  if (indexes.length === 0) {
+    return CompactSelection.empty()
+  }
+  const sorted = [...new Set(indexes)].sort((a, b) => a - b)
+  let selection = CompactSelection.empty()
+  let rangeStart = sorted[0]
+  let previous = sorted[0]
+
+  const pushRange = () => {
+    if (rangeStart == null || previous == null) {
+      return
+    }
+    if (rangeStart === previous) {
+      selection = selection.add(rangeStart)
+    } else {
+      selection = selection.add([rangeStart, previous + 1])
+    }
+  }
+
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i]
+    if (current === previous + 1) {
+      previous = current
+      continue
+    }
+    pushRange()
+    rangeStart = current
+    previous = current
+  }
+
+  pushRange()
+  return selection
+}
+
 type TextEditableCell = Extract<EditableGridCell, { kind: GridCellKind.Text }>
 type NumberEditableCell = Extract<EditableGridCell, { kind: GridCellKind.Number }>
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
@@ -43,6 +82,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   height = 400,
   headerRowHeight = DEFAULT_HEADER_ROW_HEIGHT,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
+  showRowMarkers = true,
   scrollbarReserve = DEFAULT_SCROLLBAR_RESERVE,
   className,
   enableColumnReorder = false,
@@ -51,17 +91,40 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   treeOptions,
   editable = false,
   onCellChange,
+  enableRowSelection = false,
+  onRowSelectionChange,
+  getRowSelectable,
 }: BasicGridProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const dragCleanupRef = useRef<(() => void) | null>(null)
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const [containerWidth, setContainerWidth] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       return Math.max(480, window.innerWidth - 80)
     }
     return 900
   })
-  const { columnCollection } = useNormalizedColumnsData(columns)
+  const columnsWithSelection = useMemo(() => {
+    if (!enableRowSelection) {
+      return columns
+    }
+    const selectionColumn: BasicGridColumn<RowType> = {
+      id: SELECTION_COLUMN_ID,
+      dataType: 'string',
+      title: '',
+      width: Math.max(36, rowMarkerWidth),
+      minWidth: Math.max(36, rowMarkerWidth),
+      sortable: false,
+      headerContent: null,
+      valueGetter: () => null,
+    }
+    return [selectionColumn, ...columns]
+  }, [columns, enableRowSelection, rowMarkerWidth])
+
+  const markerWidth = showRowMarkers ? rowMarkerWidth : 0
+
+  const { columnCollection } = useNormalizedColumnsData(columnsWithSelection)
   const { orderedColumns, headerCells, levelCount, reorderColumns } = useColumnOrdering({
     columns: columnCollection.leafColumns,
     columnOrder,
@@ -70,10 +133,11 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const [columnWidthOverrides, setColumnWidthOverrides] = useState<Record<string, number>>({})
   const [dragState, setDragState] = useState<{ sourceIndex: number; targetIndex: number } | null>(null)
   const hasActiveDrag = dragState != null
+  const [rowSelection, setRowSelection] = useState<CompactSelection>(() => CompactSelection.empty())
   const { columnWidths, columnPositions, dataAreaWidth } = useColumnMetrics(
     orderedColumns,
     containerWidth,
-    rowMarkerWidth,
+    markerWidth,
     columnWidthOverrides
   )
 
@@ -82,6 +146,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     treeEnabled,
     treeColumnId,
     displayRows,
+    nodesByRowIndex,
     customRenderers: treeCustomRenderers,
     decorateCell,
     toggleRowByIndex,
@@ -94,6 +159,67 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const { gridRows, sortState, handleColumnSort } = useGridSorting(displayRows, orderedColumns, {
     disabled: treeEnabled,
   })
+  const rowSelectionEnabled = Boolean(enableRowSelection)
+  const selectableRowIndexes = useMemo(
+    () =>
+      rowSelectionEnabled
+        ? gridRows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => (getRowSelectable ? getRowSelectable(row) : true))
+            .map(({ index }) => index)
+        : [],
+    [getRowSelectable, gridRows, rowSelectionEnabled]
+  )
+  const isAllRowsSelected =
+    rowSelectionEnabled &&
+    selectableRowIndexes.length > 0 &&
+    selectableRowIndexes.every((index) => rowSelection.hasIndex(index))
+  const hasPartialRowSelection =
+    rowSelectionEnabled && selectableRowIndexes.some((index) => rowSelection.hasIndex(index)) && !isAllRowsSelected
+
+  const getSubtreeRange = useCallback(
+    (rowIndex: number): [number, number] => {
+      if (!treeEnabled || !nodesByRowIndex) {
+        return [rowIndex, rowIndex + 1]
+      }
+      const node = nodesByRowIndex[rowIndex]
+      if (!node) {
+        return [rowIndex, rowIndex + 1]
+      }
+      const currentDepth = node.depth
+      let end = rowIndex + 1
+      for (let i = rowIndex + 1; i < nodesByRowIndex.length; i++) {
+        const candidate = nodesByRowIndex[i]
+        if (candidate.depth <= currentDepth) {
+          break
+        }
+        end = i + 1
+      }
+      return [rowIndex, end]
+    },
+    [nodesByRowIndex, treeEnabled]
+  )
+
+  const getSelectionStateForRow = useCallback(
+    (rowIndex: number): 'all' | 'partial' | 'none' => {
+      const [start, end] = getSubtreeRange(rowIndex)
+      const totalSelectable = selectableRowIndexes.filter((index) => index >= start && index < end).length
+      if (totalSelectable === 0) {
+        return 'none'
+      }
+      const selectedCount = rowSelection
+        .toArray()
+        .filter((index) => index >= start && index < end && selectableRowIndexes.includes(index)).length
+      if (selectedCount === 0) {
+        return 'none'
+      }
+      if (selectedCount === totalSelectable) {
+        return 'all'
+      }
+      return 'partial'
+    },
+    [getSubtreeRange, rowSelection, selectableRowIndexes]
+  )
 
   const hasSelectColumns = useMemo(
     () => editable && orderedColumns.some((column) => column.isSelect()),
@@ -106,7 +232,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   )
   const { scrollLeft, handleVisibleRegionChanged, viewportWidth, dataViewportWidth } = useHorizontalScroll({
     dataAreaWidth,
-    rowMarkerWidth,
+    rowMarkerWidth: markerWidth,
     containerWidth,
     columnPositions,
   })
@@ -183,24 +309,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     []
   )
 
-  const handleCellClicked = useCallback(
-    (cell: Item, _event?: CellClickedEventArgs) => {
-      if (!treeEnabled || !treeColumnId) {
-        return
-      }
-
-      const [colIndex, rowIndex] = cell
-      const column = orderedColumns[colIndex]
-      if (column && column.id === treeColumnId) {
-        toggleRowByIndex(rowIndex)
-        return
-      }
-
-      clearSelection()
-    },
-    [clearSelection, treeEnabled, treeColumnId, orderedColumns, toggleRowByIndex]
-  )
-
   const headerHeight = levelCount * headerRowHeight
 
   useEffect(() => {
@@ -226,6 +334,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       dragCleanupRef.current?.()
     }
   }, [])
+
 
   const getDataX = useCallback(
     (clientX: number) => {
@@ -311,6 +420,28 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
         return EMPTY_TEXT_CELL
       }
 
+      if (rowSelectionEnabled && column.id === SELECTION_COLUMN_ID) {
+        if (getRowSelectable && !getRowSelectable(dataRow)) {
+          return EMPTY_TEXT_CELL
+        }
+        const selectionState = getSelectionStateForRow(row)
+        const data =
+          selectionState === 'all' ? true : selectionState === 'partial' ? undefined : false
+        return {
+          kind: GridCellKind.Boolean,
+          data,
+          allowOverlay: false,
+          readonly: false,
+          themeOverride: {
+            textMedium: '#5c9dff',
+            textDark: '#1e88e5',
+            accentColor: '#1e88e5',
+            textLight: '#4ea4ff',
+            bgCell: '#e8f1ff',
+          },
+        }
+      }
+
       const cellState = new GridCellState(column, dataRow)
       const baseCell = cellState.toGridCell()
 
@@ -346,7 +477,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
       return decoratedCell
     },
-    [gridRows, orderedColumns, decorateCell, editable]
+    [gridRows, orderedColumns, decorateCell, editable, getSelectionStateForRow, rowSelectionEnabled]
   )
 
   const handleCellEdited = useCallback(
@@ -400,7 +531,161 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [editable, gridRows, onCellChange, orderedColumns]
   )
 
+  const notifyRowSelectionChange = useCallback(
+    (selection: CompactSelection) => {
+      if (!rowSelectionEnabled || !onRowSelectionChange) {
+        return
+      }
+      const rowIndexes = selection
+        .toArray()
+        .filter((rowIndex) => rowIndex >= 0 && rowIndex < gridRows.length)
+      const selectedRows = rowIndexes.map((index) => gridRows[index]).filter(Boolean) as RowType[]
+      onRowSelectionChange({
+        rows: selectedRows,
+        rowIndexes,
+      })
+    },
+    [gridRows, onRowSelectionChange, rowSelectionEnabled]
+  )
+
+  const updateRowSelection = useCallback(
+    (updater: (rows: CompactSelection) => CompactSelection) => {
+      if (!rowSelectionEnabled) {
+        return
+      }
+      setRowSelection((prev) => {
+        const nextRows = updater(prev)
+        if (nextRows === prev) {
+          return prev
+        }
+        notifyRowSelectionChange(nextRows)
+        return nextRows
+      })
+    },
+    [notifyRowSelectionChange, rowSelectionEnabled]
+  )
+
+  const toggleRowSelection = useCallback(
+    (rowIndex: number) => {
+      if (getRowSelectable && !getRowSelectable(gridRows[rowIndex])) {
+        return
+      }
+      updateRowSelection((rows) => {
+        const [start, end] = getSubtreeRange(rowIndex)
+        const selectableRange = selectableRowIndexes.filter((index) => index >= start && index < end)
+        if (selectableRange.length === 0) {
+          return rows
+        }
+        const range: [number, number] = [selectableRange[0], selectableRange[selectableRange.length - 1] + 1]
+        return rows.hasAll(range) ? rows.remove(range) : rows.add(range)
+      })
+    },
+    [getRowSelectable, getSubtreeRange, gridRows, selectableRowIndexes, updateRowSelection]
+  )
+
+  const setAllRowsSelection = useCallback(
+    (checked: boolean) => {
+      updateRowSelection(() => {
+        if (!checked) {
+          return CompactSelection.empty()
+        }
+        if (selectableRowIndexes.length === 0) {
+          return CompactSelection.empty()
+        }
+        const ranges: [number, number][] = []
+        let rangeStart = selectableRowIndexes[0]
+        let prev = selectableRowIndexes[0]
+        for (let i = 1; i < selectableRowIndexes.length; i++) {
+          const current = selectableRowIndexes[i]
+          if (current === prev + 1) {
+            prev = current
+            continue
+          }
+          ranges.push([rangeStart, prev + 1])
+          rangeStart = current
+          prev = current
+        }
+        ranges.push([rangeStart, prev + 1])
+        return ranges.reduce((selection, range) => selection.add(range), CompactSelection.empty())
+      })
+    },
+    [selectableRowIndexes, updateRowSelection]
+  )
+
+  const handleSelectAllChange = useCallback(
+    (checked: boolean) => {
+      setAllRowsSelection(checked)
+    },
+    [setAllRowsSelection]
+  )
+
+  const handleCellClicked = useCallback(
+    (cell: Item, event?: CellClickedEventArgs) => {
+      const [colIndex, rowIndex] = cell
+      const column = orderedColumns[colIndex]
+      if (!column) {
+        return
+      }
+
+      if (rowSelectionEnabled && column.id === SELECTION_COLUMN_ID) {
+        event?.preventDefault?.()
+        toggleRowSelection(rowIndex)
+        return
+      }
+
+      if (treeEnabled && treeColumnId && column.id === treeColumnId) {
+        toggleRowByIndex(rowIndex)
+        return
+      }
+
+      if (treeEnabled) {
+        clearSelection()
+      }
+    },
+    [
+      clearSelection,
+      orderedColumns,
+      rowSelectionEnabled,
+      toggleRowSelection,
+      treeColumnId,
+      treeEnabled,
+      toggleRowByIndex,
+    ]
+  )
+
+  useEffect(() => {
+    if (!rowSelectionEnabled) {
+      if (selectAllCheckboxRef.current) {
+        selectAllCheckboxRef.current.indeterminate = false
+      }
+      return
+    }
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = hasPartialRowSelection
+    }
+  }, [hasPartialRowSelection, rowSelectionEnabled])
+
+  useEffect(() => {
+    if (!rowSelectionEnabled) {
+      return
+    }
+    const rowIndexes = rowSelection.toArray()
+    if (rowIndexes.length === 0) {
+      return
+    }
+    const maxIndex = gridRows.length - 1
+    const filteredIndexes = rowIndexes.filter((rowIndex) => rowIndex <= maxIndex)
+    if (filteredIndexes.length === rowIndexes.length) {
+      return
+    }
+    const sanitizedSelection =
+      filteredIndexes.length > 0 ? createRowSelectionFromIndexes(filteredIndexes) : CompactSelection.empty()
+    setRowSelection(sanitizedSelection)
+    notifyRowSelectionChange(sanitizedSelection)
+  }, [gridRows.length, notifyRowSelectionChange, rowSelection, rowSelectionEnabled])
+
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
+  const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
 
   return (
     <div className={containerClassName}>
@@ -414,7 +699,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               boxSizing: 'border-box',
             }}
           >
-            <div className="basic-grid-header-row-marker" style={{ width: `${rowMarkerWidth}px` }} />
+            {showRowMarkers && (
+              <div className="basic-grid-header-row-marker" style={{ width: `${markerWidth}px` }} />
+            )}
             <div
               className="basic-grid-header-content"
               style={{
@@ -457,17 +744,18 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                   const targetColumn =
                     resolvedColumnIndex >= 0 ? orderedColumns[resolvedColumnIndex] : undefined
                   const isLeafColumn = cell.isLeaf && targetColumn != null
-                  const isSortable = isLeafColumn && targetColumn?.sortable !== false
+                  const isSelectionColumn = targetColumn?.id === SELECTION_COLUMN_ID
+                  const isSortable = isLeafColumn && targetColumn?.sortable !== false && !isSelectionColumn
                   const isSorted =
                     isLeafColumn && sortState && targetColumn?.id === sortState.columnId
-                  const isSelectable = cell.colSpan > 0
+                  const isSelectable = cell.colSpan > 0 && !isSelectionColumn
                   const isCellSelected =
                     isSelectable &&
                     selectedBounds != null &&
                     cell.startIndex >= selectedBounds.start &&
                     cell.startIndex + cell.colSpan - 1 <= selectedBounds.end
                   const cellClasses = ['basic-grid-header-cell']
-                  const isReorderable = enableColumnReorder && isLeafColumn
+                  const isReorderable = enableColumnReorder && isLeafColumn && !isSelectionColumn
                   const isDragging = isReorderable && dragState?.sourceIndex === resolvedColumnIndex
                   const hasDropTarget =
                     dragState != null && dragState.targetIndex !== dragState.sourceIndex
@@ -561,7 +849,20 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                       }
                       aria-pressed={isSelectable ? isCellSelected : undefined}
                     >
-                      {cell.content ?? cell.title}
+                      {isSelectionColumn ? (
+                        <div className="basic-grid-selection-header">
+                          <input
+                            ref={selectAllCheckboxRef}
+                            type="checkbox"
+                            className="basic-grid-header-row-checkbox"
+                            checked={isAllRowsSelected}
+                            onChange={(event) => handleSelectAllChange(event.target.checked)}
+                            aria-label="Выбрать все строки"
+                          />
+                        </div>
+                      ) : (
+                        cell.content ?? cell.title
+                      )}
                       {canResizeCell && (
                         <div
                           className="basic-grid-header-resize-handle"
@@ -599,11 +900,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             customRenderers={customRenderers}
             onVisibleRegionChanged={handleVisibleRegionChanged}
             onHeaderClicked={handleColumnSort}
-            onCellClicked={treeEnabled ? handleCellClicked : undefined}
+            onCellClicked={handleCellClicked}
             onCellEdited={editable ? handleCellEdited : undefined}
             highlightRegions={highlightRegions}
-            rowMarkers="number"
-            rowMarkerWidth={rowMarkerWidth}
+            rowMarkers={rowMarkersSetting}
+            rowMarkerWidth={markerWidth}
+            rowSelectionMode={rowSelectionEnabled ? 'multi' : undefined}
+            rowSelect={rowSelectionEnabled ? 'multi' : undefined}
             smoothScrollX={true}
             smoothScrollY={true}
             headerHeight={0}
