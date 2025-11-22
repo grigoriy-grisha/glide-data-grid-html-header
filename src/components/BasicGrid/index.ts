@@ -5,5 +5,6 @@ export type {
   BasicGridProps,
   BasicGridDataType,
   BasicGridHeaderOptions,
+  BasicGridTreeOptions,
 } from './types'
 

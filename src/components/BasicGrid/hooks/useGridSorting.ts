@@ -3,10 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SortDirection } from '../types'
 import type { GridColumn } from '../models/GridColumn'
 
+interface GridSortingOptions {
+  disabled?: boolean
+}
+
 export function useGridSorting<RowType extends Record<string, unknown>>(
   rows: RowType[],
-  normalizedColumns: GridColumn<RowType>[]
+  normalizedColumns: GridColumn<RowType>[],
+  options?: GridSortingOptions
 ) {
+  const disabled = options?.disabled ?? false
   const [sortState, setSortState] = useState<{ columnId: string; direction: SortDirection } | null>(null)
   const [gridRows, setGridRows] = useState<RowType[]>(() => rows)
 
@@ -36,16 +42,31 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
   )
 
   useEffect(() => {
+    if (disabled) {
+      setGridRows(rows)
+      return
+    }
+
     if (sortState && sortedColumnIndex >= 0) {
       setGridRows(sortData(rows, sortedColumnIndex, sortState.direction))
       return
     }
 
     setGridRows(rows)
-  }, [rows, sortData, sortState, sortedColumnIndex])
+  }, [rows, sortData, sortState, sortedColumnIndex, disabled])
+
+  useEffect(() => {
+    if (disabled && sortState) {
+      setSortState(null)
+    }
+  }, [disabled, sortState])
 
   const handleColumnSort = useCallback(
     (columnIndex: number) => {
+      if (disabled) {
+        return
+      }
+
       const column = normalizedColumns[columnIndex]
       if (!column || column.sortable === false) {
         return
@@ -60,7 +81,7 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
         return { columnId: column.id, direction: nextDirection }
       })
     },
-    [normalizedColumns, sortData]
+    [disabled, normalizedColumns, sortData]
   )
 
   return { gridRows, sortState, handleColumnSort }

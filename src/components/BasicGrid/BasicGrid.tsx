@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import DataEditor, { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
+import DataEditor, { GridCellKind, type CellClickedEventArgs, type GridCell, type Item } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
-import type { BasicGridProps } from './types'
+import type { BasicGridProps, BasicGridTreeOptions } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
@@ -18,12 +18,200 @@ import { useHorizontalScroll } from './hooks/useHorizontalScroll'
 import { useColumnOrdering } from './hooks/useColumnOrdering'
 import { useColumnResize } from './hooks/useColumnResize'
 import { GridCellState } from './models/GridCellState'
+import { treeViewCellRenderer } from './customCells/treeViewCell'
 
 const EMPTY_TEXT_CELL: GridCell = {
   kind: GridCellKind.Text,
   data: '',
   displayData: '',
   allowOverlay: false,
+}
+
+interface TreeRowMeta<RowType> {
+  row: RowType
+  rowId: string
+  parentId?: string
+  depth: number
+  hasChildren: boolean
+  isExpanded: boolean
+}
+
+const DEFAULT_TREE_CHILDREN_KEY = 'items'
+
+function buildInitialExpandedState<RowType>(
+  rows: RowType[],
+  options: BasicGridTreeOptions<RowType>
+): Set<string> {
+  const maxDepth = Math.max(0, options.defaultExpandedDepth ?? 1)
+  const expanded = new Set<string>()
+
+  if (maxDepth === 0) {
+    return expanded
+  }
+
+  const visit = (nodes: RowType[], depth: number, path: number[] = []) => {
+    nodes.forEach((node, index) => {
+      const nextPath = [...path, index]
+      const rowId = resolveTreeRowId(node, options, nextPath)
+      const children = resolveTreeChildren(node, options)
+      if (children.length > 0) {
+        if (depth < maxDepth) {
+          expanded.add(rowId)
+        }
+        visit(children, depth + 1, nextPath)
+      }
+    })
+  }
+
+  visit(rows, 0)
+  return expanded
+}
+
+function buildTreeRows<RowType>(
+  rows: RowType[],
+  options: BasicGridTreeOptions<RowType> | undefined,
+  expandedRowIds: Set<string>
+) {
+  if (!options) {
+    return { visibleRows: rows, meta: [] as TreeRowMeta<RowType>[], hasTreeData: false }
+  }
+
+  const meta: TreeRowMeta<RowType>[] = []
+  let hasTreeData = false
+
+  const visit = (
+    nodes: RowType[],
+    depth: number,
+    parentId: string | undefined,
+    parentVisible: boolean,
+    path: number[] = []
+  ) => {
+    nodes.forEach((node, index) => {
+      const nextPath = [...path, index]
+      const rowId = resolveTreeRowId(node, options, nextPath)
+      const children = resolveTreeChildren(node, options)
+      const hasChildren = children.length > 0
+
+      if (hasChildren) {
+        hasTreeData = true
+      }
+
+      const isExpanded = hasChildren && expandedRowIds.has(rowId)
+
+      if (parentVisible) {
+        meta.push({
+          row: node,
+          rowId,
+          parentId,
+          depth,
+          hasChildren,
+          isExpanded,
+        })
+      }
+
+      visit(children, depth + 1, rowId, parentVisible && isExpanded, nextPath)
+    })
+  }
+
+  visit(rows, 0, undefined, true)
+
+  if (!hasTreeData) {
+    return { visibleRows: rows, meta: [] as TreeRowMeta<RowType>[], hasTreeData: false }
+  }
+
+  return {
+    visibleRows: meta.map((entry) => entry.row),
+    meta,
+    hasTreeData: true,
+  }
+}
+
+function resolveTreeChildren<RowType>(
+  row: RowType,
+  options: BasicGridTreeOptions<RowType>
+): RowType[] {
+  if (typeof options.getChildren === 'function') {
+    const customChildren = options.getChildren(row)
+    return Array.isArray(customChildren) ? customChildren : []
+  }
+
+  const accessor = options.childrenKey ?? DEFAULT_TREE_CHILDREN_KEY
+  if (!accessor) {
+    return []
+  }
+
+  const value = getValueByAccessor(row, accessor)
+  return Array.isArray(value) ? (value as RowType[]) : []
+}
+
+function resolveTreeRowId<RowType>(
+  row: RowType,
+  options: BasicGridTreeOptions<RowType>,
+  path: readonly number[]
+): string {
+  if (typeof options.getRowId === 'function') {
+    return options.getRowId(row, path)
+  }
+
+  const candidate = (row as Record<string, unknown> | undefined)?.id
+  if (typeof candidate === 'string' || typeof candidate === 'number') {
+    return String(candidate)
+  }
+
+  return path.join('-')
+}
+
+function getValueByAccessor(row: unknown, accessor: string): unknown {
+  if (!row || typeof row !== 'object') {
+    return undefined
+  }
+
+  return accessor.split('.').reduce<unknown>((acc, key) => {
+    if (!acc || typeof acc !== 'object') {
+      return undefined
+    }
+    return (acc as Record<string, unknown>)[key]
+  }, row)
+}
+
+function areSetsEqual(first: Set<string>, second: Set<string>) {
+  if (first.size !== second.size) {
+    return false
+  }
+  for (const value of first) {
+    if (!second.has(value)) {
+      return false
+    }
+  }
+  return true
+}
+
+function getDisplayText(cell: GridCell): string {
+  if ('displayData' in cell && typeof (cell as { displayData?: unknown }).displayData === 'string') {
+    return cell.displayData as string
+  }
+  if ('data' in cell && typeof (cell as { data?: unknown }).data === 'string') {
+    return cell.data as string
+  }
+  return ''
+}
+
+function createTreeViewGridCell<RowType>(
+  text: string,
+  meta: TreeRowMeta<RowType>
+): GridCell {
+  return {
+    kind: GridCellKind.Custom,
+    allowOverlay: false,
+    copyData: text,
+    data: {
+      kind: 'tree-view-cell',
+      text,
+      depth: meta.depth,
+      hasChildren: meta.hasChildren,
+      isExpanded: meta.isExpanded,
+    },
+  }
 }
 
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
@@ -37,10 +225,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   enableColumnReorder = false,
   columnOrder,
   onColumnOrderChange,
+  treeOptions,
 }: BasicGridProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const dragCleanupRef = useRef<(() => void) | null>(null)
+  const treeInitializationRef = useRef(Boolean(treeOptions))
+  const previousTreeRowsRef = useRef<RowType[] | null>(rows)
   const [containerWidth, setContainerWidth] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       return Math.max(480, window.innerWidth - 80)
@@ -62,7 +253,59 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     rowMarkerWidth,
     columnWidthOverrides
   )
-  const { gridRows, sortState, handleColumnSort } = useGridSorting(rows, orderedColumns)
+
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(() =>
+    treeOptions ? buildInitialExpandedState(rows, treeOptions) : new Set()
+  )
+
+  useEffect(() => {
+    const rowsChanged = previousTreeRowsRef.current !== rows
+    if (rowsChanged) {
+      previousTreeRowsRef.current = rows
+      treeInitializationRef.current = false
+    }
+
+    if (!treeOptions) {
+      if (expandedRowIds.size > 0) {
+        setExpandedRowIds(new Set())
+      }
+      treeInitializationRef.current = false
+      return
+    }
+
+    if (!treeInitializationRef.current) {
+      const defaults = buildInitialExpandedState(rows, treeOptions)
+      if (!areSetsEqual(expandedRowIds, defaults)) {
+        setExpandedRowIds(defaults)
+      }
+      treeInitializationRef.current = true
+    }
+  }, [rows, treeOptions, expandedRowIds])
+
+  const treeComputation = useMemo(
+    () => buildTreeRows(rows, treeOptions, expandedRowIds),
+    [rows, treeOptions, expandedRowIds]
+  )
+  const treeEnabled = Boolean(treeOptions) && treeComputation.hasTreeData
+  const displayRows = treeEnabled ? treeComputation.visibleRows : rows
+  const treeRowMetaByIndex = treeEnabled ? treeComputation.meta : null
+
+  const { gridRows, sortState, handleColumnSort } = useGridSorting(displayRows, orderedColumns, {
+    disabled: treeEnabled,
+  })
+
+  const toggleTreeRow = useCallback((rowId: string) => {
+    setExpandedRowIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) {
+        next.delete(rowId)
+      } else {
+        next.add(rowId)
+      }
+      return next
+    })
+  }, [])
+
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
     gridRows.length,
     orderedColumns.length
@@ -73,6 +316,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     containerWidth,
     columnPositions,
   })
+  const fallbackTreeColumnId = columnCollection.leafColumns[0]?.id
+  const resolvedTreeColumnId = treeOptions?.treeColumnId ?? fallbackTreeColumnId
+  const customRenderers = useMemo(() => (treeEnabled ? [treeViewCellRenderer] : undefined), [treeEnabled])
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? orderedColumns[index]?.baseWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
@@ -135,9 +381,25 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     []
   )
 
-  const handleCellClicked = useCallback(() => {
-    clearSelection()
-  }, [clearSelection])
+  const handleCellClicked = useCallback(
+    (cell: Item, _event?: CellClickedEventArgs) => {
+      clearSelection()
+      if (!treeEnabled || !treeRowMetaByIndex) {
+        return
+      }
+
+      const [colIndex, rowIndex] = cell
+      const column = orderedColumns[colIndex]
+      const metadata = treeRowMetaByIndex[rowIndex]
+
+      if (!column || column.id !== resolvedTreeColumnId || !metadata?.hasChildren) {
+        return
+      }
+
+      toggleTreeRow(metadata.rowId)
+    },
+    [clearSelection, treeEnabled, treeRowMetaByIndex, orderedColumns, resolvedTreeColumnId, toggleTreeRow]
+  )
 
   const headerHeight = levelCount * headerRowHeight
 
@@ -250,9 +512,19 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       }
 
       const cellState = new GridCellState(column, dataRow)
-      return cellState.toGridCell()
+      const baseCell = cellState.toGridCell()
+
+      if (treeEnabled && treeRowMetaByIndex && column.id === resolvedTreeColumnId) {
+        const metadata = treeRowMetaByIndex[row]
+        if (metadata) {
+          const displayText = getDisplayText(baseCell)
+          return createTreeViewGridCell(displayText, metadata)
+        }
+      }
+
+      return baseCell
     },
-    [gridRows, orderedColumns]
+    [gridRows, orderedColumns, treeEnabled, treeRowMetaByIndex, resolvedTreeColumnId]
   )
 
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
@@ -451,6 +723,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             width={viewportWidth}
             height={height}
             theme={gridTheme}
+            customRenderers={customRenderers}
             onVisibleRegionChanged={handleVisibleRegionChanged}
             onHeaderClicked={handleColumnSort}
             onCellClicked={handleCellClicked}

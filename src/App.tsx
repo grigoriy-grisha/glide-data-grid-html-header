@@ -650,6 +650,126 @@ const basicGridRows: DataRow[] = [
   },
 ]
 
+interface NetworkNode extends Record<string, unknown> {
+  id: string
+  name: string
+  type: string
+  status: string
+  load: number
+  latency: number
+  items?: NetworkNode[]
+}
+
+const networkColumns: BasicGridColumn<NetworkNode>[] = [
+  createColumn<NetworkNode>('name', 'string', 'Узел', { width: 260 }),
+  createColumn<NetworkNode>('type', 'string', 'Тип', { width: 180 }),
+  createColumn<NetworkNode>('status', 'string', 'Статус', { width: 150 }),
+  createColumn<NetworkNode>('load', 'percent', 'Нагрузка %', {
+    width: 140,
+    formatter: (value) => (typeof value === 'number' ? `${value}%` : ''),
+  }),
+  createColumn<NetworkNode>('latency', 'number', 'Задержка, мс', {
+    width: 160,
+    formatter: (value) => (typeof value === 'number' ? `${value} мс` : ''),
+  }),
+]
+
+const networkData: NetworkNode[] = [
+  {
+    id: '3190',
+    name: 'ЦОД · Москва',
+    type: 'region',
+    status: 'Онлайн',
+    load: 82,
+    latency: 18,
+    items: [
+      {
+        id: '31469',
+        name: 'Кластер API',
+        type: 'cluster',
+        status: 'Онлайн',
+        load: 74,
+        latency: 12,
+        items: [],
+      },
+      {
+        id: '31470',
+        name: 'Маршрутизатор ядра',
+        type: 'router',
+        status: 'Деградация',
+        load: 91,
+        latency: 22,
+        items: [
+          {
+            id: '3144141',
+            name: 'Транк M9 · линия 1',
+            type: 'link',
+            status: 'Онлайн',
+            load: 55,
+            latency: 6,
+            items: [],
+          },
+          {
+            id: '3144142',
+            name: 'Транк M9 · линия 2',
+            type: 'link',
+            status: 'Онлайн',
+            load: 61,
+            latency: 7,
+            items: [],
+          },
+          {
+            id: '3144143',
+            name: 'Edge CDN #01',
+            type: 'edge',
+            status: 'Перегрев',
+            load: 96,
+            latency: 15,
+            items: [],
+          },
+          {
+            id: '3144144',
+            name: 'Edge CDN #02',
+            type: 'edge',
+            status: 'Онлайн',
+            load: 72,
+            latency: 11,
+            items: [],
+          },
+        ],
+      },
+      {
+        id: '31471',
+        name: 'Кластер хранения',
+        type: 'storage',
+        status: 'Онлайн',
+        load: 64,
+        latency: 9,
+        items: [],
+      },
+    ],
+  },
+  {
+    id: '3191',
+    name: 'Регион · Санкт-Петербург',
+    type: 'region',
+    status: 'Онлайн',
+    load: 58,
+    latency: 25,
+    items: [
+      {
+        id: '31480',
+        name: 'Edge шлюз · Нева',
+        type: 'edge',
+        status: 'Онлайн',
+        load: 47,
+        latency: 13,
+        items: [],
+      },
+    ],
+  },
+]
+
 function App() {
   // Пример использования кастомных React компонентов в ячейках с поддержкой состояния и кликов
   useEffect(() => {
@@ -848,6 +968,23 @@ function App() {
               height={420}
               headerRowHeight={54}
               enableColumnReorder={true}
+            />
+          </div>
+          <div className="data-grid-section">
+            <h2 className="section-title">Network Tree Grid</h2>
+            <p className="section-description">
+              Древовидное представление инфраструктуры с вложенными узлами
+            </p>
+            <BasicGrid<NetworkNode>
+              columns={networkColumns}
+              rows={networkData}
+              height={360}
+              headerRowHeight={48}
+              treeOptions={{
+                treeColumnId: 'name',
+                childrenKey: 'items',
+                defaultExpandedDepth: 2,
+              }}
             />
           </div>
 {/* 
