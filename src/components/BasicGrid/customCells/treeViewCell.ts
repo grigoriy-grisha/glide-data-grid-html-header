@@ -1,7 +1,11 @@
-import { GridCellKind, type CustomCell, type CustomRenderer } from '@glideapps/glide-data-grid'
+import { GridCellKind, type CustomCell, type CustomRenderer, type GridCell } from '@glideapps/glide-data-grid'
+
+import type { GridTreeNode } from '../models/GridTree'
+
+export const TREE_VIEW_CELL_KIND = 'tree-view-cell'
 
 export interface TreeViewCellData {
-  kind: 'tree-view-cell'
+  kind: typeof TREE_VIEW_CELL_KIND
   text: string
   depth: number
   hasChildren: boolean
@@ -13,7 +17,7 @@ export type TreeViewCell = CustomCell<TreeViewCellData>
 export const treeViewCellRenderer: CustomRenderer<TreeViewCell> = {
   kind: GridCellKind.Custom,
   isMatch: (cell): cell is TreeViewCell =>
-    (cell.data as Partial<TreeViewCellData>)?.kind === 'tree-view-cell',
+    (cell.data as Partial<TreeViewCellData>)?.kind === TREE_VIEW_CELL_KIND,
   draw: (args, cell) => {
     const { ctx, rect, theme, highlighted, cellFillColor } = args
     const { text, depth, hasChildren, isExpanded } = cell.data
@@ -65,6 +69,24 @@ export const treeViewCellRenderer: CustomRenderer<TreeViewCell> = {
 
     ctx.restore()
   },
+}
+
+export function createTreeViewCell<RowType>(
+  text: string,
+  node: GridTreeNode<RowType>
+): GridCell {
+  return {
+    kind: GridCellKind.Custom,
+    allowOverlay: false,
+    copyData: text,
+    data: {
+      kind: TREE_VIEW_CELL_KIND,
+      text,
+      depth: node.depth,
+      hasChildren: node.hasChildren,
+      isExpanded: node.isExpanded,
+    },
+  }
 }
 
 
