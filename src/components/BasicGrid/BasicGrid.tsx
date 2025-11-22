@@ -6,6 +6,7 @@ import './BasicGrid.css'
 import type { BasicGridProps } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
+  DEFAULT_MIN_COLUMN_WIDTH,
   DEFAULT_ROW_MARKER_WIDTH,
   DEFAULT_SCROLLBAR_RESERVE,
 } from './constants'
@@ -15,6 +16,7 @@ import { useGridSorting } from './hooks/useGridSorting'
 import { useColumnSelection } from './hooks/useColumnSelection'
 import { useHorizontalScroll } from './hooks/useHorizontalScroll'
 import { useColumnOrdering } from './hooks/useColumnOrdering'
+import { useColumnResize } from './hooks/useColumnResize'
 import { GridCellState } from './models/GridCellState'
 
 const EMPTY_TEXT_CELL: GridCell = {
@@ -51,12 +53,14 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     columnOrder,
     onColumnOrderChange,
   })
+  const [columnWidthOverrides, setColumnWidthOverrides] = useState<Record<string, number>>({})
   const [dragState, setDragState] = useState<{ sourceIndex: number; targetIndex: number } | null>(null)
   const hasActiveDrag = dragState != null
   const { columnWidths, columnPositions, dataAreaWidth } = useColumnMetrics(
     orderedColumns,
     containerWidth,
-    rowMarkerWidth
+    rowMarkerWidth,
+    columnWidthOverrides
   )
   const { gridRows, sortState, handleColumnSort } = useGridSorting(rows, orderedColumns)
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
@@ -68,6 +72,58 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     rowMarkerWidth,
     containerWidth,
     columnPositions,
+  })
+
+  const getColumnWidth = useCallback(
+    (index: number) => columnWidths[index] ?? orderedColumns[index]?.baseWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
+    [columnWidths, orderedColumns]
+  )
+
+  const setColumnWidths = useCallback((updates: Array<{ columnId: string; width: number }>) => {
+    if (updates.length === 0) {
+      return
+    }
+    setColumnWidthOverrides((prev) => {
+      let changed = false
+      let next = prev
+      for (const { columnId, width } of updates) {
+        if (next[columnId] !== width) {
+          if (!changed) {
+            next = { ...next }
+          }
+          next[columnId] = width
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [])
+
+  const clearColumnWidths = useCallback((columnIds: string[]) => {
+    if (columnIds.length === 0) {
+      return
+    }
+    setColumnWidthOverrides((prev) => {
+      let changed = false
+      let next = prev
+      for (const columnId of columnIds) {
+        if (columnId in next) {
+          if (!changed) {
+            next = { ...next }
+          }
+          delete next[columnId]
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [])
+
+  const { handleResizeMouseDown, handleResizeDoubleClick } = useColumnResize({
+    columns: orderedColumns,
+    getColumnWidth,
+    setColumnWidths,
+    clearColumnWidths,
   })
 
   const gridTheme = useMemo(
@@ -307,6 +363,10 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                     cellClasses.push('basic-grid-header-cell--drag-placeholder')
                   }
 
+                  const resizeStartIndex = cell.isLeaf ? resolvedColumnIndex : cell.startIndex
+                  const resizeSpan = Math.max(1, cell.colSpan)
+                  const canResizeCell = resizeStartIndex != null && resizeStartIndex >= 0 && resizeSpan > 0
+
                   const handleCellActivate = () => {
                     if (!isSelectable) {
                       return
@@ -357,6 +417,16 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                       aria-pressed={isSelectable ? isCellSelected : undefined}
                     >
                       {cell.content ?? cell.title}
+                      {canResizeCell && (
+                        <div
+                          className="basic-grid-header-resize-handle"
+                          onMouseDown={(event) => handleResizeMouseDown(event, resizeStartIndex, resizeSpan)}
+                          onDoubleClick={(event) => handleResizeDoubleClick(event, resizeStartIndex, resizeSpan)}
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label="Resize column"
+                        />
+                      )}
                       {isSorted && (
                         <span className="basic-grid-header-sort-indicator" aria-hidden="true">
                           {sortState?.direction === 'asc' ? '▲' : '▼'}

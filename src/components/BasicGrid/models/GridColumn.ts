@@ -12,6 +12,7 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   title: string
   dataType: BasicGridDataType
   headerPath: GridHeaderSegment[]
+  minWidth: number
   baseWidth: number
   grow: number
   sortable: boolean
@@ -26,6 +27,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly title: string
   readonly dataType: BasicGridDataType
   readonly headerPath: GridHeaderSegment[]
+  readonly minWidth: number
   readonly baseWidth: number
   readonly grow: number
   readonly sortable: boolean
@@ -39,6 +41,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.title = options.title
     this.dataType = options.dataType
     this.headerPath = options.headerPath
+    this.minWidth = options.minWidth
     this.baseWidth = options.baseWidth
     this.grow = options.grow
     this.sortable = options.sortable

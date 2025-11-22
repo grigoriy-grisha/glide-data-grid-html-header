@@ -70,16 +70,16 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
         const canRenderLeaf = Boolean(valueGetter)
 
         if (canRenderLeaf && valueGetter) {
+          const minWidth = column.minWidth ?? DEFAULT_MIN_COLUMN_WIDTH
+          const baseWidth = Math.max(minWidth, column.width ?? DEFAULT_COLUMN_WIDTH)
           leaves.push(
             new GridColumn<RowType>({
               id: resolvedId,
               title: fallbackTitle,
               dataType: column.dataType ?? 'string',
               headerPath: [...headerParentSegments, selfSegment],
-              baseWidth: Math.max(
-                column.minWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
-                column.width ?? DEFAULT_COLUMN_WIDTH
-              ),
+              minWidth,
+              baseWidth,
               grow: column.grow ?? 0,
               sortable: column.sortable ?? true,
               formatter: column.formatter,

@@ -352,25 +352,6 @@
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.basic-grid-header-cell--drop-before::before,
-.basic-grid-header-cell--drop-after::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 999px;
-  background-color: #1e88e5;
-}
-
-.basic-grid-header-cell--drop-before::before {
-  left: 2px;
-}
-
-.basic-grid-header-cell--drop-after::after {
-  right: 2px;
-}
-
 .basic-grid-header-cell--drop-before.basic-grid-header-cell--drop-indicator::before {
   left: -3px;
   transform: translateX(-6px);
@@ -384,6 +365,32 @@
 .basic-grid-header-cell--drop-before.basic-grid-header-cell--drop-indicator::before,
 .basic-grid-header-cell--drop-after.basic-grid-header-cell--drop-indicator::before {
   opacity: 1;
+}
+
+.basic-grid-header-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.basic-grid-header-resize-handle::after {
+  content: '';
+  width: 2px;
+  height: 50%;
+  border-radius: 999px;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.basic-grid-header-resize-handle:hover::after,
+.basic-grid-header-resize-handle:active::after {
+  background-color: rgba(21, 101, 192, 0.4);
 }
 
 .basic-grid-header-cell--drop-before::before,

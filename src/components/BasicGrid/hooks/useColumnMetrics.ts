@@ -5,11 +5,18 @@ import type { GridColumn } from '../models/GridColumn'
 export function useColumnMetrics<RowType extends Record<string, unknown>>(
   normalizedColumns: GridColumn<RowType>[],
   containerWidth: number,
-  rowMarkerWidth: number
+  rowMarkerWidth: number,
+  columnWidthOverrides?: Record<string, number>
 ) {
   const columnWidths = useMemo(() => {
     if (normalizedColumns.length === 0) {
       return []
+    }
+
+    const hasOverrides = Boolean(columnWidthOverrides && Object.keys(columnWidthOverrides).length > 0)
+
+    if (hasOverrides) {
+      return normalizedColumns.map((column) => columnWidthOverrides?.[column.id] ?? column.baseWidth)
     }
 
     const base = normalizedColumns.map((column) => column.baseWidth)
@@ -31,7 +38,7 @@ export function useColumnMetrics<RowType extends Record<string, unknown>>(
       const grow = normalizedColumns[index].grow
       return width + extra * (grow / totalGrow)
     })
-  }, [containerWidth, normalizedColumns, rowMarkerWidth])
+  }, [columnWidthOverrides, containerWidth, normalizedColumns, rowMarkerWidth])
 
   const dataAreaWidth = useMemo(() => columnWidths.reduce((sum, width) => sum + width, 0), [columnWidths])
   const columnPositions = useMemo(() => {
