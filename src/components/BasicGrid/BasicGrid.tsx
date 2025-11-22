@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import DataEditor, { GridCellKind, type CellClickedEventArgs, type GridCell, type Item } from '@glideapps/glide-data-grid'
+import DataEditor, {
+  GridCellKind,
+  type CellClickedEventArgs,
+  type CustomRenderer,
+  type EditableGridCell,
+  type GridCell,
+  type Item,
+} from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
@@ -19,6 +26,7 @@ import { useColumnOrdering } from './hooks/useColumnOrdering'
 import { useColumnResize } from './hooks/useColumnResize'
 import { GridCellState } from './models/GridCellState'
 import { useGridTree } from './hooks/useGridTree'
+import { createSelectCell, isSelectCell, selectCellRenderer } from './customCells/selectCell'
 
 const EMPTY_TEXT_CELL: GridCell = {
   kind: GridCellKind.Text,
@@ -26,6 +34,9 @@ const EMPTY_TEXT_CELL: GridCell = {
   displayData: '',
   allowOverlay: false,
 }
+
+type TextEditableCell = Extract<EditableGridCell, { kind: GridCellKind.Text }>
+type NumberEditableCell = Extract<EditableGridCell, { kind: GridCellKind.Number }>
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   rows,
@@ -38,6 +49,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   columnOrder,
   onColumnOrderChange,
   treeOptions,
+  editable = false,
+  onCellChange,
 }: BasicGridProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
@@ -69,7 +82,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     treeEnabled,
     treeColumnId,
     displayRows,
-    customRenderers,
+    customRenderers: treeCustomRenderers,
     decorateCell,
     toggleRowByIndex,
   } = useGridTree({
@@ -82,6 +95,11 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     disabled: treeEnabled,
   })
 
+  const hasSelectColumns = useMemo(
+    () => editable && orderedColumns.some((column) => column.isSelect()),
+    [editable, orderedColumns]
+  )
+
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
     gridRows.length,
     orderedColumns.length
@@ -92,6 +110,17 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     containerWidth,
     columnPositions,
   })
+
+  const customRenderers = useMemo(() => {
+    const renderers: CustomRenderer<any>[] = []
+    if (treeCustomRenderers) {
+      renderers.push(...treeCustomRenderers)
+    }
+    if (hasSelectColumns) {
+      renderers.push(selectCellRenderer)
+    }
+    return renderers.length > 0 ? renderers : undefined
+  }, [treeCustomRenderers, hasSelectColumns])
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? orderedColumns[index]?.baseWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
@@ -157,7 +186,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const handleCellClicked = useCallback(
     (cell: Item, _event?: CellClickedEventArgs) => {
       if (!treeEnabled || !treeColumnId) {
-        clearSelection()
         return
       }
 
@@ -286,9 +314,90 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       const cellState = new GridCellState(column, dataRow)
       const baseCell = cellState.toGridCell()
 
-      return decorateCell(baseCell, column.id, row)
+      if (column.isSelect() && editable) {
+        const options = column.getSelectOptions(dataRow)
+        if (options && options.length > 0) {
+          const rawValue = column.getValue(dataRow)
+          const stringValue = rawValue == null ? '' : String(rawValue)
+          return createSelectCell(stringValue, options, column.getSelectPlaceholder())
+        }
+      }
+
+      const decoratedCell = decorateCell(baseCell, column.id, row)
+      const canEdit =
+        editable &&
+        column.getAccessorPath() &&
+        (decoratedCell.kind === GridCellKind.Text || decoratedCell.kind === GridCellKind.Number)
+
+      if (canEdit) {
+        const allowOverlay = decoratedCell.allowOverlay ?? false
+        const activationBehavior = decoratedCell.activationBehaviorOverride
+        const isReadonly = decoratedCell.readonly ?? true
+
+        if (!allowOverlay || activationBehavior !== 'single-click' || isReadonly) {
+          return {
+            ...decoratedCell,
+            allowOverlay: true,
+            activationBehaviorOverride: 'single-click',
+            readonly: false,
+          }
+        }
+      }
+
+      return decoratedCell
     },
-    [gridRows, orderedColumns, decorateCell]
+    [gridRows, orderedColumns, decorateCell, editable]
+  )
+
+  const handleCellEdited = useCallback(
+    (cell: Item, newValue: EditableGridCell) => {
+      if (!editable) {
+        return
+      }
+
+      const [col, row] = cell
+      const column = orderedColumns[col]
+      const dataRow = gridRows[row]
+      const accessorPath = column?.getAccessorPath()
+      if (!column || !dataRow || !accessorPath) {
+        return
+      }
+
+      const previousValue = column.getValue(dataRow)
+      let nextRawValue: unknown
+      let nextValueDisplay = ''
+
+      if (newValue.kind === GridCellKind.Text) {
+        const { data } = newValue as TextEditableCell
+        nextRawValue = typeof data === 'string' ? data : ''
+        nextValueDisplay = typeof nextRawValue === 'string' ? nextRawValue : ''
+      } else if (newValue.kind === GridCellKind.Number) {
+        const { data } = newValue as NumberEditableCell
+        nextRawValue = data ?? null
+        nextValueDisplay =
+          typeof data === 'number' && Number.isFinite(data) ? String(data) : data == null ? '' : String(data)
+      } else if (newValue.kind === GridCellKind.Custom && isSelectCell(newValue)) {
+        nextRawValue = newValue.data.value
+        nextValueDisplay = newValue.data.displayValue ?? ''
+      } else {
+        return
+      }
+
+      if (Object.is(previousValue, nextRawValue)) {
+        return
+      }
+
+      onCellChange?.({
+        columnId: column.id,
+        accessorPath,
+        rowIndex: row,
+        row: dataRow,
+        previousValue,
+        nextValue: nextValueDisplay,
+        nextRawValue,
+      })
+    },
+    [editable, gridRows, onCellChange, orderedColumns]
   )
 
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
@@ -490,7 +599,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             customRenderers={customRenderers}
             onVisibleRegionChanged={handleVisibleRegionChanged}
             onHeaderClicked={handleColumnSort}
-            onCellClicked={handleCellClicked}
+            onCellClicked={treeEnabled ? handleCellClicked : undefined}
+            onCellEdited={editable ? handleCellEdited : undefined}
             highlightRegions={highlightRegions}
             rowMarkers="number"
             rowMarkerWidth={rowMarkerWidth}

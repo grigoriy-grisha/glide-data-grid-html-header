@@ -46,8 +46,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
           (typeof column.accessor === 'string' ? column.accessor : `Column ${autoId + 1}`)
 
         const accessor = column.accessor
-        const resolvedId =
-          column.id ?? (typeof accessor === 'string' && accessor.length > 0 ? accessor : getAutoId())
+        const accessorPath = typeof accessor === 'string' && accessor.length > 0 ? accessor : undefined
+        const resolvedId = column.id ?? accessorPath ?? getAutoId()
 
         const groupSegment = column.headerOptions?.columnGroupText
           ? {
@@ -63,8 +63,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
 
         const valueGetter =
           column.valueGetter ??
-          (accessor
-            ? (row: RowType) => resolveAccessorValue(row as Record<string, unknown>, accessor)
+          (accessorPath
+            ? (row: RowType) => resolveAccessorValue(row as Record<string, unknown>, accessorPath)
             : undefined)
 
         const canRenderLeaf = Boolean(valueGetter)
@@ -86,6 +86,13 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
               valueGetter,
               sortValueGetter: column.sortValueGetter,
               sortComparator: column.sortComparator,
+              accessorPath,
+              selectOptionsAccessor:
+                column.selectOptionsAccessor != null
+                  ? String(column.selectOptionsAccessor)
+                  : undefined,
+              selectOptionsGetter: column.selectOptionsGetter,
+              selectPlaceholder: column.selectPlaceholder,
             })
           )
         }

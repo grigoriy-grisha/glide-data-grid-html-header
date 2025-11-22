@@ -6,6 +6,8 @@ export type {
   BasicGridDataType,
   BasicGridHeaderOptions,
   BasicGridTreeOptions,
+  BasicGridCellChange,
+  BasicGridSelectOption,
 } from './types'
 export {
   animateNumericValue,

@@ -30,5 +30,16 @@ body {
   min-height: 100vh;
 }
 
+#portal {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+#portal > * {
+  pointer-events: auto;
+}
+
 
 

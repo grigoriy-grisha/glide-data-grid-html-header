@@ -1,6 +1,11 @@
 import type React from 'react'
 
-export type BasicGridDataType = 'string' | 'number' | 'percent'
+export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select'
+
+export interface BasicGridSelectOption {
+  label: string
+  value: string
+}
 
 export interface BasicGridHeaderOptions {
   columnGroupText?: string
@@ -23,6 +28,9 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
   sortable?: boolean
   headerOptions?: BasicGridHeaderOptions
   children?: BasicGridColumn<RowType>[]
+  selectOptionsAccessor?: keyof RowType | string
+  selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
+  selectPlaceholder?: string
 }
 
 export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {
@@ -60,6 +68,18 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
   columnOrder?: string[]
   onColumnOrderChange?: (order: string[]) => void
   treeOptions?: BasicGridTreeOptions<RowType>
+  editable?: boolean
+  onCellChange?: (change: BasicGridCellChange<RowType>) => void
+}
+
+export interface BasicGridCellChange<RowType> {
+  columnId: string
+  accessorPath?: string
+  rowIndex: number
+  row: RowType
+  previousValue: unknown
+  nextValue: string
+  nextRawValue: unknown
 }
 
 export type SortDirection = 'asc' | 'desc'

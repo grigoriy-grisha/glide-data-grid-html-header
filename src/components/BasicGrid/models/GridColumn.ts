@@ -1,6 +1,6 @@
 import type React from 'react'
 
-import type { BasicGridDataType, SortDirection } from '../types'
+import type { BasicGridDataType, BasicGridSelectOption, SortDirection } from '../types'
 
 export interface GridHeaderSegment {
   title: string
@@ -20,6 +20,10 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   valueGetter: (row: RowType) => unknown
   sortValueGetter?: (row: RowType) => string | number | null | undefined
   sortComparator?: (a: RowType, b: RowType) => number
+  accessorPath?: string
+  selectOptionsAccessor?: string
+  selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
+  selectPlaceholder?: string
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -31,6 +35,10 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly baseWidth: number
   readonly grow: number
   readonly sortable: boolean
+  readonly accessorPath?: string
+  readonly selectOptionsAccessor?: string
+  readonly selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
+  readonly selectPlaceholder?: string
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined
@@ -45,6 +53,10 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.baseWidth = options.baseWidth
     this.grow = options.grow
     this.sortable = options.sortable
+    this.accessorPath = options.accessorPath
+    this.selectOptionsAccessor = options.selectOptionsAccessor
+    this.selectOptionsGetter = options.selectOptionsGetter
+    this.selectPlaceholder = options.selectPlaceholder
     this.formatter = options.formatter
     this.valueGetter = options.valueGetter
     this.sortValueGetter = options.sortValueGetter
@@ -92,5 +104,78 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     const multiplier = direction === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => this.compareRows(a, b) * multiplier)
   }
+
+  getAccessorPath() {
+    return this.accessorPath
+  }
+
+  isSelect() {
+    return this.dataType === 'select'
+  }
+
+  getSelectOptions(row: RowType) {
+    if (!this.isSelect()) {
+      return undefined
+    }
+
+    if (this.selectOptionsGetter) {
+      return normalizeSelectOptions(this.selectOptionsGetter(row))
+    }
+
+    if (this.selectOptionsAccessor) {
+      const source = resolveAccessorValue(row as Record<string, unknown>, this.selectOptionsAccessor)
+      return normalizeSelectOptions(source)
+    }
+
+    return undefined
+  }
+
+  getSelectPlaceholder() {
+    return this.selectPlaceholder
+  }
+}
+
+function resolveAccessorValue(row: Record<string, unknown>, accessor: string | number | symbol) {
+  if (typeof accessor === 'string' && accessor.includes('.')) {
+    return accessor.split('.').reduce<unknown>((acc, key) => {
+      if (acc == null || typeof acc !== 'object') {
+        return undefined
+      }
+      return (acc as Record<string, unknown>)[key]
+    }, row)
+  }
+
+  return (row as Record<string, unknown>)[accessor as keyof typeof row]
+}
+
+function normalizeSelectOptions(
+  source: unknown
+): BasicGridSelectOption[] | undefined {
+  if (!source) {
+    return undefined
+  }
+
+  if (Array.isArray(source)) {
+    const options: BasicGridSelectOption[] = []
+    for (const option of source) {
+      if (typeof option === 'string') {
+        options.push({ label: option, value: option })
+        continue
+      }
+      if (option && typeof option === 'object') {
+        const label = 'label' in option ? String(option.label) : undefined
+        const value =
+          'value' in option
+            ? String(option.value)
+            : label ?? String((option as Record<string, unknown>)[0] ?? '')
+        if (label || value) {
+          options.push({ label: label ?? value, value })
+        }
+      }
+    }
+    return options.length > 0 ? options : undefined
+  }
+
+  return undefined
 }
 

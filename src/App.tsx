@@ -1,6 +1,6 @@
-import { BasicGrid, BasicGridColumn, createColumn } from './components/BasicGrid'
+import { BasicGrid, BasicGridCellChange, BasicGridColumn, BasicGridSelectOption, createColumn } from './components/BasicGrid'
 import './App.css'
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 interface DataRow extends Record<string, unknown> {
   employeeId: string
@@ -24,9 +24,10 @@ interface DataRow extends Record<string, unknown> {
     country: string
   }
   status: {
-    label: string
-    progress: number
+    name: string
+    options: BasicGridSelectOption[]
   }
+  progress: number
 }
 
 type HeaderTone = 'blue' | 'green' | 'amber' | 'purple' | 'teal'
@@ -79,6 +80,62 @@ const HeaderCard = ({ icon, iconTone = 'blue', title, subtitle, chip, metrics, c
       )}
     </div>
   )
+}
+
+const DEFAULT_STATUS_OPTIONS = ['Активен', 'На обучении', 'В отпуске', 'На испытательном сроке']
+
+const createStatusOptions = (options: string[] = DEFAULT_STATUS_OPTIONS): BasicGridSelectOption[] =>
+  options.map((label) => ({ label, value: label }))
+
+const createStatus = (name: string, options: string[] = DEFAULT_STATUS_OPTIONS) => ({
+  name,
+  options: createStatusOptions(options),
+})
+
+const cloneDataRow = (row: DataRow): DataRow => ({
+  ...row,
+  contact: row.contact ? { ...row.contact } : row.contact,
+  address: row.address ? { ...row.address } : row.address,
+  status: row.status
+    ? {
+        name: row.status.name,
+        options: row.status.options.map((option) => ({ ...option })),
+      }
+    : row.status,
+  progress: row.progress,
+})
+
+const cloneChild = (source: unknown): Record<string, unknown> => {
+  if (source && typeof source === 'object' && !Array.isArray(source)) {
+    return { ...(source as Record<string, unknown>) }
+  }
+  return {}
+}
+
+const setValueAtPath = (row: DataRow, path: string, value: unknown): DataRow => {
+  const segments = path.split('.').filter(Boolean)
+  if (segments.length === 0) {
+    return row
+  }
+  const nextRow: DataRow = { ...row }
+  let currentNext: Record<string, unknown> = nextRow
+  let currentOriginal: unknown = row
+
+  for (let i = 0; i < segments.length - 1; i++) {
+    const key = segments[i]
+    const originalChild =
+      currentOriginal && typeof currentOriginal === 'object'
+        ? (currentOriginal as Record<string, unknown>)[key]
+        : undefined
+    const clonedChild = cloneChild(originalChild)
+    currentNext[key] = clonedChild
+    currentNext = clonedChild
+    currentOriginal = originalChild
+  }
+
+  const lastKey = segments[segments.length - 1]
+  currentNext[lastKey] = value
+  return nextRow
 }
 
 const basicGridColumns: BasicGridColumn<DataRow>[] = [
@@ -209,8 +266,12 @@ const basicGridColumns: BasicGridColumn<DataRow>[] = [
         title: 'Прогресс',
         headerContent: <HeaderCard icon="🎯" iconTone="green" title="Прогресс" subtitle="KPI + статус" compact />,
         children: [
-          createColumn<DataRow>('status.label', 'string', 'Статус', { width: 140 }),
-          createColumn<DataRow>('status.progress', 'percent', 'Прогресс %', { width: 140 }),
+          createColumn<DataRow>('status.name', 'select', 'Статус', {
+            width: 160,
+            selectOptionsAccessor: 'status.options',
+            selectPlaceholder: 'Выберите статус',
+          }),
+          createColumn<DataRow>('progress', 'percent', 'Прогресс %', { width: 140 }),
         ],
       },
       createColumn<DataRow>('salary', 'number', 'Зарплата', {
@@ -253,10 +314,8 @@ const basicGridRows: DataRow[] = [
       state: 'Москва',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 82,
-    },
+    status: createStatus('Активен'),
+    progress: 82,
   },
   {
     employeeId: 'EMP-002',
@@ -279,10 +338,8 @@ const basicGridRows: DataRow[] = [
       state: 'Ленинградская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 68,
-    },
+    status: createStatus('Активен'),
+    progress: 68,
   },
   {
     employeeId: 'EMP-003',
@@ -305,10 +362,8 @@ const basicGridRows: DataRow[] = [
       state: 'Татарстан',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 74,
-    },
+    status: createStatus('Активен'),
+    progress: 74,
   },
   {
     employeeId: 'EMP-004',
@@ -331,10 +386,8 @@ const basicGridRows: DataRow[] = [
       state: 'Новосибирская область',
       country: 'Россия',
     },
-    status: {
-      label: 'На обучении',
-      progress: 59,
-    },
+    status: createStatus('На обучении'),
+    progress: 59,
   },
   {
     employeeId: 'EMP-005',
@@ -357,10 +410,8 @@ const basicGridRows: DataRow[] = [
       state: 'Свердловская область',
       country: 'Россия',
     },
-    status: {
-      label: 'В отпуске',
-      progress: 35,
-    },
+    status: createStatus('В отпуске'),
+    progress: 35,
   },
   {
     employeeId: 'EMP-006',
@@ -383,10 +434,8 @@ const basicGridRows: DataRow[] = [
       state: 'Нижегородская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 91,
-    },
+    status: createStatus('Активен'),
+    progress: 91,
   },
   {
     employeeId: 'EMP-007',
@@ -409,10 +458,8 @@ const basicGridRows: DataRow[] = [
       state: 'Самарская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 64,
-    },
+    status: createStatus('Активен'),
+    progress: 64,
   },
   {
     employeeId: 'EMP-008',
@@ -435,10 +482,8 @@ const basicGridRows: DataRow[] = [
       state: 'Краснодарский край',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 77,
-    },
+    status: createStatus('Активен'),
+    progress: 77,
   },
   {
     employeeId: 'EMP-009',
@@ -461,10 +506,8 @@ const basicGridRows: DataRow[] = [
       state: 'Воронежская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 71,
-    },
+    status: createStatus('Активен'),
+    progress: 71,
   },
   {
     employeeId: 'EMP-010',
@@ -487,10 +530,8 @@ const basicGridRows: DataRow[] = [
       state: 'Пермский край',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 66,
-    },
+    status: createStatus('Активен'),
+    progress: 66,
   },
   {
     employeeId: 'EMP-011',
@@ -513,10 +554,8 @@ const basicGridRows: DataRow[] = [
       state: 'Челябинская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 79,
-    },
+    status: createStatus('Активен'),
+    progress: 79,
   },
   {
     employeeId: 'EMP-012',
@@ -539,10 +578,8 @@ const basicGridRows: DataRow[] = [
       state: 'Башкортостан',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 62,
-    },
+    status: createStatus('Активен'),
+    progress: 62,
   },
   {
     employeeId: 'EMP-013',
@@ -565,10 +602,8 @@ const basicGridRows: DataRow[] = [
       state: 'Ростовская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 88,
-    },
+    status: createStatus('Активен'),
+    progress: 88,
   },
   {
     employeeId: 'EMP-014',
@@ -591,10 +626,12 @@ const basicGridRows: DataRow[] = [
       state: 'Краснодарский край',
       country: 'Россия',
     },
-    status: {
-      label: 'На испытательном сроке',
-      progress: 54,
-    },
+    status: createStatus('На испытательном сроке', [
+      'На испытательном сроке',
+      'Активен',
+      'На обучении',
+    ]),
+    progress: 54,
   },
   {
     employeeId: 'EMP-015',
@@ -617,10 +654,8 @@ const basicGridRows: DataRow[] = [
       state: 'Татарстан',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 95,
-    },
+    status: createStatus('Активен'),
+    progress: 95,
   },
   {
     employeeId: 'EMP-016',
@@ -643,10 +678,8 @@ const basicGridRows: DataRow[] = [
       state: 'Ярославская область',
       country: 'Россия',
     },
-    status: {
-      label: 'Активен',
-      progress: 58,
-    },
+    status: createStatus('Активен'),
+    progress: 58,
   },
 ]
 
@@ -771,6 +804,31 @@ const networkData: NetworkNode[] = [
 ]
 
 function App() {
+  const [editableGridRows, setEditableGridRows] = useState<DataRow[]>(() => basicGridRows.map(cloneDataRow))
+
+  const handleEditableCellChange = useCallback((change: BasicGridCellChange<DataRow>) => {
+    if (!change.accessorPath) {
+      return
+    }
+    if (Object.is(change.previousValue, change.nextRawValue)) {
+      return
+    }
+
+    setEditableGridRows((prevRows) => {
+      let targetIndex = prevRows.findIndex((row) => row === change.row)
+      if (targetIndex === -1 && change.row?.employeeId) {
+        targetIndex = prevRows.findIndex((row) => row.employeeId === change.row.employeeId)
+      }
+      if (targetIndex === -1) {
+        return prevRows
+      }
+      const updatedRow = setValueAtPath(prevRows[targetIndex], change.accessorPath!, change.nextRawValue)
+      const nextRows = [...prevRows]
+      nextRows[targetIndex] = updatedRow
+      return nextRows
+    })
+  }, [])
+
   // Пример использования кастомных React компонентов в ячейках с поддержкой состояния и кликов
   useEffect(() => {
     // Ждем, пока DataGrid загрузится
@@ -959,15 +1017,28 @@ function App() {
         <div className="container">
           <div className="data-grid-section">
             <h2 className="section-title">Basic Grid</h2>
-            <p className="section-description">
-              Минимальная таблица Glide Data Grid без дополнительных функций
-            </p>
+            <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
             <BasicGrid<DataRow>
               columns={basicGridColumns}
               rows={basicGridRows}
               height={420}
               headerRowHeight={54}
               enableColumnReorder={true}
+            />
+          </div>
+          <div className="data-grid-section">
+            <h2 className="section-title">Editable Basic Grid</h2>
+            <p className="section-description">
+              Версия с редактированием: кликните по ячейке текста (например, имя или email), введите новое значение и
+              увидьте, как оно сохраняется во внутреннем состоянии.
+            </p>
+            <BasicGrid<DataRow>
+              columns={basicGridColumns}
+              rows={editableGridRows}
+              height={420}
+              headerRowHeight={54}
+              editable
+              onCellChange={handleEditableCellChange}
             />
           </div>
           <div className="data-grid-section">
