@@ -156,18 +156,19 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
   const handleCellClicked = useCallback(
     (cell: Item, _event?: CellClickedEventArgs) => {
-      clearSelection()
       if (!treeEnabled || !treeColumnId) {
+        clearSelection()
         return
       }
 
       const [colIndex, rowIndex] = cell
       const column = orderedColumns[colIndex]
-      if (!column || column.id !== treeColumnId) {
+      if (column && column.id === treeColumnId) {
+        toggleRowByIndex(rowIndex)
         return
       }
 
-      toggleRowByIndex(rowIndex)
+      clearSelection()
     },
     [clearSelection, treeEnabled, treeColumnId, orderedColumns, toggleRowByIndex]
   )

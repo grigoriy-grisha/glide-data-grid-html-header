@@ -51,16 +51,13 @@ export const treeViewCellRenderer: CustomRenderer<TreeViewCell> = {
   isMatch: (cell): cell is TreeViewCell =>
     (cell.data as Partial<TreeViewCellData>)?.kind === TREE_VIEW_CELL_KIND,
   draw: (args, cell) => {
-    const { ctx, rect, theme, highlighted, cellFillColor } = args
+    const { ctx, rect, theme, highlighted } = args
     const { text, depth, hasChildren, isExpanded, rowId } = cell.data
 
     ctx.save()
     ctx.beginPath()
     ctx.rect(rect.x, rect.y, rect.width, rect.height)
     ctx.clip()
-
-    ctx.fillStyle = cellFillColor
-    ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
 
     const padding = 8
     const indent = depth * 18
