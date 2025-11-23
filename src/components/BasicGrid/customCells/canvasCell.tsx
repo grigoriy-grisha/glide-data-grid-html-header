@@ -197,20 +197,31 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     const hoverY = argsAny.hoverY
 
     // Преобразуем координаты курсора в относительные к ячейке
+    // Glide Data Grid передает hoverX/hoverY уже в относительных координатах,
+    // но для совместимости поддерживаем и абсолютные значения.
     let relativeHoverX: number | undefined
     let relativeHoverY: number | undefined
 
     if (hoverX !== undefined && hoverY !== undefined) {
-      if (hoverX >= rect.x && hoverX <= rect.x + rect.width &&
-          hoverY >= rect.y && hoverY <= rect.y + rect.height) {
+      const isAbsoluteCoords =
+        hoverX >= rect.x - 1 &&
+        hoverX <= rect.x + rect.width + 1 &&
+        hoverY >= rect.y - 1 &&
+        hoverY <= rect.y + rect.height + 1
+
+      const isRelativeCoords =
+        hoverX >= -1 &&
+        hoverX <= rect.width + 1 &&
+        hoverY >= -1 &&
+        hoverY <= rect.height + 1
+
+      if (isAbsoluteCoords) {
         relativeHoverX = hoverX - rect.x
         relativeHoverY = hoverY - rect.y
-      } else {
-        // Если координаты вне ячейки, все равно преобразуем в относительные
-        relativeHoverX = hoverX - rect.x
-        relativeHoverY = hoverY - rect.y
+      } else if (isRelativeCoords) {
+        relativeHoverX = hoverX
+        relativeHoverY = hoverY
       }
-      
     }
 
     ctx.save()
