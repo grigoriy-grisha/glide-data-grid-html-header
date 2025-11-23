@@ -110,6 +110,23 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
   enableRowSelection?: boolean
   onRowSelectionChange?: (selection: BasicGridRowSelectionChange<RowType>) => void
   getRowSelectable?: (row: RowType) => boolean
+  /**
+   * Optional function to resolve a unique identifier for a row.
+   * Used by features such as the inner row overlay.
+   */
+  getRowId?: (row: RowType, rowIndex: number) => string | number
+  /**
+   * Identifier of the row whose overlay should be rendered.
+   */
+  rowOverlayRowId?: string | number | null
+  /**
+   * Renderer for the HTML block that appears underneath the active row.
+   */
+  renderRowOverlay?: (row: RowType, rowIndex: number) => React.ReactNode
+  /**
+   * Optional callback invoked when the overlay requests to be closed (close button click).
+   */
+  onRowOverlayClose?: () => void
 }
 
 export interface BasicGridCellChange<RowType> {

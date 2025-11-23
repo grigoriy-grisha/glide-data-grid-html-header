@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DataEditorProps, Rectangle } from '@glideapps/glide-data-grid'
+import type { Rectangle } from '@glideapps/glide-data-grid'
 
 interface HorizontalScrollOptions {
   dataAreaWidth: number
@@ -66,8 +66,8 @@ export function useHorizontalScroll({
     [clampScrollLeft, columnPositions]
   )
 
-  const handleVisibleRegionChanged = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
-    (range, tx = 0) => {
+  const handleVisibleRegionChanged = useCallback(
+    (range: Rectangle, tx = 0) => {
       const nextScrollLeft = getScrollLeftFromRegion(range, tx)
       applyScrollLeft(nextScrollLeft)
     },

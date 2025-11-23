@@ -239,6 +239,106 @@
   font-size: 0.95rem;
 }
 
+.employee-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.employee-overlay__header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.employee-overlay__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.35);
+}
+
+.employee-overlay__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.employee-overlay__name {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1f1d47;
+}
+
+.employee-overlay__role {
+  color: #5b5f7d;
+  font-size: 0.95rem;
+}
+
+.employee-overlay__status {
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.employee-overlay__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.employee-overlay__label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.employee-overlay__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.employee-overlay__action {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.35);
+  background: rgba(255, 255, 255, 0.8);
+  color: #4c1d95;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.employee-overlay__action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.employee-overlay__action--primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 15px 30px rgba(99, 102, 241, 0.35);
+}
+
+.employee-overlay__action--primary:hover {
+  box-shadow: 0 20px 35px rgba(99, 102, 241, 0.4);
+}
+
 @media (max-width: 768px) {
   .logo {
     font-size: 2rem;

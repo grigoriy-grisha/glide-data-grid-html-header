@@ -14,7 +14,7 @@ import {
   text,
 } from './components/BasicGrid'
 import './App.css'
-import {type ReactNode, useCallback, useMemo, useState} from 'react'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
 
 const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'
 
@@ -26,9 +26,13 @@ interface DataRow extends Record<string, unknown> {
   age: number
   role: string
   department: string
+  position?: {
+    name: string
+  }
   salary: number
   city: string
   email: string
+  team?: string
   contact: {
     email: string
     phone: string
@@ -839,6 +843,7 @@ function App() {
   const [editableGridRows, setEditableGridRows] = useState<DataRow[]>(() => basicGridRows.map(cloneDataRow))
   const [selectedEmployees, setSelectedEmployees] = useState<DataRow[]>([])
   const [selectedNetworkNodes, setSelectedNetworkNodes] = useState<NetworkNode[]>([])
+  const [activeOverlayRowId, setActiveOverlayRowId] = useState<string | null>(null)
 
   // Состояние для хранения текста кнопки для каждой строки
   const [buttonTexts, setButtonTexts] = useState<Map<string, string>>(() => {
@@ -851,7 +856,70 @@ function App() {
     return map
   })
 
-  // Создаем колонки с доступом к состоянию buttonTexts
+  const toggleRowOverlay = useCallback((row: DataRow) => {
+    setActiveOverlayRowId((prev) => (prev === row.employeeId ? null : row.employeeId))
+  }, [])
+
+  const renderEmployeeOverlay = useCallback((row: DataRow) => {
+    return (
+      <div className="employee-overlay">
+        <div className="employee-overlay__header">
+          <div className="employee-overlay__avatar">
+            {row.firstName?.[0]}
+            {row.lastName?.[0]}
+          </div>
+          <div className="employee-overlay__meta">
+            <div className="employee-overlay__name">
+              {row.firstName} {row.lastName}
+            </div>
+            <div className="employee-overlay__role">
+              {row.department} · {row.position?.name ?? 'Специалист'}
+            </div>
+            <div className="employee-overlay__status">
+              Статус: <strong>{row.status?.name ?? 'Активен'}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="employee-overlay__grid">
+          <div>
+            <span className="employee-overlay__label">Email</span>
+            <p>{row.email}</p>
+          </div>
+          <div>
+            <span className="employee-overlay__label">Телефон</span>
+            <p>{row.contact?.phone ?? '—'}</p>
+          </div>
+          <div>
+            <span className="employee-overlay__label">Город</span>
+            <p>{row.city}</p>
+          </div>
+          <div>
+            <span className="employee-overlay__label">Команда</span>
+            <p>{row.team ?? 'Core'}</p>
+          </div>
+        </div>
+
+        <div className="employee-overlay__actions">
+          <button
+            type="button"
+            className="employee-overlay__action employee-overlay__action--primary"
+            onClick={() => alert(`Написать сотруднику ${row.firstName} ${row.lastName}`)}
+          >
+            Написать
+          </button>
+          <button
+            type="button"
+            className="employee-overlay__action"
+            onClick={() => alert(`Открыть профиль ${row.firstName} ${row.lastName}`)}
+          >
+            Открыть профиль
+          </button>
+        </div>
+      </div>
+    )
+  }, [])
+
   const gridColumns = useMemo<BasicGridColumn<DataRow>[]>(() => {
     const randomTexts = ['Открыть', 'Просмотр', 'Детали', 'Редактировать', 'Удалить', 'Сохранить']
 
@@ -909,11 +977,9 @@ function App() {
                         }),
                         buttonIcon({
                           icon: iconButtonSVG,
-                          variant: 'secondary',
+                          variant: activeOverlayRowId === (row as DataRow).employeeId ? 'primary' : 'secondary',
                           onClick: () => {
-                            // Обработчик будет вызван напрямую при клике
-                            console.log('Иконка-кнопка нажата для строки:', row)
-                            alert(`Иконка-кнопка нажата для: ${(row as DataRow).firstName} ${(row as DataRow).lastName}`)
+                            toggleRowOverlay(row as DataRow)
                           },
                         }),
                       ]
@@ -975,7 +1041,7 @@ function App() {
       }
       return col
     })
-  }, [buttonTexts])
+  }, [activeOverlayRowId, buttonTexts, toggleRowOverlay])
 
   const handleEditableCellChange = useCallback((change: BasicGridCellChange<DataRow>) => {
     if (!change.accessorPath) {
@@ -1032,6 +1098,10 @@ function App() {
               height={420}
               headerRowHeight={54}
               enableColumnReorder={true}
+              getRowId={(row) => row.employeeId}
+              rowOverlayRowId={activeOverlayRowId}
+              renderRowOverlay={renderEmployeeOverlay}
+              onRowOverlayClose={() => setActiveOverlayRowId(null)}
             />
           </div>
           <div className="data-grid-section">

@@ -373,7 +373,64 @@
 }
 
 .basic-grid-body {
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
+  min-height: 0;
+}
+
+.basic-grid-row-overlay {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  z-index: 5;
+  pointer-events: none;
+  animation: basicGridOverlayEnter 0.2s ease;
+}
+
+.basic-grid-row-overlay-content {
+  pointer-events: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 20px 35px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+  padding: 24px;
+}
+
+.basic-grid-row-overlay-close {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.8);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.85;
+  transform: translateY(-50%);
+  transition:
+    opacity 0.15s ease,
+    transform 0.2s ease;
+}
+
+.basic-grid-row-overlay-close:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.05);
+}
+
+@keyframes basicGridOverlayEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .basic-grid-wrapper :global(.dvn-header),

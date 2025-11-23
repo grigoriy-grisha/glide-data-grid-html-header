@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import DataEditor, {
   type CellClickedEventArgs,
   type CustomRenderer,
   type Item,
   type DataEditorProps,
+  type DataEditorRef,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
@@ -52,8 +53,15 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   enableRowSelection = false,
   onRowSelectionChange,
   getRowSelectable,
+  getRowId,
+  rowOverlayRowId,
+  renderRowOverlay,
+  onRowOverlayClose,
 }: BasicGridProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
+  const gridBodyRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const dataEditorRef = useRef<DataEditorRef>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const containerWidth = useContainerWidth(gridRef)
@@ -254,6 +262,115 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     onCellChange,
   })
 
+  const resolveRowId = useCallback(
+    (row: RowType, index: number) => {
+      if (getRowId) {
+        return getRowId(row, index)
+      }
+      const candidate = (row as Record<string, unknown> | undefined)?.['id']
+      if (typeof candidate === 'string' || typeof candidate === 'number') {
+        return candidate
+      }
+      return index
+    },
+    [getRowId]
+  )
+
+  const overlayRowIndex = useMemo(() => {
+    if (!renderRowOverlay || rowOverlayRowId == null) {
+      return -1
+    }
+    return gridRows.findIndex((row, index) => resolveRowId(row, index) === rowOverlayRowId)
+  }, [gridRows, renderRowOverlay, resolveRowId, rowOverlayRowId])
+
+  const overlayRow = overlayRowIndex >= 0 ? gridRows[overlayRowIndex] : null
+  const overlayContent = useMemo(() => {
+    if (!overlayRow || overlayRowIndex < 0 || !renderRowOverlay) {
+      return null
+    }
+    return renderRowOverlay(overlayRow, overlayRowIndex)
+  }, [overlayRow, overlayRowIndex, renderRowOverlay])
+
+  const [overlayPosition, setOverlayPosition] = useState<{ top: number } | null>(null)
+  const [overlayPaddingBottom, setOverlayPaddingBottom] = useState(0)
+
+  const updateOverlayPosition = useCallback(() => {
+    if (!overlayRow || overlayRowIndex < 0 || !gridBodyRef.current || !dataEditorRef.current) {
+      setOverlayPosition(null)
+      return
+    }
+    if (orderedColumns.length === 0) {
+      setOverlayPosition(null)
+      return
+    }
+    const bounds = dataEditorRef.current.getBounds(0, overlayRowIndex)
+    if (!bounds) {
+      setOverlayPosition(null)
+      return
+    }
+    const bodyRect = gridBodyRef.current.getBoundingClientRect()
+    const nextTop = bounds.y - bodyRect.top + bounds.height
+    setOverlayPosition((prev) => {
+      if (prev && Math.abs(prev.top - nextTop) < 0.5) {
+        return prev
+      }
+      return { top: nextTop }
+    })
+  }, [overlayRow, overlayRowIndex, orderedColumns.length])
+
+  useLayoutEffect(() => {
+    if (!overlayRow || !overlayContent) {
+      setOverlayPosition(null)
+      if (overlayPaddingBottom !== 0) {
+        setOverlayPaddingBottom(0)
+      }
+      return
+    }
+    updateOverlayPosition()
+  }, [overlayRow, overlayContent, overlayPaddingBottom, updateOverlayPosition])
+
+  useEffect(() => {
+    if (!overlayRow) {
+      return
+    }
+    const handleResize = () => updateOverlayPosition()
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [overlayRow, updateOverlayPosition])
+
+  const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
+    (range, tx = 0, _ty = 0, _extras) => {
+      handleVisibleRegionChanged(range, tx)
+      if (overlayRow && overlayContent) {
+        requestAnimationFrame(() => updateOverlayPosition())
+      }
+    },
+    [handleVisibleRegionChanged, overlayContent, overlayRow, updateOverlayPosition]
+  )
+
+  useLayoutEffect(() => {
+    if (!overlayRow || !overlayPosition || !gridBodyRef.current) {
+      if (overlayPaddingBottom !== 0) {
+        setOverlayPaddingBottom(0)
+      }
+      return
+    }
+    const overlayHeight = overlayRef.current?.offsetHeight ?? 0
+    if (overlayHeight === 0) {
+      return
+    }
+    const currentPadding = overlayPaddingBottom
+    const body = gridBodyRef.current
+    const baseBodyHeight = body.clientHeight - currentPadding
+    const overflow = overlayPosition.top + overlayHeight + 16 - baseBodyHeight
+    const nextPadding = overflow > 0 ? overflow : 0
+    if (Math.abs(nextPadding - currentPadding) > 0.5) {
+      setOverlayPaddingBottom(nextPadding)
+    }
+  }, [overlayPaddingBottom, overlayPosition, overlayRow])
+
 
   const handleCellClicked = useCallback(
     (cell: Item, event?: CellClickedEventArgs) => {
@@ -339,8 +456,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
           />
         )}
 
-        <div className="basic-grid-body">
+        <div
+          className="basic-grid-body"
+          ref={gridBodyRef}
+          style={overlayPaddingBottom > 0 ? { paddingBottom: overlayPaddingBottom } : undefined}
+        >
           <DataEditor
+            ref={dataEditorRef}
             getCellContent={getCellContent}
             columns={orderedColumns.map((column, index) => ({
               title: column.title,
@@ -351,7 +473,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             height={height}
             theme={gridTheme}
             customRenderers={customRenderers}
-            onVisibleRegionChanged={handleVisibleRegionChanged}
+            onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
             onHeaderClicked={handleColumnSort}
             onCellClicked={handleCellClicked}
             onCellEdited={editable ? handleCellEdited : undefined}
@@ -364,6 +486,11 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             smoothScrollY={true}
             headerHeight={0}
           />
+          {overlayRow && overlayContent && overlayPosition && (
+            <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
+              <div className="basic-grid-row-overlay-content">{overlayContent}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
