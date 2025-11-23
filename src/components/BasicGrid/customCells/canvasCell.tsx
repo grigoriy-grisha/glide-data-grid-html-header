@@ -203,24 +203,24 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     let relativeHoverY: number | undefined
 
     if (hoverX !== undefined && hoverY !== undefined) {
-      const isAbsoluteCoords =
-        hoverX >= rect.x - 1 &&
-        hoverX <= rect.x + rect.width + 1 &&
-        hoverY >= rect.y - 1 &&
-        hoverY <= rect.y + rect.height + 1
-
       const isRelativeCoords =
         hoverX >= -1 &&
         hoverX <= rect.width + 1 &&
         hoverY >= -1 &&
         hoverY <= rect.height + 1
 
-      if (isAbsoluteCoords) {
-        relativeHoverX = hoverX - rect.x
-        relativeHoverY = hoverY - rect.y
-      } else if (isRelativeCoords) {
+      const isAbsoluteCoords =
+        hoverX >= rect.x - 1 &&
+        hoverX <= rect.x + rect.width + 1 &&
+        hoverY >= rect.y - 1 &&
+        hoverY <= rect.y + rect.height + 1
+
+      if (isRelativeCoords) {
         relativeHoverX = hoverX
         relativeHoverY = hoverY
+      } else if (isAbsoluteCoords) {
+        relativeHoverX = hoverX - rect.x
+        relativeHoverY = hoverY - rect.y
       }
     }
 
