@@ -168,6 +168,7 @@ export function renderComponents(
     componentType: 'button' | 'buttonIcon' | 'text' | 'tag'
     componentId?: string
   }>
+  preferredHeight?: number
 } {
   const context: RenderContext = {
     ctx,
@@ -187,6 +188,7 @@ export function renderComponents(
   return {
     hoveredAreas: context.hoveredAreas,
     clickHandlers: context.clickHandlers,
+    preferredHeight: getComponentsPreferredHeight(components),
   }
 }
 
@@ -425,21 +427,14 @@ function renderLayoutComponent(component: LayoutComponent, context: RenderContex
   const marginRight = props.marginRight ?? 0
   const layoutStartX = context.currentX + marginLeft
   const layoutStartY = context.currentY
-  const availableHeight = (context.lineHeight ?? rect.height) - (padding.top + padding.bottom)
-  const totalGapHeight = rowGap * Math.max(0, component.rows.length - 1)
-  const fixedHeight = component.rows.reduce((sum, row) => sum + (row.height ?? 0), 0)
-  const flexUnits = component.rows.reduce((sum, row) => (row.height ? sum : sum + (row.weight ?? 1)), 0)
-  const remainingHeight = Math.max(0, availableHeight - fixedHeight - totalGapHeight)
-  const unitHeight = flexUnits > 0 ? remainingHeight / flexUnits : 0
 
   const preparedRows: PreparedLayoutRow[] = component.rows.map((row) => {
-    const flexibleHeight = Math.max(MIN_LAYOUT_ROW_HEIGHT, (row.weight ?? 1) * unitHeight || MIN_LAYOUT_ROW_HEIGHT)
-    const resolvedHeight = row.height ?? flexibleHeight
-    const contentWidth = measureRowContentWidth(row.components, context, Math.max(resolvedHeight, 1))
+    const intrinsicHeight = resolveRowHeight(row)
+    const contentWidth = measureRowContentWidth(row.components, context, intrinsicHeight)
     const baseWidth = contentWidth + (row.gap ?? 8) * Math.max(0, row.components.length - 1)
     return {
       config: row,
-      height: resolvedHeight,
+      height: intrinsicHeight,
       contentWidth,
       baseWidth,
     }
@@ -543,8 +538,8 @@ function renderRowChildren(children: CanvasComponent[], context: RenderContext, 
 
 function measureRowContentWidth(children: CanvasComponent[], context: RenderContext, lineHeight: number): number {
   const measureContext = createMeasureContext(context, {
-    currentX: 0,
-    currentY: 0,
+    currentX: context.rect.x,
+    currentY: context.rect.y,
     lineHeight,
   })
   const startX = measureContext.currentX
@@ -586,7 +581,46 @@ function calculateLayoutPreferredHeight(rows: LayoutRowDefinition[], props: Layo
   const padding = normalizePadding(props.padding)
   const rowGap = props.rowGap ?? 4
   const totalGapHeight = rowGap * Math.max(0, rows.length - 1)
-  const rowsHeight = rows.reduce((sum, row) => sum + Math.max(row.height ?? MIN_LAYOUT_ROW_HEIGHT, MIN_LAYOUT_ROW_HEIGHT), 0)
+  const rowsHeight = rows.reduce((sum, row) => sum + resolveRowHeight(row), 0)
   return padding.top + padding.bottom + rowsHeight + totalGapHeight
+}
+
+function resolveRowHeight(row: LayoutRowDefinition): number {
+  const intrinsic = getRowIntrinsicHeight(row)
+  if (typeof row.height === 'number' && row.height > 0) {
+    return Math.max(row.height, intrinsic)
+  }
+  return intrinsic
+}
+
+function getRowIntrinsicHeight(row: LayoutRowDefinition): number {
+  let intrinsic = MIN_LAYOUT_ROW_HEIGHT
+  for (const component of row.components) {
+    const componentHeight = getComponentPreferredHeight(component)
+    if (componentHeight !== undefined) {
+      intrinsic = Math.max(intrinsic, componentHeight)
+    }
+  }
+  return intrinsic
+}
+
+function getComponentPreferredHeight(component: CanvasComponent): number | undefined {
+  switch (component.type) {
+    case 'layout':
+      return component.meta?.preferredHeight
+    default:
+      return undefined
+  }
+}
+
+function getComponentsPreferredHeight(components: CanvasComponent[]): number | undefined {
+  let preferred: number | undefined = undefined
+  for (const component of components) {
+    const height = getComponentPreferredHeight(component)
+    if (typeof height === 'number') {
+      preferred = preferred ? Math.max(preferred, height) : height
+    }
+  }
+  return preferred
 }
 

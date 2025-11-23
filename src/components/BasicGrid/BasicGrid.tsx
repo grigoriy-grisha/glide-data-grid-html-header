@@ -9,7 +9,13 @@ import DataEditor, {
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
-import type { BasicGridColumn, BasicGridProps, CanvasCellOptions } from './types'
+import type {
+  BasicGridColumn,
+  BasicGridProps,
+  CanvasCellOptions,
+  CanvasHeightEstimateArgs,
+} from './types'
+import type { CanvasRenderResult } from './customCells/canvasCell/types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
@@ -76,6 +82,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const rowHeightCacheRef = useRef<Map<number, number>>(new Map())
+  const measurementCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const measurementContextRef = useRef<CanvasRenderingContext2D | null>(null)
   const containerWidth = useContainerWidth(gridRef)
   const columnsWithSelection = useMemo(() => {
     if (!enableRowSelection) {
@@ -95,6 +103,33 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   }, [columns, enableRowSelection, rowMarkerWidth])
 
   const markerWidth = showRowMarkers ? rowMarkerWidth : 0
+
+  const ensureMeasurementContext = useCallback(
+    (width: number, height: number): CanvasRenderingContext2D | null => {
+      if (typeof document === 'undefined') {
+        return null
+      }
+      let canvas = measurementCanvasRef.current
+      if (!canvas) {
+        canvas = document.createElement('canvas')
+        measurementCanvasRef.current = canvas
+      }
+      const safeWidth = Math.max(1, Math.ceil(width))
+      const safeHeight = Math.max(1, Math.ceil(height))
+      if (canvas.width !== safeWidth || canvas.height !== safeHeight) {
+        canvas.width = safeWidth
+        canvas.height = safeHeight
+        measurementContextRef.current = null
+      }
+      let ctx = measurementContextRef.current
+      if (!ctx) {
+        ctx = canvas.getContext('2d')
+        measurementContextRef.current = ctx
+      }
+      return ctx
+    },
+    []
+  )
 
   const { columnCollection } = useNormalizedColumnsData(columnsWithSelection)
   const { orderedColumns, headerCells, levelCount, reorderColumns } = useColumnOrdering({
@@ -139,6 +174,15 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       treeEnabled,
     })
 
+  const gridTheme = useMemo(
+    () => ({
+      accentColor: '#1e88e5',
+      accentLight: 'rgba(30, 136, 229, 0.16)',
+      accentFg: '#ffffff',
+    }),
+    []
+  )
+
   const hasSelectColumns = useMemo(
     () => editable && orderedColumns.some((column) => column.isSelect()),
     [editable, orderedColumns]
@@ -154,23 +198,55 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [orderedColumns]
   )
 
+  const baseMeasurementHeight = useMemo(() => {
+    if (typeof rowHeightProp === 'number' && rowHeightProp > 0) {
+      return rowHeightProp
+    }
+    return DEFAULT_ROW_HEIGHT
+  }, [rowHeightProp])
+
   const canvasHeightEstimators = useMemo<CanvasHeightEstimator<RowType>[]>(() => {
     if (!hasCanvasColumns) {
       return []
     }
-    return orderedColumns
-      .map((column, index) => {
-        const estimateHeight = column.getCanvasOptions()?.estimateHeight
-        if (!estimateHeight) {
-          return null
-        }
-        return {
-          columnIndex: index,
-          estimateHeight,
-        }
+    const estimators: CanvasHeightEstimator<RowType>[] = []
+    orderedColumns.forEach((column, index) => {
+      const canvasOptions = column.getCanvasOptions()
+      if (!canvasOptions) {
+        return
+      }
+      const estimateHeight: NonNullable<CanvasCellOptions<RowType>['estimateHeight']> =
+        canvasOptions.estimateHeight ||
+        ((args: CanvasHeightEstimateArgs<RowType>) => {
+          const ctx = ensureMeasurementContext(args.columnWidth, baseMeasurementHeight)
+          if (!ctx) {
+            return baseMeasurementHeight
+          }
+          ctx.save()
+          ctx.clearRect(0, 0, args.columnWidth, baseMeasurementHeight)
+          const rect = { x: 0, y: 0, width: args.columnWidth, height: baseMeasurementHeight }
+          const result = canvasOptions.render(
+            ctx,
+            rect,
+            gridTheme,
+            undefined,
+            undefined,
+            args.row,
+            args.rowIndex
+          ) as CanvasRenderResult
+          ctx.restore()
+          if (typeof result?.preferredHeight === 'number' && !Number.isNaN(result.preferredHeight)) {
+            return result.preferredHeight
+          }
+          return baseMeasurementHeight
+        })
+      estimators.push({
+        columnIndex: index,
+        estimateHeight,
       })
-      .filter((value): value is CanvasHeightEstimator<RowType> => Boolean(value))
-  }, [hasCanvasColumns, orderedColumns])
+    })
+    return estimators
+  }, [baseMeasurementHeight, ensureMeasurementContext, gridTheme, hasCanvasColumns, orderedColumns])
 
   const canvasHeightEstimatorsWithWidth = useMemo<CanvasHeightEstimatorWithWidth<RowType>[]>(() => {
     if (canvasHeightEstimators.length === 0) {
@@ -338,18 +414,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     dataAreaWidth,
     reorderColumns,
   })
-
-  const gridTheme = useMemo(
-    () => ({
-      accentColor: '#1e88e5',
-      accentLight: 'rgba(30, 136, 229, 0.16)',
-      accentFg: '#ffffff',
-    }),
-    []
-  )
-
-
-
   const getCellContent = useGridCellContent({
     orderedColumns,
     gridRows,

@@ -12,6 +12,7 @@ export type RenderClickHandler = { area: RectBounds; handler: () => void }
 export type CanvasRenderResult = {
   hoveredAreas?: RectBounds[]
   clickHandlers?: RenderClickHandler[]
+  preferredHeight?: number
   [key: string]: any
 }
 
