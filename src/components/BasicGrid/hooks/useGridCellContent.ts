@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
 
 import { createSelectCell } from '../customCells/selectCell'
+import { createButtonCell } from '../customCells/buttonCell'
+import { createCanvasCell } from '../customCells/canvasCell'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 
@@ -73,6 +75,91 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           const rawValue = column.getValue(dataRow)
           const stringValue = rawValue == null ? '' : String(rawValue)
           return createSelectCell(stringValue, options, column.getSelectPlaceholder())
+        }
+      }
+
+      if (column.isButton()) {
+        const buttonOptions = column.getButtonOptions()
+        if (buttonOptions) {
+          const label =
+            typeof buttonOptions.label === 'function'
+              ? buttonOptions.label(dataRow)
+              : buttonOptions.label ?? 'Кнопка'
+          const disabled =
+            typeof buttonOptions.disabled === 'function'
+              ? buttonOptions.disabled(dataRow)
+              : buttonOptions.disabled ?? false
+          const onClick = buttonOptions.onClick
+            ? () => {
+                buttonOptions.onClick?.(dataRow, row)
+              }
+            : undefined
+          const onMouseEnter = buttonOptions.onMouseEnter
+            ? () => {
+                buttonOptions.onMouseEnter?.(dataRow, row)
+              }
+            : undefined
+          const onMouseLeave = buttonOptions.onMouseLeave
+            ? () => {
+                buttonOptions.onMouseLeave?.(dataRow, row)
+              }
+            : undefined
+          const onMouseDown = buttonOptions.onMouseDown
+            ? () => {
+                buttonOptions.onMouseDown?.(dataRow, row)
+              }
+            : undefined
+          const onMouseUp = buttonOptions.onMouseUp
+            ? () => {
+                buttonOptions.onMouseUp?.(dataRow, row)
+              }
+            : undefined
+
+          const buttonCell = createButtonCell(label, onClick, buttonOptions.variant ?? 'primary', disabled)
+          // Добавляем обработчики событий
+          if (onMouseEnter) buttonCell.data.onMouseEnter = onMouseEnter
+          if (onMouseLeave) buttonCell.data.onMouseLeave = onMouseLeave
+          if (onMouseDown) buttonCell.data.onMouseDown = onMouseDown
+          if (onMouseUp) buttonCell.data.onMouseUp = onMouseUp
+
+          return buttonCell
+        }
+      }
+
+      if (column.isCanvas()) {
+        const canvasOptions = column.getCanvasOptions()
+        if (canvasOptions) {
+          const render = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; width: number; height: number }, theme: any, hoverX: number | undefined, hoverY: number | undefined) => {
+            return canvasOptions.render(ctx, rect, theme, hoverX, hoverY, dataRow, row)
+          }
+          
+          const onClick = canvasOptions.onClick
+            ? (x: number, y: number, rect: { x: number; y: number; width: number; height: number }, renderData?: any) => {
+                return canvasOptions.onClick?.(x, y, rect, dataRow, row, renderData) ?? false
+              }
+            : undefined
+          
+          const onMouseEnter = canvasOptions.onMouseEnter
+            ? () => {
+                canvasOptions.onMouseEnter?.(dataRow, row)
+              }
+            : undefined
+          
+          const onMouseLeave = canvasOptions.onMouseLeave
+            ? () => {
+                canvasOptions.onMouseLeave?.(dataRow, row)
+              }
+            : undefined
+
+          const copyData = typeof canvasOptions.copyData === 'function'
+            ? canvasOptions.copyData(dataRow)
+            : canvasOptions.copyData
+
+          const canvasCell = createCanvasCell(render, onClick, copyData)
+          if (onMouseEnter) canvasCell.data.onMouseEnter = onMouseEnter
+          if (onMouseLeave) canvasCell.data.onMouseLeave = onMouseLeave
+
+          return canvasCell
         }
       }
 

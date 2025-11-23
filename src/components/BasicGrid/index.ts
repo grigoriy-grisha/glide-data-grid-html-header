@@ -9,7 +9,23 @@ export type {
   BasicGridCellChange,
   BasicGridSelectOption,
   BasicGridRowSelectionChange,
+  ButtonCellOptions,
+  CanvasCellOptions,
 } from './types'
+export { drawButton, drawIconButton } from './customCells/canvasCell'
+export {
+  button,
+  buttonIcon,
+  text,
+  container,
+  renderComponents,
+  type ButtonProps,
+  type ButtonIconProps,
+  type TextProps,
+  type ContainerProps,
+  type CanvasComponent,
+  type ButtonIcon,
+} from './customCells/canvasComponents'
 export {
   animateNumericValue,
   easeInOutCubic,

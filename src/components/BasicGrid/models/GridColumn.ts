@@ -1,6 +1,6 @@
 import type React from 'react'
 
-import type { BasicGridDataType, BasicGridSelectOption, SortDirection } from '../types'
+import type { BasicGridDataType, BasicGridSelectOption, ButtonCellOptions, CanvasCellOptions, SortDirection } from '../types'
 
 export interface GridHeaderSegment {
   title: string
@@ -24,6 +24,8 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   selectOptionsAccessor?: string
   selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
   selectPlaceholder?: string
+  buttonOptions?: ButtonCellOptions<RowType>
+  canvasOptions?: CanvasCellOptions<RowType>
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -39,6 +41,8 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly selectOptionsAccessor?: string
   readonly selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
   readonly selectPlaceholder?: string
+  readonly buttonOptions?: ButtonCellOptions<RowType>
+  readonly canvasOptions?: CanvasCellOptions<RowType>
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined
@@ -57,6 +61,8 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.selectOptionsAccessor = options.selectOptionsAccessor
     this.selectOptionsGetter = options.selectOptionsGetter
     this.selectPlaceholder = options.selectPlaceholder
+    this.buttonOptions = options.buttonOptions
+    this.canvasOptions = options.canvasOptions
     this.formatter = options.formatter
     this.valueGetter = options.valueGetter
     this.sortValueGetter = options.sortValueGetter
@@ -111,6 +117,22 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
   isSelect() {
     return this.dataType === 'select'
+  }
+
+  isButton() {
+    return this.dataType === 'button'
+  }
+
+  isCanvas() {
+    return this.dataType === 'canvas'
+  }
+
+  getButtonOptions() {
+    return this.buttonOptions
+  }
+
+  getCanvasOptions() {
+    return this.canvasOptions
   }
 
   getSelectOptions(row: RowType) {

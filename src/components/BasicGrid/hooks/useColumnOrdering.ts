@@ -70,6 +70,7 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
     return effectiveOrder.map((id) => columnMap.get(id)).filter((column): column is GridColumn<RowType> => Boolean(column))
   }, [columnMap, effectiveOrder])
 
+  console.log(orderedColumns)
   const headerLayout = useMemo(() => {
     return GridColumnCollection.buildHeaderLayout(orderedColumns)
   }, [orderedColumns])

@@ -67,9 +67,13 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
             ? (row: RowType) => resolveAccessorValue(row as Record<string, unknown>, accessorPath)
             : undefined)
 
-        const canRenderLeaf = Boolean(valueGetter)
+        // Button ячейки не требуют valueGetter, так как данные берутся из buttonOptions
+        const isButton = column.dataType === 'button'
+        const canRenderLeaf = Boolean(valueGetter) || isButton
 
-        if (canRenderLeaf && valueGetter) {
+        if (canRenderLeaf) {
+          // Для button ячеек создаем пустой valueGetter, если его нет
+          const finalValueGetter = valueGetter ?? (() => null)
           const minWidth = column.minWidth ?? DEFAULT_MIN_COLUMN_WIDTH
           const baseWidth = Math.max(minWidth, column.width ?? DEFAULT_COLUMN_WIDTH)
           leaves.push(
@@ -83,7 +87,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
               grow: column.grow ?? 0,
               sortable: column.sortable ?? true,
               formatter: column.formatter,
-              valueGetter,
+              valueGetter: finalValueGetter,
               sortValueGetter: column.sortValueGetter,
               sortComparator: column.sortComparator,
               accessorPath,
@@ -93,6 +97,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
                   : undefined,
               selectOptionsGetter: column.selectOptionsGetter,
               selectPlaceholder: column.selectPlaceholder,
+              buttonOptions: column.buttonOptions,
+              canvasOptions: column.canvasOptions,
             })
           )
         }

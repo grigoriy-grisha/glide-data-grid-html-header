@@ -1,6 +1,6 @@
 import type React from 'react'
 
-export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select'
+export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select' | 'button' | 'canvas'
 
 export interface BasicGridSelectOption {
   label: string
@@ -10,6 +10,40 @@ export interface BasicGridSelectOption {
 export interface BasicGridHeaderOptions {
   columnGroupText?: string
   columnGroupContent?: React.ReactNode
+}
+
+export interface ButtonCellOptions<RowType = Record<string, unknown>> {
+  label?: string | ((row: RowType) => string)
+  onClick?: (row: RowType, rowIndex: number) => void
+  onMouseEnter?: (row: RowType, rowIndex: number) => void
+  onMouseLeave?: (row: RowType, rowIndex: number) => void
+  onMouseDown?: (row: RowType, rowIndex: number) => void
+  onMouseUp?: (row: RowType, rowIndex: number) => void
+  variant?: 'primary' | 'secondary' | 'danger'
+  disabled?: boolean | ((row: RowType) => boolean)
+}
+
+export interface CanvasCellOptions<RowType = Record<string, unknown>> {
+  render: (
+    ctx: CanvasRenderingContext2D,
+    rect: { x: number; y: number; width: number; height: number },
+    theme: any,
+    hoverX: number | undefined,
+    hoverY: number | undefined,
+    row: RowType,
+    rowIndex: number
+  ) => { hoveredAreas?: Array<{ x: number; y: number; width: number; height: number }> }
+  onClick?: (
+    x: number,
+    y: number,
+    rect: { x: number; y: number; width: number; height: number },
+    row: RowType,
+    rowIndex: number,
+    renderData?: any
+  ) => boolean
+  onMouseEnter?: (row: RowType, rowIndex: number) => void
+  onMouseLeave?: (row: RowType, rowIndex: number) => void
+  copyData?: string | ((row: RowType) => string)
 }
 
 export interface BasicGridColumn<RowType = Record<string, unknown>> {
@@ -31,6 +65,8 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
   selectOptionsAccessor?: keyof RowType | string
   selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
   selectPlaceholder?: string
+  buttonOptions?: ButtonCellOptions<RowType>
+  canvasOptions?: CanvasCellOptions<RowType>
 }
 
 export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {

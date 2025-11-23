@@ -27,6 +27,8 @@ import { useColumnOrdering } from './hooks/useColumnOrdering'
 import { useColumnResize } from './hooks/useColumnResize'
 import { useGridTree } from './hooks/useGridTree'
 import { selectCellRenderer } from './customCells/selectCell'
+import { buttonCellRenderer } from './customCells/buttonCell'
+import { canvasCellRenderer } from './customCells/canvasCell'
 import { useRowSelectionState } from './hooks/useRowSelectionState'
 import { useColumnReorderDrag } from './hooks/useColumnReorderDrag'
 import { useGridCellContent } from './hooks/useGridCellContent'
@@ -122,6 +124,16 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [editable, orderedColumns]
   )
 
+  const hasButtonColumns = useMemo(
+    () => orderedColumns.some((column) => column.isButton()),
+    [orderedColumns]
+  )
+
+  const hasCanvasColumns = useMemo(
+    () => orderedColumns.some((column) => column.isCanvas()),
+    [orderedColumns]
+  )
+
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
     gridRows.length,
     orderedColumns.length
@@ -141,8 +153,14 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     if (hasSelectColumns) {
       renderers.push(selectCellRenderer)
     }
+    if (hasButtonColumns) {
+      renderers.push(buttonCellRenderer)
+    }
+    if (hasCanvasColumns) {
+      renderers.push(canvasCellRenderer)
+    }
     return renderers.length > 0 ? renderers : undefined
-  }, [treeCustomRenderers, hasSelectColumns])
+  }, [treeCustomRenderers, hasSelectColumns, hasButtonColumns, hasCanvasColumns])
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? orderedColumns[index]?.baseWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
@@ -188,6 +206,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       return changed ? next : prev
     })
   }, [])
+
 
   const { handleResizeMouseDown, handleResizeDoubleClick } = useColumnResize({
     columns: orderedColumns,

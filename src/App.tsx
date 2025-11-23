@@ -1,15 +1,21 @@
-const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'
-
 import {
   BasicGrid,
   BasicGridCellChange,
   BasicGridColumn,
   BasicGridRowSelectionChange,
   BasicGridSelectOption,
+  button,
+  buttonIcon,
+  type ButtonIcon,
+  container,
   createColumn,
+  renderComponents,
+  text,
 } from './components/BasicGrid'
 import './App.css'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import {type ReactNode, useCallback, useMemo, useState} from 'react'
+
+const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'
 
 interface DataRow extends Record<string, unknown> {
   employeeId: string
@@ -325,6 +331,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 82,
+    actions: ''
   },
   {
     employeeId: 'EMP-002',
@@ -349,6 +356,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 68,
+    actions: ''
   },
   {
     employeeId: 'EMP-003',
@@ -373,6 +381,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 74,
+    actions: ''
   },
   {
     employeeId: 'EMP-004',
@@ -397,6 +406,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('На обучении'),
     progress: 59,
+    actions: ''
   },
   {
     employeeId: 'EMP-005',
@@ -421,6 +431,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('В отпуске'),
     progress: 35,
+    actions: ''
   },
   {
     employeeId: 'EMP-006',
@@ -445,6 +456,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 91,
+    actions: ''
   },
   {
     employeeId: 'EMP-007',
@@ -469,6 +481,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 64,
+    actions: ''
   },
   {
     employeeId: 'EMP-008',
@@ -493,6 +506,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 77,
+    actions: ''
   },
   {
     employeeId: 'EMP-009',
@@ -517,6 +531,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 71,
+    actions: ''
   },
   {
     employeeId: 'EMP-010',
@@ -541,6 +556,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 66,
+    actions: ''
   },
   {
     employeeId: 'EMP-011',
@@ -565,6 +581,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 79,
+    actions: ''
   },
   {
     employeeId: 'EMP-012',
@@ -589,6 +606,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 62,
+    actions: ''
   },
   {
     employeeId: 'EMP-013',
@@ -613,6 +631,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 88,
+    actions: ''
   },
   {
     employeeId: 'EMP-014',
@@ -641,6 +660,7 @@ const basicGridRows: DataRow[] = [
       'На обучении',
     ]),
     progress: 54,
+    actions: ''
   },
   {
     employeeId: 'EMP-015',
@@ -665,6 +685,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 95,
+    actions: ''
   },
   {
     employeeId: 'EMP-016',
@@ -689,6 +710,7 @@ const basicGridRows: DataRow[] = [
     },
     status: createStatus('Активен'),
     progress: 58,
+    actions: ''
   },
 ]
 
@@ -817,6 +839,137 @@ function App() {
   const [selectedEmployees, setSelectedEmployees] = useState<DataRow[]>([])
   const [selectedNetworkNodes, setSelectedNetworkNodes] = useState<NetworkNode[]>([])
 
+  // Состояние для хранения текста кнопки для каждой строки
+  const [buttonTexts, setButtonTexts] = useState<Map<string, string>>(() => {
+    const randomTexts = ['Открыть', 'Просмотр', 'Детали', 'Редактировать', 'Удалить', 'Сохранить']
+    const map = new Map<string, string>()
+    basicGridRows.forEach((row) => {
+      // Инициализируем случайным текстом для каждой строки
+      map.set(row.employeeId, randomTexts[Math.floor(Math.random() * randomTexts.length)])
+    })
+    return map
+  })
+
+  // Создаем колонки с доступом к состоянию buttonTexts
+  const gridColumns = useMemo<BasicGridColumn<DataRow>[]>(() => {
+    const randomTexts = ['Открыть', 'Просмотр', 'Детали', 'Редактировать', 'Удалить', 'Сохранить']
+
+    // Просто добавляем секцию "Действия" с колонкой canvas в конец секции "Прогресс и компенсация"
+    return basicGridColumns.map((col) => {
+      if (col.title === 'Основные данные' && col.children) {
+        return {
+          ...col,
+          children: [
+            {
+              title: 'Действия',
+              headerContent: <HeaderCard icon="⚡" iconTone="blue" title="Действия" subtitle="Быстрые операции" compact />,
+              children: [
+
+                createColumn<DataRow>('actions', 'canvas', 'Действие', {
+                  width: 280,
+                  sortable: false,
+                  canvasOptions: {
+                    render: (ctx, rect, theme, hoverX, hoverY, row) => {
+                      // Получаем текст кнопки из состояния
+                      const employeeId = (row as DataRow).employeeId
+                      const buttonText = buttonTexts.get(employeeId) || randomTexts[0]
+
+                      // Пример SVG иконок
+                      const leftIconSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+                      const rightIconSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+                      const iconButtonSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+
+                      // Декларативное описание компонентов
+                      // Создаем обработчики с доступом к нужным данным через замыкание
+                      const components = [
+                        button({
+                          text: buttonText,
+                          leftIcon: leftIconSVG,
+                          rightIcon: rightIconSVG,
+                          variant: 'primary',
+                          onClick: () => {
+                            // Обработчик будет вызван напрямую при клике
+                            const employeeId = (row as DataRow).employeeId
+                            setButtonTexts((prev) => {
+                              const newMap = new Map(prev)
+                              const newText = randomTexts[Math.floor(Math.random() * randomTexts.length)]
+                              newMap.set(employeeId, newText)
+                              return newMap
+                            })
+                            console.log('Кнопка нажата для строки:', row)
+                          },
+                        }),
+                        text({ text: 'какой-то текст' }),
+                        buttonIcon({
+                          icon: iconButtonSVG,
+                          variant: 'secondary',
+                          onClick: () => {
+                            // Обработчик будет вызван напрямую при клике
+                            console.log('Иконка-кнопка нажата для строки:', row)
+                            alert(`Иконка-кнопка нажата для: ${(row as DataRow).firstName} ${(row as DataRow).lastName}`)
+                          },
+                        }),
+                      ]
+
+                      // Отрисовываем компоненты с gap между ними
+                      // Используем container для группировки с gap
+                      const result = renderComponents(
+                        [container(components, { gap: 12 })],
+                        ctx,
+                        rect,
+                        theme,
+                        hoverX,
+                        hoverY
+                      )
+
+                      // console.log('renderComponents вернул:', {
+                      //   hoveredAreasCount: result.hoveredAreas.length,
+                      //   clickHandlersCount: result.clickHandlers.length,
+                      //   clickHandlers: result.clickHandlers
+                      // })
+
+                      // // Сохраняем обработчики кликов для использования в onClick
+                      // console.log('Render result:', {
+                      //   hoveredAreasCount: result.hoveredAreas.length,
+                      //   clickHandlersCount: result.clickHandlers.length,
+                      //   clickHandlers: result.clickHandlers
+                      // })
+
+                      // console.log('Render result:', {
+                      //   hoveredAreasCount: result.hoveredAreas.length,
+                      //   clickHandlersCount: result.clickHandlers.length,
+                      //   clickHandlers: result.clickHandlers.map((h: any) => ({
+                      //     componentType: h.componentType,
+                      //     area: h.area
+                      //   }))
+                      // })
+
+                      // console.log('Render возвращает:', {
+                      //   hoveredAreasCount: renderResult.hoveredAreas.length,
+                      //   clickHandlersCount: renderResult.clickHandlers.length,
+                      //   clickHandlers: renderResult.clickHandlers
+                      // })
+
+                      return {
+                        hoveredAreas: result.hoveredAreas,
+                        clickHandlers: result.clickHandlers,
+                        buttonText: buttonText,
+                      }
+                    },
+                    copyData: 'Открыть',
+                  },
+                }),
+              ],
+            },
+            ...col.children,
+
+          ],
+        }
+      }
+      return col
+    })
+  }, [buttonTexts])
+
   const handleEditableCellChange = useCallback((change: BasicGridCellChange<DataRow>) => {
     if (!change.accessorPath) {
       return
@@ -848,181 +1001,10 @@ function App() {
     setSelectedNetworkNodes(selection.rows)
   }, [])
 
-  // Пример использования кастомных React компонентов в ячейках с поддержкой состояния и кликов
-  useEffect(() => {
-    // Ждем, пока DataGrid загрузится
-    const timer = setTimeout(() => {
-      const setCellComponent = (window as any).setCellComponent
-      
-      if (setCellComponent) {
-        // Пример 1: Кастомный компонент с кнопкой в колонке "Имя" (колонка 2), строка 0
-        // С поддержкой состояния и обработчика клика
-        let buttonState = { clicked: false }
-        setCellComponent(2, 0, ({ row, state }: { row: DataRow; rowIndex: number; colIndex: number; state?: any }) => (
-          <div style={{ 
-            padding: '8px', 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '6px',
-            color: 'white',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            cursor: 'pointer',
-          }}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation()
-            // Состояние обновляется через обработчик onClick в setCellComponent
-          }}
-          >
-            {state?.clicked ? '✅ ' : ''}{row.name}
-          </div>
-        ), {
-          state: buttonState,
-          onClick: () => {
-            buttonState.clicked = !buttonState.clicked
-            // Обновляем компонент с новым состоянием
-            setCellComponent(2, 0, ({ row, state }: { row: DataRow; rowIndex: number; colIndex: number; state?: any }) => (
-              <div style={{
-                padding: '8px',
-                background: state?.clicked 
-                  ? 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)'
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '6px',
-                color: 'white',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                cursor: 'pointer',
-              }}>
-                {state?.clicked ? '✅ ' : ''}{row.name}
-              </div>
-            ), { state: buttonState, onClick: () => {
-              buttonState.clicked = !buttonState.clicked
-              setCellComponent(2, 0, ({ row, state }: { row: DataRow; rowIndex: number; colIndex: number; state?: any }) => (
-                <div style={{
-                  padding: '8px',
-                  background: state?.clicked 
-                    ? 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)'
-                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  borderRadius: '6px',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  cursor: 'pointer',
-                }}>
-                  {state?.clicked ? '✅ ' : ''}{row.name}
-                </div>
-              ), { state: buttonState, onClick: () => {
-                buttonState.clicked = !buttonState.clicked
-              }})
-            }})
-          }
-        })
-        
-        // Пример 2: Компонент с прогресс-баром в колонке "Зарплата" (колонка 7), строка 1
-        setCellComponent(7, 1, ({ row }: { row: DataRow; rowIndex: number; colIndex: number }) => {
-          const maxSalary = 150000
-          const percentage = (row.salary / maxSalary) * 100
-          
-          return (
-            <div style={{ 
-              padding: '4px 8px',
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <div style={{
-                width: '100%',
-                height: '20px',
-                background: '#e0e0e0',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                position: 'relative',
-              }}>
-                <div style={{
-                  width: `${percentage}%`,
-                  height: '100%',
-                  background: `linear-gradient(90deg, #4caf50 ${percentage}%, #81c784 100%)`,
-                  transition: 'width 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: '4px',
-                  fontSize: '10px',
-                  color: 'white',
-                  fontWeight: 'bold',
-                }}>
-                  {row.salary.toLocaleString('ru-RU')} ₽
-                </div>
-              </div>
-            </div>
-          )
-        })
-        
-        // Пример 3: Компонент с аватаром и информацией в колонке "Email" (колонка 3), строка 2
-        setCellComponent(3, 2, ({ row }: { row: DataRow; rowIndex: number; colIndex: number }) => (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '4px',
-            height: '100%',
-          }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              flexShrink: 0,
-            }}>
-              {row.name.charAt(0)}
-            </div>
-            <div style={{
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {row.name}
-              </div>
-              <div style={{
-                fontSize: '10px',
-                color: '#666',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {row.email}
-              </div>
-            </div>
-          </div>
-        ))
-      }
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [])
-  
+
+
+  console.log({gridColumns})
+
   return (
     <div className="app">
       <header className="app-header">
@@ -1038,7 +1020,7 @@ function App() {
             <h2 className="section-title">Basic Grid</h2>
             <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
             <BasicGrid<DataRow>
-              columns={basicGridColumns}
+              columns={gridColumns}
               rows={basicGridRows}
               height={420}
               headerRowHeight={54}
@@ -1052,7 +1034,7 @@ function App() {
               увидьте, как оно сохраняется во внутреннем состоянии.
             </p>
             <BasicGrid<DataRow>
-              columns={basicGridColumns}
+              columns={gridColumns}
               rows={editableGridRows}
               height={420}
               headerRowHeight={54}
@@ -1074,7 +1056,7 @@ function App() {
               {selectedEmployees.length}
             </div>
             <BasicGrid<DataRow>
-              columns={basicGridColumns}
+              columns={gridColumns}
               rows={basicGridRows}
               height={420}
               headerRowHeight={54}
@@ -1094,7 +1076,7 @@ function App() {
                   ? `Выбрано узлов: ${selectedNetworkNodes.length}`
                   : 'Выберите узел или ветку'}
               </div>
-           
+
             </div>
             <BasicGrid<NetworkNode>
               columns={networkColumns}
@@ -1112,7 +1094,7 @@ function App() {
               }}
             />
           </div>
-{/* 
+{/*
           <div className="data-grid-section">
             <h2 className="section-title">Simple Grid</h2>
             <p className="section-description">
@@ -1127,7 +1109,7 @@ function App() {
               Интерактивная таблица данных с возможностью редактирования, сортировки и иерархической структуры
             </p>
             <p className="section-hint">
-              💡 Для сортировки: кликните на заголовок столбца (▲ по возрастанию, ▼ по убыванию). 
+              💡 Для сортировки: кликните на заголовок столбца (▲ по возрастанию, ▼ по убыванию).
               Для редактирования: двойной клик по ячейке, или выберите ячейку и нажмите Enter, или начните вводить текст.
               Для иерархии: кликните по ячейке ID с индикатором ▼ или ▶, чтобы свернуть/развернуть дочерние строки.
             </p>
