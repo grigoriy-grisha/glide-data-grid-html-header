@@ -7,8 +7,9 @@ import {
   button,
   buttonIcon,
   type ButtonIcon,
-  container,
   createColumn,
+  layout,
+  layoutRow,
   renderComponents,
   tag,
   text,
@@ -923,6 +924,96 @@ function App() {
   const gridColumns = useMemo<BasicGridColumn<DataRow>[]>(() => {
     const randomTexts = ['Открыть', 'Просмотр', 'Детали', 'Редактировать', 'Удалить', 'Сохранить']
 
+    const leftIconSVG: ButtonIcon =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+    const rightIconSVG: ButtonIcon =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+    const iconButtonSVG: ButtonIcon =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+
+    const buildActionCellLayout = (dataRow: DataRow, label: string) =>
+      layout(
+        [
+          layoutRow(
+            [
+              text({ text: 'какой-то текст' }),
+
+              tag({
+                text: dataRow.status?.name ?? 'Активен',
+                color: '#0f5132',
+                background: '#d1e7dd',
+              }),
+            ],
+            {justify: 'space-between',  gap: 8, height: 18 }
+          ),
+          layoutRow(
+            [
+              button({
+                text: label,
+                leftIcon: leftIconSVG,
+                rightIcon: rightIconSVG,
+                variant: 'primary',
+                onClick: () => {
+                  const employeeId = dataRow.employeeId
+                  setButtonTexts((prev) => {
+                    const newMap = new Map(prev)
+                    const newText = randomTexts[Math.floor(Math.random() * randomTexts.length)]
+                    newMap.set(employeeId, newText)
+                    return newMap
+                  })
+                  console.log('Кнопка нажата для строки:', dataRow)
+                },
+              }),
+              button({
+                text: label,
+                leftIcon: leftIconSVG,
+                rightIcon: rightIconSVG,
+                variant: 'primary',
+                onClick: () => {
+                  const employeeId = dataRow.employeeId
+                  setButtonTexts((prev) => {
+                    const newMap = new Map(prev)
+                    const newText = randomTexts[Math.floor(Math.random() * randomTexts.length)]
+                    newMap.set(employeeId, newText)
+                    return newMap
+                  })
+                  console.log('Кнопка нажата для строки:', dataRow)
+                },
+              }),
+              button({
+                text: label,
+                leftIcon: leftIconSVG,
+                rightIcon: rightIconSVG,
+                variant: 'primary',
+                onClick: () => {
+                  const employeeId = dataRow.employeeId
+                  setButtonTexts((prev) => {
+                    const newMap = new Map(prev)
+                    const newText = randomTexts[Math.floor(Math.random() * randomTexts.length)]
+                    newMap.set(employeeId, newText)
+                    return newMap
+                  })
+                  console.log('Кнопка нажата для строки:', dataRow)
+                },
+              }),
+              buttonIcon({
+                icon: iconButtonSVG,
+                variant: activeOverlayRowId === dataRow.employeeId ? 'primary' : 'secondary',
+                onClick: () => {
+                  toggleRowOverlay(dataRow)
+                },
+              }),
+            ],
+            { justify: 'space-between', height: 28, gap: 8 }
+          ),
+        ],
+        {
+          padding: { left: 8, right: 8, top: 10, bottom: 4 },
+          rowGap: 6,
+          width: 'fill',
+        }
+      )
+
     // Просто добавляем секцию "Действия" с колонкой canvas в конец секции "Прогресс и компенсация"
     return basicGridColumns.map((col) => {
       if (col.title === 'Основные данные' && col.children) {
@@ -939,95 +1030,19 @@ function App() {
                   sortable: false,
                   canvasOptions: {
                     render: (ctx, rect, theme, hoverX, hoverY, row) => {
-                      // Получаем текст кнопки из состояния
-                      const employeeId = (row as DataRow).employeeId
+                      const dataRow = row as DataRow
+                      const employeeId = dataRow.employeeId
                       const buttonText = buttonTexts.get(employeeId) || randomTexts[0]
+                      const structuredComponents = buildActionCellLayout(dataRow, buttonText)
 
-                      // Пример SVG иконок
-                      const leftIconSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'
-                      const rightIconSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
-                      const iconButtonSVG: ButtonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
-
-                      // Декларативное описание компонентов
-                      // Создаем обработчики с доступом к нужным данным через замыкание
-                      const components = [
-                        text({ text: 'какой-то текст' }),
-                        button({
-                          text: buttonText,
-                          leftIcon: leftIconSVG,
-                          rightIcon: rightIconSVG,
-                          variant: 'primary',
-                          onClick: () => {
-                            // Обработчик будет вызван напрямую при клике
-                            const employeeId = (row as DataRow).employeeId
-                            setButtonTexts((prev) => {
-                              const newMap = new Map(prev)
-                              const newText = randomTexts[Math.floor(Math.random() * randomTexts.length)]
-                              newMap.set(employeeId, newText)
-                              return newMap
-                            })
-                            console.log('Кнопка нажата для строки:', row)
-                          },
-                        }),
-                        text({ text: 'какой-то текст' }),
-                        tag({
-                          text: (row as DataRow).status?.name ?? 'Активен',
-                          color: '#0f5132',
-                          background: '#d1e7dd',
-                        }),
-                        buttonIcon({
-                          icon: iconButtonSVG,
-                          variant: activeOverlayRowId === (row as DataRow).employeeId ? 'primary' : 'secondary',
-                          onClick: () => {
-                            toggleRowOverlay(row as DataRow)
-                          },
-                        }),
-                      ]
-
-                      // Отрисовываем компоненты с gap между ними
-                      // Используем container для группировки с gap
-                      const result = renderComponents(
-                        [container(components, { gap: 12, marginLeft: 8, marginRight: 8 })],
-                        ctx,
-                        rect,
-                        theme,
-                        hoverX,
-                        hoverY
-                      )
-
-                      // console.log('renderComponents вернул:', {
-                      //   hoveredAreasCount: result.hoveredAreas.length,
-                      //   clickHandlersCount: result.clickHandlers.length,
-                      //   clickHandlers: result.clickHandlers
-                      // })
-
-                      // // Сохраняем обработчики кликов для использования в onClick
-                      // console.log('Render result:', {
-                      //   hoveredAreasCount: result.hoveredAreas.length,
-                      //   clickHandlersCount: result.clickHandlers.length,
-                      //   clickHandlers: result.clickHandlers
-                      // })
-
-                      // console.log('Render result:', {
-                      //   hoveredAreasCount: result.hoveredAreas.length,
-                      //   clickHandlersCount: result.clickHandlers.length,
-                      //   clickHandlers: result.clickHandlers.map((h: any) => ({
-                      //     componentType: h.componentType,
-                      //     area: h.area
-                      //   }))
-                      // })
-
-                      // console.log('Render возвращает:', {
-                      //   hoveredAreasCount: renderResult.hoveredAreas.length,
-                      //   clickHandlersCount: renderResult.clickHandlers.length,
-                      //   clickHandlers: renderResult.clickHandlers
-                      // })
-
-                      return {
-                        hoveredAreas: result.hoveredAreas,
-                        clickHandlers: result.clickHandlers,
-                        buttonText: buttonText,
-                      }
+                      return renderComponents([structuredComponents], ctx, rect, theme, hoverX, hoverY)
+                    },
+                    estimateHeight: ({ row }) => {
+                      const dataRow = row as DataRow
+                      const employeeId = dataRow.employeeId
+                      const buttonText = buttonTexts.get(employeeId) || randomTexts[0]
+                      const structuredComponents = buildActionCellLayout(dataRow, buttonText)
+                      return structuredComponents.meta?.preferredHeight ?? 0
                     },
                     copyData: 'Открыть',
                   },

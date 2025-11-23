@@ -11,6 +11,7 @@ export type {
   BasicGridRowSelectionChange,
   ButtonCellOptions,
   CanvasCellOptions,
+  CanvasHeightEstimateArgs,
 } from './types'
 export { drawButton, drawIconButton, drawTag } from './customCells/canvasCell/index'
 export {
@@ -19,12 +20,17 @@ export {
   text,
   tag,
   container,
+  layout,
+  layoutRow,
   renderComponents,
   type ButtonProps,
   type ButtonIconProps,
   type TextProps,
   type TagProps,
   type ContainerProps,
+  type LayoutMetadata,
+  type LayoutProps,
+  type LayoutRowDefinition,
   type CanvasComponent,
   type ButtonIcon,
 } from './customCells/canvasComponents'

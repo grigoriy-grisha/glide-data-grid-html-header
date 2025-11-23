@@ -9,10 +9,11 @@ import DataEditor, {
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
-import type { BasicGridColumn, BasicGridProps } from './types'
+import type { BasicGridColumn, BasicGridProps, CanvasCellOptions } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
+  DEFAULT_ROW_HEIGHT,
   DEFAULT_ROW_MARKER_WIDTH,
   DEFAULT_SCROLLBAR_RESERVE,
   SELECTION_COLUMN_ID,
@@ -35,11 +36,21 @@ import { useColumnReorderDrag } from './hooks/useColumnReorderDrag'
 import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
 
+type CanvasHeightEstimator<RowType extends Record<string, unknown>> = {
+  columnIndex: number
+  estimateHeight: NonNullable<CanvasCellOptions<RowType>['estimateHeight']>
+}
+
+type CanvasHeightEstimatorWithWidth<RowType extends Record<string, unknown>> = CanvasHeightEstimator<RowType> & {
+  columnWidth: number
+}
+
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   rows,
   height = 400,
   headerRowHeight = DEFAULT_HEADER_ROW_HEIGHT,
+  rowHeight: rowHeightProp,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
   showRowMarkers = true,
   scrollbarReserve = DEFAULT_SCROLLBAR_RESERVE,
@@ -64,6 +75,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const dataEditorRef = useRef<DataEditorRef>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
+  const rowHeightCacheRef = useRef<Map<number, number>>(new Map())
   const containerWidth = useContainerWidth(gridRef)
   const columnsWithSelection = useMemo(() => {
     if (!enableRowSelection) {
@@ -141,6 +153,100 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     () => orderedColumns.some((column) => column.isCanvas()),
     [orderedColumns]
   )
+
+  const canvasHeightEstimators = useMemo<CanvasHeightEstimator<RowType>[]>(() => {
+    if (!hasCanvasColumns) {
+      return []
+    }
+    return orderedColumns
+      .map((column, index) => {
+        const estimateHeight = column.getCanvasOptions()?.estimateHeight
+        if (!estimateHeight) {
+          return null
+        }
+        return {
+          columnIndex: index,
+          estimateHeight,
+        }
+      })
+      .filter((value): value is CanvasHeightEstimator<RowType> => Boolean(value))
+  }, [hasCanvasColumns, orderedColumns])
+
+  const canvasHeightEstimatorsWithWidth = useMemo<CanvasHeightEstimatorWithWidth<RowType>[]>(() => {
+    if (canvasHeightEstimators.length === 0) {
+      return []
+    }
+    return canvasHeightEstimators.map((estimator) => ({
+      ...estimator,
+      columnWidth:
+        columnWidths[estimator.columnIndex] ??
+        orderedColumns[estimator.columnIndex]?.baseWidth ??
+        DEFAULT_MIN_COLUMN_WIDTH,
+    }))
+  }, [canvasHeightEstimators, columnWidths, orderedColumns])
+
+  useEffect(() => {
+    rowHeightCacheRef.current.clear()
+  }, [gridRows, rowHeightProp, canvasHeightEstimatorsWithWidth])
+
+  const resolvedRowHeight = useMemo<number | ((rowIndex: number) => number) | undefined>(() => {
+    const hasEstimators = canvasHeightEstimatorsWithWidth.length > 0
+    const baseNumber = typeof rowHeightProp === 'number' ? rowHeightProp : undefined
+    const baseFunction = typeof rowHeightProp === 'function' ? rowHeightProp : undefined
+
+    if (!hasEstimators) {
+      if (baseFunction) {
+        return (rowIndex: number) => {
+          const row = gridRows[rowIndex]
+          if (!row) {
+            return baseNumber ?? DEFAULT_ROW_HEIGHT
+          }
+          const value = baseFunction(row, rowIndex)
+          return typeof value === 'number' && !Number.isNaN(value) ? value : DEFAULT_ROW_HEIGHT
+        }
+      }
+      return baseNumber
+    }
+
+    const getBaseHeight = (row: RowType | undefined, rowIndex: number) => {
+      if (baseFunction && row) {
+        const value = baseFunction(row, rowIndex)
+        if (typeof value === 'number' && !Number.isNaN(value)) {
+          return value
+        }
+      }
+      if (typeof baseNumber === 'number') {
+        return baseNumber
+      }
+      return DEFAULT_ROW_HEIGHT
+    }
+
+    return (rowIndex: number) => {
+      const row = gridRows[rowIndex]
+      if (!row) {
+        return getBaseHeight(undefined, rowIndex)
+      }
+      const cacheValue = rowHeightCacheRef.current.get(rowIndex)
+      if (cacheValue !== undefined) {
+        return cacheValue
+      }
+
+      let currentHeight = getBaseHeight(row, rowIndex)
+      for (const estimator of canvasHeightEstimatorsWithWidth) {
+        const estimated = estimator.estimateHeight({
+          row,
+          rowIndex,
+          columnWidth: estimator.columnWidth,
+        })
+        if (typeof estimated === 'number' && !Number.isNaN(estimated)) {
+          currentHeight = Math.max(currentHeight, estimated)
+        }
+      }
+
+      rowHeightCacheRef.current.set(rowIndex, currentHeight)
+      return currentHeight
+    }
+  }, [canvasHeightEstimatorsWithWidth, gridRows, rowHeightProp])
 
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
     gridRows.length,
@@ -480,6 +586,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             highlightRegions={highlightRegions}
             rowMarkers={rowMarkersSetting}
             rowMarkerWidth={markerWidth}
+            rowHeight={resolvedRowHeight}
             rowSelectionMode={rowSelectionEnabled ? 'multi' : undefined}
             rowSelect={rowSelectionEnabled ? 'multi' : undefined}
             smoothScrollX={true}
