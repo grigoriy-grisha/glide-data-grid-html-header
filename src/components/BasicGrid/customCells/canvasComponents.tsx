@@ -1,4 +1,4 @@
-import { drawButton, drawIconButton } from './canvasCell'
+import { drawButton, drawIconButton, drawTag } from './canvasCell/index'
 
 export type ButtonIcon = string | HTMLImageElement | null | undefined
 
@@ -23,9 +23,17 @@ export interface TextProps {
   color?: string
 }
 
+export interface TagProps {
+  text: string
+  color?: string
+  background?: string
+}
+
 export interface ContainerProps {
   gap?: number
   padding?: number
+  marginLeft?: number
+  marginRight?: number
 }
 
 // Типы для компонентов
@@ -33,6 +41,7 @@ export type CanvasComponent =
   | { type: 'button'; props: ButtonProps }
   | { type: 'buttonIcon'; props: ButtonIconProps }
   | { type: 'text'; props: TextProps }
+  | { type: 'tag'; props: TagProps }
   | { type: 'container'; children: CanvasComponent[]; props: ContainerProps }
 
 // Контекст для отрисовки
@@ -48,7 +57,7 @@ interface RenderContext {
   clickHandlers: Array<{ 
     area: { x: number; y: number; width: number; height: number }
     handler: () => void
-    componentType: 'button' | 'buttonIcon' | 'text'
+    componentType: 'button' | 'buttonIcon' | 'text' | 'tag'
     componentId?: string
   }>
 }
@@ -64,6 +73,10 @@ export function buttonIcon(props: ButtonIconProps): CanvasComponent {
 
 export function text(props: TextProps): CanvasComponent {
   return { type: 'text', props }
+}
+
+export function tag(props: TagProps): CanvasComponent {
+  return { type: 'tag', props }
 }
 
 export function container(children: CanvasComponent[], props: ContainerProps = {}): CanvasComponent {
@@ -83,7 +96,7 @@ export function renderComponents(
   clickHandlers: Array<{ 
     area: { x: number; y: number; width: number; height: number }
     handler: () => void
-    componentType: 'button' | 'buttonIcon' | 'text'
+    componentType: 'button' | 'buttonIcon' | 'text' | 'tag'
     componentId?: string
   }>
 } {
@@ -123,6 +136,9 @@ function renderComponent(component: CanvasComponent, context: RenderContext) {
       break
     case 'text':
       renderText(component.props, context)
+      break
+    case 'tag':
+      renderTag(component.props, context)
       break
     case 'container':
       renderContainer(component.children, component.props, context)
@@ -271,12 +287,28 @@ function renderText(props: TextProps, context: RenderContext) {
   context.currentX = currentX + textMetrics.width
 }
 
-function renderContainer(children: CanvasComponent[], props: ContainerProps, context: RenderContext) {
-  const { gap = 0, padding = 0 } = props
-  const startX = context.currentX
+function renderTag(props: TagProps, context: RenderContext) {
+  const { ctx, rect, theme, currentX, currentY } = context
+  const centerY = currentY + rect.height / 2
+  const tagArea = drawTag(
+    ctx,
+    currentX,
+    centerY,
+    rect.height,
+    props.text,
+    theme,
+    props.color,
+    props.background
+  )
 
-  // Применяем padding
-  context.currentX += padding
+  context.currentX = currentX + tagArea.width
+}
+
+function renderContainer(children: CanvasComponent[], props: ContainerProps, context: RenderContext) {
+  const { gap = 0, padding = 0, marginLeft = 0, marginRight = 0 } = props
+
+  // Применяем margin и padding слева
+  context.currentX += marginLeft + padding
   context.currentY += padding
 
   // Рендерим дочерние компоненты
@@ -287,6 +319,7 @@ function renderContainer(children: CanvasComponent[], props: ContainerProps, con
     renderComponent(children[i], context)
   }
 
-  // Padding справа уже учтен в последнем элементе
+  // Добавляем margin справа
+  context.currentX += marginRight
 }
 

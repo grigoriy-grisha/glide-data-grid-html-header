@@ -84,7 +84,7 @@ export function drawButton(
   leftIcon?: ButtonIcon,
   rightIcon?: ButtonIcon
 ): { x: number; y: number; width: number; height: number; actualWidth: number } {
-  const paddingX = 8
+  const paddingX = 0
   const paddingY = 4
   const iconSize = Math.min(height - paddingY * 2 - 4, 16)
   const iconSpacing = 6
@@ -214,7 +214,7 @@ export function drawIconButton(
   disabled = false,
   hovered: HoverState = false
 ): { x: number; y: number; width: number; height: number } {
-  const paddingX = 8
+  const paddingX = 0
   const paddingY = 4
   const iconSize = Math.min(height - paddingY * 2 - 4, 20)
 
@@ -296,6 +296,64 @@ export function drawIconButton(
   drawIcon(ctx, icon, iconX, iconY, iconSize, iconColor)
 
   return { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight }
+}
+
+export function drawTag(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  centerY: number,
+  maxHeight: number,
+  label: string,
+  theme: any,
+  textColor?: string,
+  backgroundColor?: string
+): { x: number; y: number; width: number; height: number } {
+  const paddingX = 10
+  const paddingY = 4
+  const minHeight = 18
+
+  ctx.font = theme.baseFontFull
+  const metrics = ctx.measureText(label)
+  const textWidth = metrics.width
+  const textHeight =
+    (metrics.actualBoundingBoxAscent ?? 10) + (metrics.actualBoundingBoxDescent ?? 4)
+
+  const desiredHeight = Math.max(minHeight, textHeight + paddingY * 2)
+  const availableHeight = Math.max(minHeight, maxHeight - 4)
+  const tagHeight = Math.min(desiredHeight, availableHeight)
+  const tagWidth = Math.ceil(textWidth + paddingX * 2)
+  const radius = Math.min(tagHeight / 2, 10)
+  const tagTop = centerY - tagHeight / 2
+
+  const fillColor = backgroundColor ?? theme.bgHeader ?? '#f0f3f9'
+  const strokeColor = theme.borderColor ?? fillColor
+  const labelColor = textColor ?? theme.textDark ?? '#1f1f1f'
+
+  ctx.fillStyle = fillColor
+  ctx.strokeStyle = strokeColor
+  ctx.lineWidth = 1
+
+  ctx.beginPath()
+  ctx.moveTo(x + radius, tagTop)
+  ctx.lineTo(x + tagWidth - radius, tagTop)
+  ctx.quadraticCurveTo(x + tagWidth, tagTop, x + tagWidth, tagTop + radius)
+  ctx.lineTo(x + tagWidth, tagTop + tagHeight - radius)
+  ctx.quadraticCurveTo(x + tagWidth, tagTop + tagHeight, x + tagWidth - radius, tagTop + tagHeight)
+  ctx.lineTo(x + radius, tagTop + tagHeight)
+  ctx.quadraticCurveTo(x, tagTop + tagHeight, x, tagTop + tagHeight - radius)
+  ctx.lineTo(x, tagTop + radius)
+  ctx.quadraticCurveTo(x, tagTop, x + radius, tagTop)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.font = theme.baseFontFull
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = labelColor
+  ctx.fillText(label, x + paddingX, centerY)
+
+  return { x, y: tagTop, width: tagWidth, height: tagHeight }
 }
 
 function lightenColor(color: string, amount: number): string {

@@ -7,6 +7,6 @@ export {
 } from './types'
 export { createCanvasCell, isCanvasCell } from './factory'
 export { canvasCellRenderer } from './renderer'
-export { drawButton, drawIconButton, type ButtonIcon } from './buttons'
+export { drawButton, drawIconButton, drawTag, type ButtonIcon } from './buttons'
 export { isPointInArea } from './helpers'
 

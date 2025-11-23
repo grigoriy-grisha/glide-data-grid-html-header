@@ -12,16 +12,18 @@ export type {
   ButtonCellOptions,
   CanvasCellOptions,
 } from './types'
-export { drawButton, drawIconButton } from './customCells/canvasCell'
+export { drawButton, drawIconButton, drawTag } from './customCells/canvasCell/index'
 export {
   button,
   buttonIcon,
   text,
+  tag,
   container,
   renderComponents,
   type ButtonProps,
   type ButtonIconProps,
   type TextProps,
+  type TagProps,
   type ContainerProps,
   type CanvasComponent,
   type ButtonIcon,

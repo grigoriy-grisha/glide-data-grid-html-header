@@ -10,6 +10,7 @@ import {
   container,
   createColumn,
   renderComponents,
+  tag,
   text,
 } from './components/BasicGrid'
 import './App.css'
@@ -882,6 +883,7 @@ function App() {
                       // Декларативное описание компонентов
                       // Создаем обработчики с доступом к нужным данным через замыкание
                       const components = [
+                        text({ text: 'какой-то текст' }),
                         button({
                           text: buttonText,
                           leftIcon: leftIconSVG,
@@ -900,6 +902,11 @@ function App() {
                           },
                         }),
                         text({ text: 'какой-то текст' }),
+                        tag({
+                          text: (row as DataRow).status?.name ?? 'Активен',
+                          color: '#0f5132',
+                          background: '#d1e7dd',
+                        }),
                         buttonIcon({
                           icon: iconButtonSVG,
                           variant: 'secondary',
@@ -914,7 +921,7 @@ function App() {
                       // Отрисовываем компоненты с gap между ними
                       // Используем container для группировки с gap
                       const result = renderComponents(
-                        [container(components, { gap: 12 })],
+                        [container(components, { gap: 12, marginLeft: 8, marginRight: 8 })],
                         ctx,
                         rect,
                         theme,

@@ -3,7 +3,7 @@ import { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-gr
 
 import { createSelectCell } from '../customCells/selectCell'
 import { createButtonCell } from '../customCells/buttonCell'
-import { createCanvasCell } from '../customCells/canvasCell'
+import { createCanvasCell } from '../customCells/canvasCell/index'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 
