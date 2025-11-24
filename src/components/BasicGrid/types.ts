@@ -95,6 +95,11 @@ export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {
   defaultExpandedDepth?: number
 }
 
+export interface GridSortModel {
+  columnId: string
+  direction: SortDirection
+}
+
 export interface BasicGridProps<RowType = Record<string, unknown>> {
   columns: BasicGridColumn<RowType>[]
   rows: RowType[]
@@ -108,6 +113,8 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
   enableColumnReorder?: boolean
   columnOrder?: string[]
   onColumnOrderChange?: (order: string[]) => void
+  sortModel?: GridSortModel | null
+  onSortChange?: (model: GridSortModel | null) => void
   treeOptions?: BasicGridTreeOptions<RowType>
   editable?: boolean
   onCellChange?: (change: BasicGridCellChange<RowType>) => void

@@ -99,6 +99,7 @@ export function IconTextLayoutExample() {
         rows={basicGridRows.slice(0, 5)}
         height={400}
         headerRowHeight={54}
+        rowHeight={124}
         getRowId={(row) => row.employeeId}
       />
     </div>

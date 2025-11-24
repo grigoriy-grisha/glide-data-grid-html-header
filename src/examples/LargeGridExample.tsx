@@ -1,5 +1,5 @@
 import React from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, container, renderComponents, text, button, tag } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
 
 // Тип для строки данных с большим количеством колонок
 interface LargeDataRow extends Record<string, unknown> {
@@ -22,35 +22,25 @@ class FastRandom {
   }
 }
 
+// Константы для генерации данных
+const COL_COUNT_TARGET = 16000
+const COLS_PER_REGION = 12 // 3 leaf * 2 states * 2 countries
+const REGIONS_COUNT = Math.ceil(COL_COUNT_TARGET / COLS_PER_REGION)
+const TOTAL_COLS = REGIONS_COUNT * COLS_PER_REGION
+
+// Предварительная генерация ключей колонок для оптимизации памяти
+const COL_KEYS: string[] = new Array(TOTAL_COLS)
+const MOD5_VALUES = new Uint8Array(TOTAL_COLS)
+
+for (let col = 0; col < TOTAL_COLS; col++) {
+  COL_KEYS[col] = `col_${col}`
+  MOD5_VALUES[col] = col % 5
+}
+
 // Ленивая генерация строки - данные создаются только при обращении
 const createLazyRow = (rowIndex: number): LargeDataRow => {
-  const cities = ['Москва', 'Санкт-Петербург', 'Казань', 'Новосибирск', 'Екатеринбург', 'Нижний Новгород', 'Самара', 'Краснодар']
-  const departments = ['Разработка', 'Дизайн', 'Маркетинг', 'Продажи', 'HR', 'Аналитика', 'Тестирование', 'Инфраструктура']
-  const roles = ['Engineer', 'Manager', 'Analyst', 'Designer', 'Developer', 'Lead', 'Director', 'Specialist']
-
-  const colKeys: string[] = new Array(5000)
-  for (let col = 0; col < 5000; col++) {
-    colKeys[col] = `col_${col}`
-  }
-
-  const mod5Values = new Array(5000)
-  for (let col = 0; col < 5000; col++) {
-    mod5Values[col] = col % 5
-  }
-
   const i = rowIndex
   const iPlus1 = i + 1
-  const cityIndex = i % cities.length
-  const deptIndex = i % departments.length
-  const roleIndex = i % roles.length
-  const iMod100 = i % 100
-
-  const num = i + 1
-  const idPrefix = num < 10 ? `00000${num}` :
-    num < 100 ? `0000${num}` :
-      num < 1000 ? `000${num}` :
-        num < 10000 ? `00${num}` :
-          num < 100000 ? `0${num}` : String(num)
 
   // Генератор случайных чисел для этой строки (детерминированный)
   const rng = new FastRandom(i * 5000)
@@ -75,33 +65,19 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
       const colMatch = prop.match(/^col_(\d+)$/)
       if (colMatch) {
         const col = parseInt(colMatch[1], 10)
-        if (col >= colKeys.length) return undefined
-        const colKey = colKeys[col]
-        const mod5 = mod5Values[col]
+        if (col >= TOTAL_COLS) return undefined
+        const colKey = COL_KEYS[col]
 
         let value: unknown
 
-        if (col < 5) {
-          switch (col) {
-            case 0: value = `ID-${idPrefix}`; break
-            case 1: value = `Строка ${iPlus1}`; break
-            case 2: value = cities[cityIndex]; break
-            case 3: value = departments[deptIndex]; break
-            case 4: value = roles[roleIndex]; break
-          }
+        // Simplified data generation for generic columns
+        const random = rng.next()
+        if (col % 3 === 0) {
+          value = Math.floor(random * 1000000).toLocaleString() // Pop
+        } else if (col % 3 === 1) {
+          value = `$${(random * 100).toFixed(2)}B` // GDP
         } else {
-          const random = rng.next()
-          if (mod5 === 0) {
-            value = Math.floor(random * 10000)
-          } else if (mod5 === 1) {
-            value = (random * 100).toFixed(2)
-          } else if (mod5 === 2) {
-            value = random > 0.5 ? 'Да' : 'Нет'
-          } else if (mod5 === 3) {
-            value = `Значение ${col}-${i}`
-          } else {
-            value = `Текст ${col}-${iMod100}`
-          }
+          value = `${Math.floor(random * 1000)} km²` // Area
         }
 
         // Кэшируем значение
@@ -117,7 +93,7 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
       return false
     },
     ownKeys(_target) {
-      const keys = ['id', ...colKeys]
+      const keys = ['id', ...COL_KEYS]
       return keys
     },
     getOwnPropertyDescriptor(_target, prop: string) {
@@ -133,183 +109,67 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
   })
 }
 
-// Генерация 5000 колонок
+// Генерация колонок с 4 уровнями вложенности
 const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
   const startTime = performance.now()
   const columns: BasicGridColumn<LargeDataRow>[] = []
 
-  // Группируем колонки по 10 в группы для лучшей организации
-  const groupsCount = 500 // 500 групп по 10 колонок = 5000 колонок
+  // Структура:
+  // Region (Level 1) -> Country (Level 2) -> State (Level 3) -> City Data (Level 4 - Leaves)
+  // 3 leaf columns per State
+  // 2 States per Country
+  // 2 Countries per Region
+  // Total columns per Region = 3 * 2 * 2 = 12
 
-  console.log('🚀 Начало генерации 5,000 колонок...')
+  let globalColIndex = 0
 
-  for (let groupIndex = 0; groupIndex < groupsCount; groupIndex++) {
-    const groupColumns: BasicGridColumn<LargeDataRow>[] = []
+  console.log(`🚀 Начало генерации ${TOTAL_COLS.toLocaleString()} колонок с 4 уровнями вложенности...`)
 
-    for (let colInGroup = 0; colInGroup < 10; colInGroup++) {
-      const colIndex = groupIndex * 10 + colInGroup
-      const colKey = `col_${colIndex}`
+  for (let r = 0; r < REGIONS_COUNT; r++) {
+    const regionCountries: BasicGridColumn<LargeDataRow>[] = []
 
-      let title = `Колонка ${colIndex + 1}`
-      let type: 'string' | 'number' = 'string'
+    for (let c = 0; c < 2; c++) {
+      const countryStates: BasicGridColumn<LargeDataRow>[] = []
 
-      if (colIndex === 0) {
-        // ID Column with simplified canvas (horizontal only)
-        groupColumns.push(
-          createColumn<LargeDataRow>(colKey, 'canvas', 'ID', {
-            width: 180,
-            sortable: true,
-            canvasOptions: {
-              render: (ctx, rect, theme, hoverX, hoverY, row) => {
-                const idText = row['col_0'] as string
-                const color = (row.id % 3 === 0) ? '#1e88e5' : (row.id % 3 === 1) ? '#7b1fa2' : '#4caf50'
+      for (let s = 0; s < 2; s++) {
+        const stateCities: BasicGridColumn<LargeDataRow>[] = []
 
-                return renderComponents([
-                  container([
-                    tag({
-                      text: '#',
-                      color: '#ffffff',
-                      background: color
-                    }),
-                    text({
-                      text: idText,
-                      color: '#212529'
-                    })
-                  ], { gap: 8, marginLeft: 12 })
-                ], ctx, rect, theme, hoverX, hoverY)
-              },
-              copyData: (row) => row['col_0'] as string
-            }
-          })
-        )
-        continue
-      } else if (colIndex === 1) {
-        title = 'Название'
-        type = 'string'
-      } else if (colIndex === 2) {
-        title = 'Город'
-        type = 'string'
-      } else if (colIndex === 3) {
-        title = 'Отдел'
-        type = 'string'
-      } else if (colIndex === 4) {
-        title = 'Роль'
-        type = 'string'
-      } else if (colIndex === 5) {
-        // Button column
-        groupColumns.push(
-          createColumn<LargeDataRow>(colKey, 'button', 'Действие', {
-            width: 140,
-            buttonOptions: {
-              label: 'Открыть',
-              variant: 'primary',
-              onClick: (row) => {
-                console.log(`Clicked row ${row.id}`)
-                alert(`Вы нажали на кнопку в строке ${row.id}`)
-              }
-            }
-          })
-        )
-        continue
-      } else if (colIndex === 6) {
-        // Select column
-        groupColumns.push(
-          createColumn<LargeDataRow>(colKey, 'select', 'Статус', {
-            width: 160,
-            selectOptionsGetter: () => [
-              { label: 'Активен', value: 'active' },
-              { label: 'В ожидании', value: 'pending' },
-              { label: 'Заблокирован', value: 'blocked' },
-              { label: 'Архив', value: 'archived' }
-            ],
-            selectPlaceholder: 'Выберите статус'
-          })
-        )
-        continue
-      } else if (colIndex === 7) {
-        // Simplified Profile Column (horizontal only)
-        groupColumns.push(
-          createColumn<LargeDataRow>(colKey, 'canvas', 'Профиль', {
-            width: 280,
-            sortable: false,
-            canvasOptions: {
-              render: (ctx, rect, theme, hoverX, hoverY, row) => {
-                const initials = (row['col_1'] as string)?.split(' ')[1]?.substring(0, 2).toUpperCase() || '??'
-                const color = (row.id % 2 === 0) ? '#1e88e5' : '#7b1fa2'
+        // 3 Leaf columns: Pop, GDP, Area
+        const leafTypes = ['Pop', 'GDP', 'Area']
+        for (let l = 0; l < 3; l++) {
+          const colKey = `col_${globalColIndex}`
+          const title = leafTypes[l]
 
-                return renderComponents([
-                  container([
-                    text({
-                      text: initials,
-                      color: color,
-                    }),
-                    text({ text: row['col_1'] as string, color: '#212529' }),
-                    text({ text: row['col_4'] as string, color: '#757575' }),
-                    button({
-                      text: 'Contact',
-                      variant: 'secondary',
-                      onClick: () => alert(`Contacting ${row['col_1']}`)
-                    })
-                  ], { gap: 12, marginLeft: 12 })
-                ], ctx, rect, theme, hoverX, hoverY)
-              },
-              copyData: (row) => row['col_1'] as string
-            }
-          })
-        )
-        continue
-      } else if (colIndex === 8) {
-        // Simplified Action Column (horizontal only)
-        groupColumns.push(
-          createColumn<LargeDataRow>(colKey, 'canvas', 'Действия', {
-            width: 240,
-            sortable: false,
-            canvasOptions: {
-              render: (ctx, rect, theme, hoverX, hoverY, row) => {
-                return renderComponents([
-                  container([
-                    tag({
-                      text: row.id % 2 === 0 ? 'Active' : 'Inactive',
-                      color: row.id % 2 === 0 ? '#4caf50' : '#f44336'
-                    }),
-                    button({
-                      text: 'Edit',
-                      variant: 'secondary',
-                      onClick: () => alert(`Editing row ${row.id}`)
-                    })
-                  ], { gap: 8, marginLeft: 12 })
-                ], ctx, rect, theme, hoverX, hoverY)
-              },
-              copyData: (row) => `${row.id}`
-            }
-          })
-        )
-        continue
-      } else if (colIndex % 5 === 0) {
-        title = `Число ${colIndex}`
-        type = 'number'
-      } else {
-        title = `Поле ${colIndex}`
-        type = 'string'
+          stateCities.push(
+            createColumn<LargeDataRow>(colKey, 'string', title, {
+              width: 60, // Compact width
+              sortable: true,
+            })
+          )
+          globalColIndex++
+        }
+
+        countryStates.push({
+          title: `State ${r}-${c}-${s}`,
+          children: stateCities
+        })
       }
 
-      groupColumns.push(
-        createColumn<LargeDataRow>(colKey, type, title, {
-          width: 120,
-          sortable: true,
-        })
-      )
+      regionCountries.push({
+        title: `Country ${r}-${c}`,
+        children: countryStates
+      })
     }
 
     columns.push({
-      title: `Группа ${groupIndex + 1}`,
-      children: groupColumns,
+      title: `Region ${r}`,
+      children: regionCountries
     })
   }
 
   const endTime = performance.now()
   const duration = ((endTime - startTime) / 1000).toFixed(2)
-  console.log(`✅ Генерация колонок завершена за ${duration} секунд`)
+  console.log(`✅ Генерация колонок завершена за ${duration} секунд. Всего колонок: ${globalColIndex}`)
 
   return columns
 }
@@ -424,7 +284,7 @@ export function LargeGridExample() {
     <div className="data-grid-section">
       <h2 className="section-title">Large Grid Example</h2>
       <p className="section-description">
-        Пример таблицы с 5000 колонок и {ROW_COUNT.toLocaleString()} строк. Используется ленивая генерация данных - значения создаются только при обращении к ним, что позволяет работать с огромными объемами данных без падения вкладки.
+        Пример таблицы с {TOTAL_COLS.toLocaleString()} колонок и {ROW_COUNT.toLocaleString()} строк. Используется ленивая генерация данных - значения создаются только при обращении к ним, что позволяет работать с огромными объемами данных без падения вкладки.
       </p>
       <BasicGrid<LargeDataRow>
         columns={columns}
@@ -434,6 +294,11 @@ export function LargeGridExample() {
         headerRowHeight={54}
         getRowId={(row) => row.id}
         enableColumnReorder={true}
+        onSortChange={(model) => {
+          if (model) {
+            alert(`Сортировка по колонке: ${model.columnId}, направление: ${model.direction}`)
+          }
+        }}
       />
     </div>
   )

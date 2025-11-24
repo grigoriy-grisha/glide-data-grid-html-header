@@ -64,6 +64,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   rowOverlayRowId,
   renderRowOverlay,
   onRowOverlayClose,
+  sortModel,
+  onSortChange,
 }: BasicGridProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
   const gridBodyRef = useRef<HTMLDivElement>(null)
@@ -125,6 +127,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
   const { gridRows, sortState, handleColumnSort } = useGridSorting(displayRows, orderedColumns, {
     disabled: treeEnabled,
+    sortModel,
+    onSortChange,
   })
   const rowSelectionEnabled = Boolean(enableRowSelection)
   const { getSelectionStateForRow, toggleRowSelection, handleSelectAllChange, isAllRowsSelected, hasPartialRowSelection } =

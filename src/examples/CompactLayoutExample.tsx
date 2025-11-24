@@ -94,6 +94,7 @@ export function CompactLayoutExample() {
         columns={columns}
         rows={basicGridRows.slice(0, 8)}
         height={400}
+        rowHeight={64}
         headerRowHeight={54}
         getRowId={(row) => row.employeeId}
       />

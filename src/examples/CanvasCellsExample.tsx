@@ -141,6 +141,7 @@ export function CanvasCellsExample() {
         columns={columns}
         rows={basicGridRows.slice(0, 5)}
         height={400}
+        rowHeight={84}
         headerRowHeight={54}
         getRowId={(row) => row.employeeId}
       />

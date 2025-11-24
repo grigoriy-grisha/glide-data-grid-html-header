@@ -89,6 +89,7 @@ export function AsymmetricLayoutExample() {
         columns={columns}
         rows={basicGridRows.slice(0, 6)}
         height={400}
+        rowHeight={120}
         headerRowHeight={54}
         getRowId={(row) => row.employeeId}
       />
