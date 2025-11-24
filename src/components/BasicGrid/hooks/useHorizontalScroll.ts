@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
+import type React from 'react'
 import type { Rectangle } from '@glideapps/glide-data-grid'
 
 interface HorizontalScrollOptions {
@@ -6,6 +7,7 @@ interface HorizontalScrollOptions {
   rowMarkerWidth: number
   containerWidth: number
   columnPositions: number[]
+  headerElementRef: React.RefObject<HTMLDivElement>
 }
 
 export function useHorizontalScroll({
@@ -13,9 +15,9 @@ export function useHorizontalScroll({
   rowMarkerWidth,
   containerWidth,
   columnPositions,
+  headerElementRef,
 }: HorizontalScrollOptions) {
   const scrollLeftRef = useRef(0)
-  const [scrollLeft, setScrollLeft] = useState(0)
 
   const viewportWidth = useMemo(() => {
     return Math.max(rowMarkerWidth + 260, Math.min(rowMarkerWidth + dataAreaWidth, containerWidth))
@@ -37,18 +39,18 @@ export function useHorizontalScroll({
     [maxScrollLeft]
   )
 
-  const applyScrollLeft = useCallback(
+  const applyScrollLeftToDOM = useCallback(
     (value: number) => {
       const clampedValue = clampScrollLeft(value)
       scrollLeftRef.current = clampedValue
-      setScrollLeft((prev) => (Object.is(prev, clampedValue) ? prev : clampedValue))
+      
+      // Применяем напрямую к DOM без перерендера React
+      if (headerElementRef.current) {
+        headerElementRef.current.style.transform = `translateX(-${clampedValue}px)`
+      }
     },
-    [clampScrollLeft]
+    [clampScrollLeft, headerElementRef]
   )
-
-  useEffect(() => {
-    applyScrollLeft(scrollLeftRef.current)
-  }, [applyScrollLeft])
 
   const getScrollLeftFromRegion = useCallback(
     (range?: Rectangle, txValue?: number) => {
@@ -69,11 +71,18 @@ export function useHorizontalScroll({
   const handleVisibleRegionChanged = useCallback(
     (range: Rectangle, tx = 0) => {
       const nextScrollLeft = getScrollLeftFromRegion(range, tx)
-      applyScrollLeft(nextScrollLeft)
+      applyScrollLeftToDOM(nextScrollLeft)
     },
-    [applyScrollLeft, getScrollLeftFromRegion]
+    [applyScrollLeftToDOM, getScrollLeftFromRegion]
   )
 
-  return { scrollLeft, handleVisibleRegionChanged, viewportWidth, dataViewportWidth }
+  // Инициализируем начальное значение скролла при монтировании
+  useLayoutEffect(() => {
+    if (headerElementRef.current && scrollLeftRef.current === 0) {
+      headerElementRef.current.style.transform = 'translateX(0px)'
+    }
+  }, [headerElementRef])
+
+  return { handleVisibleRegionChanged, viewportWidth, dataViewportWidth }
 }
 

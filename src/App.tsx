@@ -21,6 +21,7 @@ import { UsersExample } from './examples/UsersExample'
 import { ProductsCanvasExample } from './examples/ProductsCanvasExample'
 import { TasksCanvasExample } from './examples/TasksCanvasExample'
 import { RowOverlayExample } from './examples/RowOverlayExample'
+import { LargeGridExample } from './examples/LargeGridExample'
 
 function App() {
   return (
@@ -37,40 +38,41 @@ function App() {
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
             Базовые примеры
           </h2>
-          <BasicGridExample />
-          <EditableGridExample />
-          <SelectableGridExample />
-          <NetworkTreeGridExample />
-          <RowOverlayExample />
+          {/*<BasicGridExample />*/}
+          {/*<EditableGridExample />*/}
+          {/*<SelectableGridExample />*/}
+          {/*<NetworkTreeGridExample />*/}
+          {/*<RowOverlayExample />*/}
+          <LargeGridExample />
 
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            Примеры типов ячеек
-          </h2>
-          <ButtonCellsExample />
-          <SelectCellsExample />
-          <CanvasCellsExample />
-          <MixedCellsExample />
+          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
+          {/*  Примеры типов ячеек*/}
+          {/*</h2>*/}
+          {/*<ButtonCellsExample />*/}
+          {/*<SelectCellsExample />*/}
+          {/*<CanvasCellsExample />*/}
+          {/*<MixedCellsExample />*/}
 
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            Примеры верстки canvas ячеек
-          </h2>
-          <VerticalLayoutExample />
-          <CenteredContentExample />
-          <IconTextLayoutExample />
-          <SpacedLayoutExample />
-          <CompactLayoutExample />
-          <MultiRowLayoutExample />
-          <AsymmetricLayoutExample />
+          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
+          {/*  Примеры верстки canvas ячеек*/}
+          {/*</h2>*/}
+          {/*<VerticalLayoutExample />*/}
+          {/*<CenteredContentExample />*/}
+          {/*<IconTextLayoutExample />*/}
+          {/*<SpacedLayoutExample />*/}
+          {/*<CompactLayoutExample />*/}
+          {/*<MultiRowLayoutExample />*/}
+          {/*<AsymmetricLayoutExample />*/}
 
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            Примеры с разными данными
-          </h2>
-          <ProductsExample />
-          <TasksExample />
-          <TransactionsExample />
-          <UsersExample />
-          <ProductsCanvasExample />
-          <TasksCanvasExample />
+          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
+          {/*  Примеры с разными данными*/}
+          {/*</h2>*/}
+          {/*<ProductsExample />*/}
+          {/*<TasksExample />*/}
+          {/*<TransactionsExample />*/}
+          {/*<UsersExample />*/}
+          {/*<ProductsCanvasExample />*/}
+          {/*<TasksCanvasExample />*/}
         </div>
       </main>
 

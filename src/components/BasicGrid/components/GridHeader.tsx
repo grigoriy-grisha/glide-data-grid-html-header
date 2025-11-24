@@ -25,7 +25,6 @@ interface GridHeaderProps<RowType extends Record<string, unknown>> {
   dataAreaWidth: number
   viewportWidth: number
   scrollbarReserve: number
-  scrollLeft: number
   headerInnerRef: React.RefObject<HTMLDivElement>
   selectRange: (startIndex: number, span: number) => void
   selectedBounds: SelectedBounds | null
@@ -59,7 +58,6 @@ export function GridHeader<RowType extends Record<string, unknown>>({
   dataAreaWidth,
   viewportWidth,
   scrollbarReserve,
-  scrollLeft,
   headerInnerRef,
   selectRange,
   selectedBounds,
@@ -107,7 +105,7 @@ export function GridHeader<RowType extends Record<string, unknown>>({
           style={{
             width: `${dataAreaWidth}px`,
             height: `${headerHeight}px`,
-            transform: `translateX(-${scrollLeft}px)`,
+            willChange: 'transform',
           }}
         >
           {Array.from({ length: levelCount }).map((_, levelIndex) => (

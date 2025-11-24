@@ -92,4 +92,3 @@ export function VerticalLayoutExample() {
     </div>
   )
 }
-

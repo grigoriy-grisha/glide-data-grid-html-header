@@ -328,11 +328,12 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     gridRows.length,
     orderedColumns.length
   )
-  const { scrollLeft, handleVisibleRegionChanged, viewportWidth, dataViewportWidth } = useHorizontalScroll({
+  const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth } = useHorizontalScroll({
     dataAreaWidth,
     rowMarkerWidth: markerWidth,
     containerWidth,
     columnPositions,
+    headerElementRef: headerInnerRef,
   })
 
   const customRenderers = useMemo(() => {
@@ -608,7 +609,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             dataAreaWidth={dataAreaWidth}
             viewportWidth={viewportWidth}
             scrollbarReserve={scrollbarReserve}
-            scrollLeft={scrollLeft}
             headerInnerRef={headerInnerRef}
             selectRange={selectRange}
             selectedBounds={selectedBounds}
