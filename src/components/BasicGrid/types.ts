@@ -23,11 +23,7 @@ export interface ButtonCellOptions<RowType = Record<string, unknown>> {
   disabled?: boolean | ((row: RowType) => boolean)
 }
 
-export interface CanvasHeightEstimateArgs<RowType = Record<string, unknown>> {
-  row: RowType
-  rowIndex: number
-  columnWidth: number
-}
+
 
 export interface CanvasCellOptions<RowType = Record<string, unknown>> {
   render: (
@@ -50,7 +46,7 @@ export interface CanvasCellOptions<RowType = Record<string, unknown>> {
   onMouseEnter?: (row: RowType, rowIndex: number) => void
   onMouseLeave?: (row: RowType, rowIndex: number) => void
   copyData?: string | ((row: RowType) => string)
-  estimateHeight?: (args: CanvasHeightEstimateArgs<RowType>) => number | undefined
+
 }
 
 export interface BasicGridColumn<RowType = Record<string, unknown>> {

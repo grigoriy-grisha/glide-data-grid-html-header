@@ -1,4 +1,4 @@
-import type React from 'react'
+import React from 'react'
 
 import type { GridHeaderCell } from '../models/GridHeaderCell'
 import type { GridColumn } from '../models/GridColumn'
@@ -44,7 +44,7 @@ const HEADER_COLORS = ['#e3f2fd', '#f5f5f5', '#fafafa']
 const HEADER_TEXT_COLORS = ['#1565c0', '#333333', '#666666']
 const HEADER_FONT_SIZES = [14, 13, 12]
 
-export function GridHeader<RowType extends Record<string, unknown>>({
+export const GridHeader = React.memo(function GridHeader<RowType extends Record<string, unknown>>({
   columnPositions,
   columnWidths,
   headerCells,
@@ -70,12 +70,24 @@ export function GridHeader<RowType extends Record<string, unknown>>({
   isAllRowsSelected,
   handleSelectAllChange,
   selectAllCheckboxRef,
-}: GridHeaderProps<RowType>) {
+  visibleIndices,
+}: GridHeaderProps<RowType> & { visibleIndices?: { start: number; end: number } }) {
   if (columnPositions.length === 0 || levelCount === 0 || headerCells.length === 0) {
     return null
   }
 
   const headerHeight = levelCount * headerRowHeight
+
+  // Filter cells based on visibility
+  const visibleCells = React.useMemo(() => {
+    if (!visibleIndices) return headerCells
+
+    return headerCells.filter(cell => {
+      const cellEndIndex = cell.startIndex + cell.colSpan
+      // Check if cell overlaps with visible range
+      return cellEndIndex > visibleIndices.start && cell.startIndex < visibleIndices.end
+    })
+  }, [headerCells, visibleIndices])
 
   return (
     <div
@@ -119,7 +131,7 @@ export function GridHeader<RowType extends Record<string, unknown>>({
             />
           ))}
 
-          {headerCells.map((cell) => {
+          {visibleCells.map((cell) => {
             const startX = columnPositions[cell.startIndex] ?? 0
             const totalWidth = cell.getSpanWidth(columnWidths)
             const bgColor = HEADER_COLORS[cell.level] ?? HEADER_COLORS[HEADER_COLORS.length - 1]
@@ -248,5 +260,5 @@ export function GridHeader<RowType extends Record<string, unknown>>({
       </div>
     </div>
   )
-}
+})
 

@@ -12,10 +12,7 @@ import './BasicGrid.css'
 import type {
   BasicGridColumn,
   BasicGridProps,
-  CanvasCellOptions,
-  CanvasHeightEstimateArgs,
 } from './types'
-import type { CanvasRenderResult } from './customCells/canvasCell/types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
@@ -42,14 +39,7 @@ import { useColumnReorderDrag } from './hooks/useColumnReorderDrag'
 import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
 
-type CanvasHeightEstimator<RowType extends Record<string, unknown>> = {
-  columnIndex: number
-  estimateHeight: NonNullable<CanvasCellOptions<RowType>['estimateHeight']>
-}
 
-type CanvasHeightEstimatorWithWidth<RowType extends Record<string, unknown>> = CanvasHeightEstimator<RowType> & {
-  columnWidth: number
-}
 
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
@@ -81,9 +71,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const dataEditorRef = useRef<DataEditorRef>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
-  const rowHeightCacheRef = useRef<Map<number, number>>(new Map())
-  const measurementCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const measurementContextRef = useRef<CanvasRenderingContext2D | null>(null)
+
   const containerWidth = useContainerWidth(gridRef)
   const columnsWithSelection = useMemo(() => {
     if (!enableRowSelection) {
@@ -104,32 +92,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
   const markerWidth = showRowMarkers ? rowMarkerWidth : 0
 
-  const ensureMeasurementContext = useCallback(
-    (width: number, height: number): CanvasRenderingContext2D | null => {
-      if (typeof document === 'undefined') {
-        return null
-      }
-      let canvas = measurementCanvasRef.current
-      if (!canvas) {
-        canvas = document.createElement('canvas')
-        measurementCanvasRef.current = canvas
-      }
-      const safeWidth = Math.max(1, Math.ceil(width))
-      const safeHeight = Math.max(1, Math.ceil(height))
-      if (canvas.width !== safeWidth || canvas.height !== safeHeight) {
-        canvas.width = safeWidth
-        canvas.height = safeHeight
-        measurementContextRef.current = null
-      }
-      let ctx = measurementContextRef.current
-      if (!ctx) {
-        ctx = canvas.getContext('2d')
-        measurementContextRef.current = ctx
-      }
-      return ctx
-    },
-    []
-  )
+
 
   const { columnCollection } = useNormalizedColumnsData(columnsWithSelection)
   const { orderedColumns, headerCells, levelCount, reorderColumns } = useColumnOrdering({
@@ -198,131 +161,24 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [orderedColumns]
   )
 
-  const baseMeasurementHeight = useMemo(() => {
-    if (typeof rowHeightProp === 'number' && rowHeightProp > 0) {
-      return rowHeightProp
-    }
-    return DEFAULT_ROW_HEIGHT
-  }, [rowHeightProp])
 
-  const canvasHeightEstimators = useMemo<CanvasHeightEstimator<RowType>[]>(() => {
-    if (!hasCanvasColumns) {
-      return []
-    }
-    const estimators: CanvasHeightEstimator<RowType>[] = []
-    orderedColumns.forEach((column, index) => {
-      const canvasOptions = column.getCanvasOptions()
-      if (!canvasOptions) {
-        return
-      }
-      const estimateHeight: NonNullable<CanvasCellOptions<RowType>['estimateHeight']> =
-        canvasOptions.estimateHeight ||
-        ((args: CanvasHeightEstimateArgs<RowType>) => {
-          const ctx = ensureMeasurementContext(args.columnWidth, baseMeasurementHeight)
-          if (!ctx) {
-            return baseMeasurementHeight
-          }
-          ctx.save()
-          ctx.clearRect(0, 0, args.columnWidth, baseMeasurementHeight)
-          const rect = { x: 0, y: 0, width: args.columnWidth, height: baseMeasurementHeight }
-          const result = canvasOptions.render(
-            ctx,
-            rect,
-            gridTheme,
-            undefined,
-            undefined,
-            args.row,
-            args.rowIndex
-          ) as CanvasRenderResult
-          ctx.restore()
-          if (typeof result?.preferredHeight === 'number' && !Number.isNaN(result.preferredHeight)) {
-            return result.preferredHeight
-          }
-          return baseMeasurementHeight
-        })
-      estimators.push({
-        columnIndex: index,
-        estimateHeight,
-      })
-    })
-    return estimators
-  }, [baseMeasurementHeight, ensureMeasurementContext, gridTheme, hasCanvasColumns, orderedColumns])
-
-  const canvasHeightEstimatorsWithWidth = useMemo<CanvasHeightEstimatorWithWidth<RowType>[]>(() => {
-    if (canvasHeightEstimators.length === 0) {
-      return []
-    }
-    return canvasHeightEstimators.map((estimator) => ({
-      ...estimator,
-      columnWidth:
-        columnWidths[estimator.columnIndex] ??
-        orderedColumns[estimator.columnIndex]?.baseWidth ??
-        DEFAULT_MIN_COLUMN_WIDTH,
-    }))
-  }, [canvasHeightEstimators, columnWidths, orderedColumns])
-
-  useEffect(() => {
-    rowHeightCacheRef.current.clear()
-  }, [gridRows, rowHeightProp, canvasHeightEstimatorsWithWidth])
 
   const resolvedRowHeight = useMemo<number | ((rowIndex: number) => number) | undefined>(() => {
-    const hasEstimators = canvasHeightEstimatorsWithWidth.length > 0
     const baseNumber = typeof rowHeightProp === 'number' ? rowHeightProp : undefined
     const baseFunction = typeof rowHeightProp === 'function' ? rowHeightProp : undefined
 
-    if (!hasEstimators) {
-      if (baseFunction) {
-        return (rowIndex: number) => {
-          const row = gridRows[rowIndex]
-          if (!row) {
-            return baseNumber ?? DEFAULT_ROW_HEIGHT
-          }
-          const value = baseFunction(row, rowIndex)
-          return typeof value === 'number' && !Number.isNaN(value) ? value : DEFAULT_ROW_HEIGHT
+    if (baseFunction) {
+      return (rowIndex: number) => {
+        const row = gridRows[rowIndex]
+        if (!row) {
+          return baseNumber ?? DEFAULT_ROW_HEIGHT
         }
-      }
-      return baseNumber
-    }
-
-    const getBaseHeight = (row: RowType | undefined, rowIndex: number) => {
-      if (baseFunction && row) {
         const value = baseFunction(row, rowIndex)
-        if (typeof value === 'number' && !Number.isNaN(value)) {
-          return value
-        }
+        return typeof value === 'number' && !Number.isNaN(value) ? value : DEFAULT_ROW_HEIGHT
       }
-      if (typeof baseNumber === 'number') {
-        return baseNumber
-      }
-      return DEFAULT_ROW_HEIGHT
     }
-
-    return (rowIndex: number) => {
-      const row = gridRows[rowIndex]
-      if (!row) {
-        return getBaseHeight(undefined, rowIndex)
-      }
-      const cacheValue = rowHeightCacheRef.current.get(rowIndex)
-      if (cacheValue !== undefined) {
-        return cacheValue
-      }
-
-      let currentHeight = getBaseHeight(row, rowIndex)
-      for (const estimator of canvasHeightEstimatorsWithWidth) {
-        const estimated = estimator.estimateHeight({
-          row,
-          rowIndex,
-          columnWidth: estimator.columnWidth,
-        })
-        if (typeof estimated === 'number' && !Number.isNaN(estimated)) {
-          currentHeight = Math.max(currentHeight, estimated)
-        }
-      }
-
-      rowHeightCacheRef.current.set(rowIndex, currentHeight)
-      return currentHeight
-    }
-  }, [canvasHeightEstimatorsWithWidth, gridRows, rowHeightProp])
+    return baseNumber
+  }, [gridRows, rowHeightProp])
 
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
     gridRows.length,
@@ -511,9 +367,27 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [overlayRow, updateOverlayPosition])
 
+  const [visibleIndices, setVisibleIndices] = useState({ start: 0, end: 20 })
+
   const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
     (range, tx = 0, _ty = 0, _extras) => {
       handleVisibleRegionChanged(range, tx)
+
+      // Update visible indices for header virtualization
+      const start = Math.floor(range.x)
+      const end = Math.ceil(range.x + range.width)
+      // Add buffer
+      const buffer = 5
+      const newStart = Math.max(0, start - buffer)
+      const newEnd = end + buffer
+
+      setVisibleIndices(prev => {
+        if (prev.start === newStart && prev.end === newEnd) {
+          return prev
+        }
+        return { start: newStart, end: newEnd }
+      })
+
       if (overlayRow && overlayContent) {
         requestAnimationFrame(() => updateOverlayPosition())
       }
@@ -600,7 +474,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             columnPositions={columnPositions}
             columnWidths={columnWidths}
             headerCells={headerCells}
-            orderedColumns={orderedColumns}
+            orderedColumns={orderedColumns as any}
             levelCount={levelCount}
             headerRowHeight={headerRowHeight}
             markerWidth={markerWidth}
@@ -622,6 +496,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             isAllRowsSelected={isAllRowsSelected}
             handleSelectAllChange={handleSelectAllChange}
             selectAllCheckboxRef={selectAllCheckboxRef}
+            visibleIndices={visibleIndices}
           />
         )}
 
@@ -666,4 +541,3 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     </div>
   )
 }
-

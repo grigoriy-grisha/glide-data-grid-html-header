@@ -1,5 +1,5 @@
 import React from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, container, renderComponents, text, button, tag } from '../components/BasicGrid'
 
 // Тип для строки данных с большим количеством колонок
 interface LargeDataRow extends Record<string, unknown> {
@@ -47,10 +47,10 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
 
   const num = i + 1
   const idPrefix = num < 10 ? `00000${num}` :
-                  num < 100 ? `0000${num}` :
-                  num < 1000 ? `000${num}` :
-                  num < 10000 ? `00${num}` :
-                  num < 100000 ? `0${num}` : String(num)
+    num < 100 ? `0000${num}` :
+      num < 1000 ? `000${num}` :
+        num < 10000 ? `00${num}` :
+          num < 100000 ? `0${num}` : String(num)
 
   // Генератор случайных чисел для этой строки (детерминированный)
   const rng = new FastRandom(i * 5000)
@@ -154,8 +154,35 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       let type: 'string' | 'number' = 'string'
 
       if (colIndex === 0) {
-        title = 'ID'
-        type = 'string'
+        // ID Column with simplified canvas (horizontal only)
+        groupColumns.push(
+          createColumn<LargeDataRow>(colKey, 'canvas', 'ID', {
+            width: 180,
+            sortable: true,
+            canvasOptions: {
+              render: (ctx, rect, theme, hoverX, hoverY, row) => {
+                const idText = row['col_0'] as string
+                const color = (row.id % 3 === 0) ? '#1e88e5' : (row.id % 3 === 1) ? '#7b1fa2' : '#4caf50'
+
+                return renderComponents([
+                  container([
+                    tag({
+                      text: '#',
+                      color: '#ffffff',
+                      background: color
+                    }),
+                    text({
+                      text: idText,
+                      color: '#212529'
+                    })
+                  ], { gap: 8, marginLeft: 12 })
+                ], ctx, rect, theme, hoverX, hoverY)
+              },
+              copyData: (row) => row['col_0'] as string
+            }
+          })
+        )
+        continue
       } else if (colIndex === 1) {
         title = 'Название'
         type = 'string'
@@ -168,6 +195,96 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       } else if (colIndex === 4) {
         title = 'Роль'
         type = 'string'
+      } else if (colIndex === 5) {
+        // Button column
+        groupColumns.push(
+          createColumn<LargeDataRow>(colKey, 'button', 'Действие', {
+            width: 140,
+            buttonOptions: {
+              label: 'Открыть',
+              variant: 'primary',
+              onClick: (row) => {
+                console.log(`Clicked row ${row.id}`)
+                alert(`Вы нажали на кнопку в строке ${row.id}`)
+              }
+            }
+          })
+        )
+        continue
+      } else if (colIndex === 6) {
+        // Select column
+        groupColumns.push(
+          createColumn<LargeDataRow>(colKey, 'select', 'Статус', {
+            width: 160,
+            selectOptionsGetter: () => [
+              { label: 'Активен', value: 'active' },
+              { label: 'В ожидании', value: 'pending' },
+              { label: 'Заблокирован', value: 'blocked' },
+              { label: 'Архив', value: 'archived' }
+            ],
+            selectPlaceholder: 'Выберите статус'
+          })
+        )
+        continue
+      } else if (colIndex === 7) {
+        // Simplified Profile Column (horizontal only)
+        groupColumns.push(
+          createColumn<LargeDataRow>(colKey, 'canvas', 'Профиль', {
+            width: 280,
+            sortable: false,
+            canvasOptions: {
+              render: (ctx, rect, theme, hoverX, hoverY, row) => {
+                const initials = (row['col_1'] as string)?.split(' ')[1]?.substring(0, 2).toUpperCase() || '??'
+                const color = (row.id % 2 === 0) ? '#1e88e5' : '#7b1fa2'
+
+                return renderComponents([
+                  container([
+                    text({
+                      text: initials,
+                      color: color,
+                    }),
+                    text({ text: row['col_1'] as string, color: '#212529' }),
+                    text({ text: row['col_4'] as string, color: '#757575' }),
+                    button({
+                      text: 'Contact',
+                      variant: 'secondary',
+                      onClick: () => alert(`Contacting ${row['col_1']}`)
+                    })
+                  ], { gap: 12, marginLeft: 12 })
+                ], ctx, rect, theme, hoverX, hoverY)
+              },
+              copyData: (row) => row['col_1'] as string
+            }
+          })
+        )
+        continue
+      } else if (colIndex === 8) {
+        // Simplified Action Column (horizontal only)
+        groupColumns.push(
+          createColumn<LargeDataRow>(colKey, 'canvas', 'Действия', {
+            width: 240,
+            sortable: false,
+            canvasOptions: {
+              render: (ctx, rect, theme, hoverX, hoverY, row) => {
+                return renderComponents([
+                  container([
+                    tag({
+                      text: row.id % 2 === 0 ? 'Active' : 'Inactive',
+                      color: row.id % 2 === 0 ? '#4caf50' : '#f44336'
+                    }),
+                    button({
+                      text: 'Edit',
+                      variant: 'secondary',
+                      onClick: () => alert(`Editing row ${row.id}`)
+                    })
+                  ], { gap: 8, marginLeft: 12 })
+                ], ctx, rect, theme, hoverX, hoverY)
+              },
+              copyData: (row) => `${row.id}`
+            }
+          })
+        )
+        continue
       } else if (colIndex % 5 === 0) {
         title = `Число ${colIndex}`
         type = 'number'
@@ -228,7 +345,7 @@ const createLazyRows = (rowCount: number): LargeDataRow[] => {
       const value = (target as any)[prop]
       if (typeof value === 'function') {
         // Для методов массива возвращаем функцию, которая работает с виртуальными данными
-        return function(...args: any[]) {
+        return function (...args: any[]) {
           // Для методов, которые требуют итерации, создаем строки по требованию
           if (prop === 'forEach' || prop === 'map' || prop === 'filter' || prop === 'find' || prop === 'some' || prop === 'every') {
             return value.call(
@@ -313,6 +430,7 @@ export function LargeGridExample() {
         columns={columns}
         rows={dataRows}
         height={600}
+        rowHeight={40}
         headerRowHeight={54}
         getRowId={(row) => row.id}
         enableColumnReorder={true}
@@ -320,4 +438,3 @@ export function LargeGridExample() {
     </div>
   )
 }
-
