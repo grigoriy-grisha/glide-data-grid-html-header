@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { GridColumn } from '../models/GridColumn'
 import { GridColumnCollection } from '../models/GridColumnCollection'
@@ -47,28 +47,81 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
   columnOrder,
   onColumnOrderChange,
 }: UseColumnOrderingOptions<RowType>) {
-  const columnIds = useMemo(() => columns.map((column) => column.id), [columns])
-  const [internalOrder, setInternalOrder] = useState<string[]>(columnIds)
+  const columnIdsRef = useRef<string[]>([])
+  const previousColumnIdsSetRef = useRef<Set<string>>(new Set())
+  const isInitialMountRef = useRef(true)
+  
+  const columnIds = useMemo(() => {
+    const ids = columns.map((column) => column.id).filter((id): id is string => Boolean(id))
+    columnIdsRef.current = ids
+    return ids
+  }, [columns])
+  
+  const [internalOrder, setInternalOrder] = useState<string[]>(() => {
+    const ids = columns.map((column) => column.id).filter((id): id is string => Boolean(id))
+    previousColumnIdsSetRef.current = new Set(ids)
+    return ids
+  })
 
+  // Обновляем internalOrder только если изменился набор колонок (добавились/удалились)
+  // но сохраняем пользовательский порядок, если набор колонок не изменился
   useEffect(() => {
-    setInternalOrder((prev) => {
-      if (arraysEqual(prev, columnIds)) {
-        return prev
+    if (columnIds.length === 0) {
+      return
+    }
+
+    const previousIdsSet = previousColumnIdsSetRef.current
+    const newIdsSet = new Set(columnIds)
+    
+    // Проверяем, изменился ли набор колонок (не порядок, а сам набор)
+    const setsEqual = previousIdsSet.size === newIdsSet.size && 
+                      [...previousIdsSet].every(id => newIdsSet.has(id))
+    
+    if (!setsEqual || isInitialMountRef.current) {
+      // При первой инициализации или когда изменился набор колонок
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false
+        previousColumnIdsSetRef.current = newIdsSet
+        return // Не обновляем, так как уже установлено в useState
       }
-      return columnIds
-    })
+      
+      // Объединяем: сохраняем порядок из internalOrder для существующих колонок,
+      // добавляем новые колонки в конец
+      const newColumns = columnIds.filter(id => !previousIdsSet.has(id))
+      
+      if (newColumns.length > 0) {
+        // Если добавились новые колонки, добавляем их в конец
+        setInternalOrder((prev) => {
+          const preserved = prev.filter(id => newIdsSet.has(id))
+          return [...preserved, ...newColumns]
+        })
+      } else {
+        // Если только удалились колонки, просто фильтруем
+        setInternalOrder((prev) => prev.filter(id => newIdsSet.has(id)))
+      }
+      
+      previousColumnIdsSetRef.current = newIdsSet
+    }
   }, [columnIds])
 
   const preferredOrder = columnOrder ?? internalOrder
-  const effectiveOrder = useMemo(() => mergeOrder(preferredOrder, columnIds), [preferredOrder, columnIds])
+  const effectiveOrder = useMemo(() => {
+    return mergeOrder(preferredOrder, columnIds)
+  }, [preferredOrder, columnIds])
 
   const columnMap = useMemo(() => {
-    return new Map(columns.map((column) => [column.id, column]))
+    const map = new Map<string, GridColumn<RowType>>()
+    for (const column of columns) {
+      if (column.id) {
+        map.set(column.id, column)
+      }
+    }
+    return map
   }, [columns])
 
   const orderedColumns = useMemo(() => {
     return effectiveOrder.map((id) => columnMap.get(id)).filter((column): column is GridColumn<RowType> => Boolean(column))
-  }, [columnMap, effectiveOrder])
+  }, [effectiveOrder, columnMap])
 
   const headerLayout = useMemo(() => {
     return GridColumnCollection.buildHeaderLayout(orderedColumns)
@@ -86,8 +139,9 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
 
   const reorderColumns = useCallback(
     (fromIndex: number, targetBoundary: number) => {
-      const nextOrder = moveItem(effectiveOrder, fromIndex, targetBoundary)
-      if (arraysEqual(nextOrder, effectiveOrder)) {
+      const currentOrder = effectiveOrder
+      const nextOrder = moveItem(currentOrder, fromIndex, targetBoundary)
+      if (arraysEqual(nextOrder, currentOrder)) {
         return
       }
       applyOrder(nextOrder)

@@ -38,11 +38,6 @@ function App() {
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
             Базовые примеры
           </h2>
-          {/*<BasicGridExample />*/}
-          {/*<EditableGridExample />*/}
-          {/*<SelectableGridExample />*/}
-          {/*<NetworkTreeGridExample />*/}
-          {/*<RowOverlayExample />*/}
           <LargeGridExample />
 
           {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}

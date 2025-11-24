@@ -406,7 +406,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     clearColumnWidths,
   })
 
-  const { dragState, hasActiveDrag, handleHeaderDragStart } = useColumnReorderDrag({
+  const { handleHeaderDragStart, registerHeaderCell } = useColumnReorderDrag({
     enableColumnReorder,
     orderedColumns,
     columnPositions,
@@ -616,8 +616,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             sortState={sortState}
             enableColumnReorder={enableColumnReorder}
             handleHeaderDragStart={handleHeaderDragStart}
-            dragState={dragState}
-            hasActiveDrag={hasActiveDrag}
+            registerHeaderCell={registerHeaderCell}
             handleResizeMouseDown={handleResizeMouseDown}
             handleResizeDoubleClick={handleResizeDoubleClick}
             isAllRowsSelected={isAllRowsSelected}

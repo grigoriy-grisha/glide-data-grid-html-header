@@ -32,8 +32,7 @@ interface GridHeaderProps<RowType extends Record<string, unknown>> {
   sortState: SortState
   enableColumnReorder: boolean
   handleHeaderDragStart: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number) => void
-  dragState: { sourceIndex: number; targetIndex: number } | null
-  hasActiveDrag: boolean
+  registerHeaderCell: (columnIndex: number, element: HTMLElement | null) => void
   handleResizeMouseDown: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   handleResizeDoubleClick: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   isAllRowsSelected: boolean
@@ -65,15 +64,14 @@ export function GridHeader<RowType extends Record<string, unknown>>({
   sortState,
   enableColumnReorder,
   handleHeaderDragStart,
-  dragState,
-  hasActiveDrag,
+  registerHeaderCell,
   handleResizeMouseDown,
   handleResizeDoubleClick,
   isAllRowsSelected,
   handleSelectAllChange,
   selectAllCheckboxRef,
 }: GridHeaderProps<RowType>) {
-  if (columnPositions.length === 0 || levelCount === 0) {
+  if (columnPositions.length === 0 || levelCount === 0 || headerCells.length === 0) {
     return null
   }
 
@@ -143,14 +141,6 @@ export function GridHeader<RowType extends Record<string, unknown>>({
               cell.startIndex + cell.colSpan - 1 <= selectedBounds.end
             const cellClasses = ['basic-grid-header-cell']
             const isReorderable = enableColumnReorder && isLeafColumn && !isSelectionColumn
-            const isDragging = isReorderable && dragState?.sourceIndex === resolvedColumnIndex
-            const hasDropTarget = dragState != null && dragState.targetIndex !== dragState.sourceIndex
-            const dropBefore =
-              isReorderable && hasDropTarget && dragState?.targetIndex === resolvedColumnIndex
-            const dropAfter =
-              isReorderable && hasDropTarget && dragState?.targetIndex === resolvedColumnIndex + 1
-            const showDropIndicator = dropBefore || dropAfter
-            const isGhosted = hasActiveDrag && isReorderable && !isDragging
             if (isSelectable) {
               cellClasses.push('basic-grid-header-cell--clickable')
             }
@@ -162,20 +152,6 @@ export function GridHeader<RowType extends Record<string, unknown>>({
             }
             if (isReorderable) {
               cellClasses.push('basic-grid-header-cell--draggable')
-            }
-            if (isDragging) {
-              cellClasses.push('basic-grid-header-cell--dragging')
-            }
-            if (dropBefore) {
-              cellClasses.push('basic-grid-header-cell--drop-before')
-            } else if (dropAfter) {
-              cellClasses.push('basic-grid-header-cell--drop-after')
-            }
-            if (showDropIndicator) {
-              cellClasses.push('basic-grid-header-cell--drop-indicator')
-            }
-            if (isGhosted) {
-              cellClasses.push('basic-grid-header-cell--drag-placeholder')
             }
 
             const resizeStartIndex = cell.isLeaf ? resolvedColumnIndex : cell.startIndex
@@ -205,6 +181,11 @@ export function GridHeader<RowType extends Record<string, unknown>>({
             return (
               <div
                 key={`${cell.level}-${cell.startIndex}-${cell.title}`}
+                ref={
+                  isReorderable && resolvedColumnIndex >= 0
+                    ? (el) => registerHeaderCell(resolvedColumnIndex, el)
+                    : undefined
+                }
                 className={cellClasses.join(' ')}
                 style={{
                   left: `${startX}px`,
