@@ -1,22 +1,25 @@
 import './App.css'
-import {ButtonCellsExample} from './examples/ButtonCellsExample'
-import {SelectCellsExample} from './examples/SelectCellsExample'
-import {CanvasCellsExample} from './examples/CanvasCellsExample'
-import {MixedCellsExample} from './examples/MixedCellsExample'
-import {VerticalLayoutExample} from './examples/VerticalLayoutExample'
-import {CenteredContentExample} from './examples/CenteredContentExample'
-import {IconTextLayoutExample} from './examples/IconTextLayoutExample'
-import {SpacedLayoutExample} from './examples/SpacedLayoutExample'
-import {CompactLayoutExample} from './examples/CompactLayoutExample'
-import {MultiRowLayoutExample} from './examples/MultiRowLayoutExample'
-import {AsymmetricLayoutExample} from './examples/AsymmetricLayoutExample'
-import {ProductsExample} from './examples/ProductsExample'
-import {TasksExample} from './examples/TasksExample'
-import {TransactionsExample} from './examples/TransactionsExample'
-import {UsersExample} from './examples/UsersExample'
-import {ProductsCanvasExample} from './examples/ProductsCanvasExample'
-import {TasksCanvasExample} from './examples/TasksCanvasExample'
-import {LargeGridExample} from './examples/LargeGridExample'
+import { ButtonCellsExample } from './examples/ButtonCellsExample'
+import { SelectCellsExample } from './examples/SelectCellsExample'
+import { CanvasCellsExample } from './examples/CanvasCellsExample'
+import { MixedCellsExample } from './examples/MixedCellsExample'
+import { VerticalLayoutExample } from './examples/VerticalLayoutExample'
+import { CenteredContentExample } from './examples/CenteredContentExample'
+import { IconTextLayoutExample } from './examples/IconTextLayoutExample'
+import { SpacedLayoutExample } from './examples/SpacedLayoutExample'
+import { CompactLayoutExample } from './examples/CompactLayoutExample'
+import { MultiRowLayoutExample } from './examples/MultiRowLayoutExample'
+import { AsymmetricLayoutExample } from './examples/AsymmetricLayoutExample'
+import { ProductsExample } from './examples/ProductsExample'
+import { TasksExample } from './examples/TasksExample'
+import { TransactionsExample } from './examples/TransactionsExample'
+import { UsersExample } from './examples/UsersExample'
+import { ProductsCanvasExample } from './examples/ProductsCanvasExample'
+import { TasksCanvasExample } from './examples/TasksCanvasExample'
+import { LargeGridExample } from './examples/LargeGridExample'
+import { NetworkTreeGridExample } from "./examples/NetworkTreeGridExample.tsx";
+import { RowOverlayExample } from "./examples/RowOverlayExample.tsx";
+import { BasicGridExample } from './examples/BasicGridExample.tsx'
 
 function App() {
   return (
@@ -33,8 +36,12 @@ function App() {
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
             Базовые примеры
           </h2>
+
+          <BasicGridExample />
+          <NetworkTreeGridExample />
           <LargeGridExample />
 
+          <RowOverlayExample />
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
             Примеры типов ячеек
           </h2>

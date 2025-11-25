@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import DataEditor, {
   type CellClickedEventArgs,
   type CustomRenderer,
@@ -18,7 +18,6 @@ import {
   DEFAULT_MIN_COLUMN_WIDTH,
   DEFAULT_ROW_HEIGHT,
   DEFAULT_ROW_MARKER_WIDTH,
-  DEFAULT_SCROLLBAR_RESERVE,
   SELECTION_COLUMN_ID,
 } from './constants'
 import { GridHeader } from './components/GridHeader'
@@ -38,18 +37,47 @@ import { useRowSelectionState } from './hooks/useRowSelectionState'
 import { useColumnReorderDrag } from './hooks/useColumnReorderDrag'
 import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
+import { getScrollbarWidth } from './utils/getScrollbarWidth'
+import { HeaderVirtualizationProvider, useHeaderVirtualization } from './context/HeaderVirtualizationContext'
 
+// Internal component that uses context to update visible indices
+// Defined outside to prevent recreation on each render
+const DataEditorWithVirtualization = React.memo(
+  React.forwardRef<DataEditorRef, DataEditorProps>(function DataEditorWithVirtualization(
+    { onVisibleRegionChanged, ...dataEditorProps },
+    ref
+  ) {
+    const { updateVisibleIndices } = useHeaderVirtualization()
 
+    const handleVisibleRegionChanged = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
+      (range, tx = 0, _ty = 0, _extras) => {
+        onVisibleRegionChanged?.(range, tx, _ty, _extras)
+
+        const start = Math.floor(range.x)
+        const end = Math.ceil(range.x + range.width)
+        const buffer = 5
+        const newStart = Math.max(0, start - buffer)
+        const newEnd = end + buffer
+
+        updateVisibleIndices({ start: newStart, end: newEnd })
+      },
+      [onVisibleRegionChanged, updateVisibleIndices]
+    )
+
+    return <DataEditor ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
+  })
+)
 
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   rows,
+  summaryRows,
   height = 400,
   headerRowHeight = DEFAULT_HEADER_ROW_HEIGHT,
   rowHeight: rowHeightProp,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
   showRowMarkers = true,
-  scrollbarReserve = DEFAULT_SCROLLBAR_RESERVE,
+  scrollbarReserve: scrollbarReserveProp,
   className,
   enableColumnReorder = false,
   columnOrder,
@@ -63,7 +91,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   getRowId,
   rowOverlayRowId,
   renderRowOverlay,
-  onRowOverlayClose,
+  onRowOverlayClose: _onRowOverlayClose,
   sortModel,
   onSortChange,
 }: BasicGridProps<RowType>) {
@@ -73,6 +101,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const dataEditorRef = useRef<DataEditorRef>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
+
+  const scrollbarReserve = useMemo(() => {
+    if (scrollbarReserveProp !== undefined) {
+      return scrollbarReserveProp
+    }
+    return getScrollbarWidth()
+  }, [scrollbarReserveProp])
 
   const containerWidth = useContainerWidth(gridRef)
   const columnsWithSelection = useMemo(() => {
@@ -184,10 +219,11 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     return baseNumber
   }, [gridRows, rowHeightProp])
 
-  const { selectRange, selectedBounds, highlightRegions, clearSelection } = useColumnSelection(
+  const columnSelection = useColumnSelection(
     gridRows.length,
     orderedColumns.length
   )
+  const { selectRange, selectedBounds, highlightRegions, clearSelection } = columnSelection
   const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth } = useHorizontalScroll({
     dataAreaWidth,
     rowMarkerWidth: markerWidth,
@@ -195,6 +231,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     columnPositions,
     headerElementRef: headerInnerRef,
   })
+
 
   const customRenderers = useMemo(() => {
     const renderers: CustomRenderer<any>[] = []
@@ -284,6 +321,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     editable,
     decorateCell,
     selectionColumnId: SELECTION_COLUMN_ID,
+    summaryRows,
   })
 
   const handleCellEdited = useCellEditing({
@@ -371,26 +409,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [overlayRow, updateOverlayPosition])
 
-  const [visibleIndices, setVisibleIndices] = useState({ start: 0, end: 20 })
-
   const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
     (range, tx = 0, _ty = 0, _extras) => {
       handleVisibleRegionChanged(range, tx)
-
-      // Update visible indices for header virtualization
-      const start = Math.floor(range.x)
-      const end = Math.ceil(range.x + range.width)
-      // Add buffer
-      const buffer = 5
-      const newStart = Math.max(0, start - buffer)
-      const newEnd = end + buffer
-
-      setVisibleIndices(prev => {
-        if (prev.start === newStart && prev.end === newEnd) {
-          return prev
-        }
-        return { start: newStart, end: newEnd }
-      })
 
       if (overlayRow && overlayContent) {
         requestAnimationFrame(() => updateOverlayPosition())
@@ -470,53 +491,61 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
   const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
 
+  // Memoize columns array to prevent unnecessary re-renders during drag n drop
+  const dataEditorColumns = useMemo(
+    () =>
+      orderedColumns.map((column, index) => ({
+        title: column.title,
+        width: columnWidths[index] ?? column.baseWidth,
+      })),
+    [orderedColumns, columnWidths]
+  )
+
   return (
-    <div className={containerClassName}>
-      <div className="basic-grid-wrapper" ref={gridRef}>
-        {columnPositions.length > 0 && levelCount > 0 && (
-          <GridHeader
-            columnPositions={columnPositions}
-            columnWidths={columnWidths}
-            headerCells={headerCells}
-            orderedColumns={orderedColumns as any}
-            levelCount={levelCount}
-            headerRowHeight={headerRowHeight}
-            markerWidth={markerWidth}
-            showRowMarkers={showRowMarkers}
-            dataViewportWidth={dataViewportWidth}
-            dataAreaWidth={dataAreaWidth}
-            viewportWidth={viewportWidth}
-            scrollbarReserve={scrollbarReserve}
-            headerInnerRef={headerInnerRef}
-            selectRange={selectRange}
-            selectedBounds={selectedBounds}
-            handleColumnSort={handleColumnSort}
-            sortState={sortState}
-            enableColumnReorder={enableColumnReorder}
-            handleHeaderDragStart={handleHeaderDragStart}
-            registerHeaderCell={registerHeaderCell}
-            handleResizeMouseDown={handleResizeMouseDown}
-            handleResizeDoubleClick={handleResizeDoubleClick}
-            isAllRowsSelected={isAllRowsSelected}
-            handleSelectAllChange={handleSelectAllChange}
-            selectAllCheckboxRef={selectAllCheckboxRef}
-            visibleIndices={visibleIndices}
-          />
-        )}
+    <HeaderVirtualizationProvider>
+      <div className={containerClassName}>
+        <div className="basic-grid-wrapper" ref={gridRef}>
+          {columnPositions.length > 0 && levelCount > 0 && (
+            <GridHeader
+              columnPositions={columnPositions}
+              columnWidths={columnWidths}
+              headerCells={headerCells}
+              orderedColumns={orderedColumns as any}
+              levelCount={levelCount}
+              headerRowHeight={headerRowHeight}
+              markerWidth={markerWidth}
+              showRowMarkers={showRowMarkers}
+              dataViewportWidth={dataViewportWidth}
+              dataAreaWidth={dataAreaWidth}
+              viewportWidth={viewportWidth}
+              scrollbarReserve={scrollbarReserve}
+              headerInnerRef={headerInnerRef}
+              selectRange={selectRange}
+              selectedBounds={selectedBounds}
+              handleColumnSort={handleColumnSort}
+              sortState={sortState}
+              enableColumnReorder={enableColumnReorder}
+              handleHeaderDragStart={handleHeaderDragStart}
+              registerHeaderCell={registerHeaderCell}
+              handleResizeMouseDown={handleResizeMouseDown}
+              handleResizeDoubleClick={handleResizeDoubleClick}
+              isAllRowsSelected={isAllRowsSelected}
+              handleSelectAllChange={handleSelectAllChange}
+              selectAllCheckboxRef={selectAllCheckboxRef}
+            />
+          )}
 
         <div
           className="basic-grid-body"
           ref={gridBodyRef}
           style={overlayPaddingBottom > 0 ? { paddingBottom: overlayPaddingBottom } : undefined}
         >
-          <DataEditor
+          <DataEditorWithVirtualization
             ref={dataEditorRef}
             getCellContent={getCellContent}
-            columns={orderedColumns.map((column, index) => ({
-              title: column.title,
-              width: columnWidths[index] ?? column.baseWidth,
-            }))}
-            rows={gridRows.length}
+            columns={dataEditorColumns}
+            rows={gridRows.length + (summaryRows?.length ?? 0)}
+            freezeTrailingRows={summaryRows?.length ?? 0}
             width={viewportWidth}
             height={height}
             theme={gridTheme}
@@ -542,6 +571,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </HeaderVirtualizationProvider>
   )
 }

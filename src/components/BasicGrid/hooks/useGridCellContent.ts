@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
 
 import { createSelectCell } from '../customCells/selectCell'
@@ -23,6 +23,7 @@ interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   editable: boolean
   decorateCell: (cell: GridCell, columnId: string | undefined, rowIndex: number) => GridCell
   selectionColumnId: string
+  summaryRows?: RowType[]
 }
 
 export function useGridCellContent<RowType extends Record<string, unknown>>({
@@ -34,12 +35,37 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
   editable,
   decorateCell,
   selectionColumnId,
+  summaryRows,
 }: UseGridCellContentParams<RowType>) {
+  // Cache for button/canvas cell handlers to avoid recreation
+  const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, any>>(), [])
+
+  const getCachedHandler = useCallback(
+    (row: RowType, handlerKey: string, handlerFactory: () => any) => {
+      let rowCache = cellHandlerCache.get(row)
+      if (!rowCache) {
+        rowCache = new Map()
+        cellHandlerCache.set(row, rowCache)
+      }
+
+      if (!rowCache.has(handlerKey)) {
+        rowCache.set(handlerKey, handlerFactory())
+      }
+
+      return rowCache.get(handlerKey)
+    },
+    [cellHandlerCache]
+  )
+
   return useCallback(
     (cell: Item): GridCell => {
       const [col, row] = cell
       const column = orderedColumns[col]
-      const dataRow = gridRows[row]
+
+      const isSummaryRow = row >= gridRows.length
+      const dataRow = isSummaryRow && summaryRows
+        ? summaryRows[row - gridRows.length]
+        : gridRows[row]
 
       if (!column || !dataRow) {
         return EMPTY_TEXT_CELL
@@ -69,6 +95,18 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       const cellState = new GridCellState(column, dataRow)
       const baseCell = cellState.toGridCell()
 
+      if (isSummaryRow) {
+        return {
+          ...baseCell,
+          themeOverride: {
+            textDark: '#2c3e50',
+            baseFontStyle: '600 13px',
+            bgCell: '#f8f9fa',
+          },
+          readonly: true,
+        } as GridCell
+      }
+
       if (column.isSelect() && editable) {
         const options = column.getSelectOptions(dataRow)
         if (options && options.length > 0) {
@@ -89,30 +127,32 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
             typeof buttonOptions.disabled === 'function'
               ? buttonOptions.disabled(dataRow)
               : buttonOptions.disabled ?? false
+
+          // Cache handlers to avoid recreation
           const onClick = buttonOptions.onClick
-            ? () => {
-                buttonOptions.onClick?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `button-click-${col}`, () =>
+              () => buttonOptions.onClick?.(dataRow, row)
+            )
             : undefined
           const onMouseEnter = buttonOptions.onMouseEnter
-            ? () => {
-                buttonOptions.onMouseEnter?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `button-mouseenter-${col}`, () =>
+              () => buttonOptions.onMouseEnter?.(dataRow, row)
+            )
             : undefined
           const onMouseLeave = buttonOptions.onMouseLeave
-            ? () => {
-                buttonOptions.onMouseLeave?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `button-mouseleave-${col}`, () =>
+              () => buttonOptions.onMouseLeave?.(dataRow, row)
+            )
             : undefined
           const onMouseDown = buttonOptions.onMouseDown
-            ? () => {
-                buttonOptions.onMouseDown?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `button-mousedown-${col}`, () =>
+              () => buttonOptions.onMouseDown?.(dataRow, row)
+            )
             : undefined
           const onMouseUp = buttonOptions.onMouseUp
-            ? () => {
-                buttonOptions.onMouseUp?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `button-mouseup-${col}`, () =>
+              () => buttonOptions.onMouseUp?.(dataRow, row)
+            )
             : undefined
 
           const buttonCell = createButtonCell(label, onClick, buttonOptions.variant ?? 'primary', disabled)
@@ -132,23 +172,25 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           const render = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; width: number; height: number }, theme: any, hoverX: number | undefined, hoverY: number | undefined) => {
             return canvasOptions.render(ctx, rect, theme, hoverX, hoverY, dataRow, row)
           }
-          
+
           const onClick = canvasOptions.onClick
-            ? (x: number, y: number, rect: { x: number; y: number; width: number; height: number }, renderData?: any) => {
+            ? getCachedHandler(dataRow, `canvas-click-${col}`, () =>
+              (x: number, y: number, rect: { x: number; y: number; width: number; height: number }, renderData?: any) => {
                 return canvasOptions.onClick?.(x, y, rect, dataRow, row, renderData) ?? false
               }
+            )
             : undefined
-          
+
           const onMouseEnter = canvasOptions.onMouseEnter
-            ? () => {
-                canvasOptions.onMouseEnter?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `canvas-mouseenter-${col}`, () =>
+              () => canvasOptions.onMouseEnter?.(dataRow, row)
+            )
             : undefined
-          
+
           const onMouseLeave = canvasOptions.onMouseLeave
-            ? () => {
-                canvasOptions.onMouseLeave?.(dataRow, row)
-              }
+            ? getCachedHandler(dataRow, `canvas-mouseleave-${col}`, () =>
+              () => canvasOptions.onMouseLeave?.(dataRow, row)
+            )
             : undefined
 
           const copyData = typeof canvasOptions.copyData === 'function'
@@ -189,12 +231,14 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
     [
       decorateCell,
       editable,
+      getCachedHandler,
       getRowSelectable,
       getSelectionStateForRow,
       gridRows,
       orderedColumns,
       rowSelectionEnabled,
       selectionColumnId,
+      summaryRows,
     ]
   )
 }

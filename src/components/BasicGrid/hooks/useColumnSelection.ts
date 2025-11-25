@@ -55,16 +55,24 @@ export function useColumnSelection(rowCount: number, columnCount: number) {
       return undefined
     }
     const { start, length } = selection
-    return Array.from({ length }, (_, offset) => ({
-      color: COLUMN_HIGHLIGHT_COLOR,
-      range: {
-        x: start + offset,
-        y: 0,
-        width: 1,
-        height: rowCount,
-      },
-      style: 'solid-outline',
-    }))
+
+    // Pre-allocate array for better performance
+    const regions: Highlight[] = new Array(length)
+
+    for (let offset = 0; offset < length; offset++) {
+      regions[offset] = {
+        color: COLUMN_HIGHLIGHT_COLOR,
+        range: {
+          x: start + offset,
+          y: 0,
+          width: 1,
+          height: rowCount,
+        },
+        style: 'solid-outline',
+      }
+    }
+
+    return regions
   }, [rowCount, selection])
 
   const clearSelection = useCallback(() => {

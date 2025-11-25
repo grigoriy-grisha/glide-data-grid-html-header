@@ -61,7 +61,7 @@
 .basic-grid-header-row-marker {
   background: #f3f6fc;
   border-right: 1px solid #e0e0e0;
-  width: 48px !important;
+  width: 47px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -142,6 +142,8 @@
   position: relative;
   height: 100%;
   will-change: transform;
+
+
 }
 
 .basic-grid-header-level {
@@ -168,6 +170,9 @@
   text-overflow: ellipsis;
   padding: 0 8px;
   transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+
+  /* GPU acceleration - transform is faster than left/top */
+  will-change: transform;
 }
 
 .basic-grid-header-cell--clickable {
@@ -427,6 +432,7 @@
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -538,4 +544,3 @@
 .basic-grid-header-cell--drop-after::after {
   right: 2px;
 }
-

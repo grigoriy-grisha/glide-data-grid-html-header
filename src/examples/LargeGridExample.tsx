@@ -23,7 +23,7 @@ class FastRandom {
 }
 
 // Константы для генерации данных
-const COL_COUNT_TARGET = 16000
+const COL_COUNT_TARGET = 1500
 const COLS_PER_REGION = 12 // 3 leaf * 2 states * 2 countries
 const REGIONS_COUNT = Math.ceil(COL_COUNT_TARGET / COLS_PER_REGION)
 const TOTAL_COLS = REGIONS_COUNT * COLS_PER_REGION
@@ -109,7 +109,39 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
   })
 }
 
-// Генерация колонок с 4 уровнями вложенности
+// SVG иконки для разных типов данных
+const PopulationIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+  </svg>
+)
+
+const GDPIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor" />
+  </svg>
+)
+
+const AreaIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+    <path d="M20 6.83V20H6.83L4 17.17V4h13.17L20 6.83zM6 18h12V8.83L16.17 7H6v11z" fill="currentColor" />
+    <path d="M9 9h6v6H9z" fill="currentColor" opacity="0.5" />
+  </svg>
+)
+
+const GlobeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '6px' }}>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor" />
+  </svg>
+)
+
+const MapIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '6px' }}>
+    <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" fill="currentColor" />
+  </svg>
+)
+
+// Генерация колонок с 4 уровнями вложенности и сложными заголовками
 const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
   const startTime = performance.now()
   const columns: BasicGridColumn<LargeDataRow>[] = []
@@ -125,44 +157,183 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
   console.log(`🚀 Начало генерации ${TOTAL_COLS.toLocaleString()} колонок с 4 уровнями вложенности...`)
 
+  const regionNames = ['North America', 'Europe', 'Asia', 'South America', 'Africa', 'Oceania']
+  const countryPairs = [
+    ['USA', 'Canada'],
+    ['Germany', 'France'],
+    ['China', 'Japan'],
+    ['Brazil', 'Argentina'],
+    ['Nigeria', 'Egypt'],
+    ['Australia', 'New Zealand']
+  ]
+  const statePairs = [
+    ['California', 'Texas'],
+    ['Bavaria', 'Île-de-France'],
+    ['Beijing', 'Tokyo'],
+    ['São Paulo', 'Buenos Aires'],
+    ['Lagos', 'Cairo'],
+    ['New South Wales', 'Auckland']
+  ]
+
   for (let r = 0; r < REGIONS_COUNT; r++) {
     const regionCountries: BasicGridColumn<LargeDataRow>[] = []
+    const regionName = regionNames[r % regionNames.length]
+    const regionColor = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#0097a7'][r % 6]
 
     for (let c = 0; c < 2; c++) {
       const countryStates: BasicGridColumn<LargeDataRow>[] = []
+      const countryName = countryPairs[r % countryPairs.length][c]
+      const countryColor = c === 0 ? '#1e88e5' : '#43a047'
 
       for (let s = 0; s < 2; s++) {
         const stateCities: BasicGridColumn<LargeDataRow>[] = []
+        const stateName = statePairs[r % statePairs.length][s]
 
         // 3 Leaf columns: Pop, GDP, Area
-        const leafTypes = ['Pop', 'GDP', 'Area']
+        const leafTypes = [
+          {
+            key: 'Pop',
+            icon: <PopulationIcon />,
+            color: '#e91e63',
+            bgColor: '#fce4ec'
+          },
+          {
+            key: 'GDP',
+            icon: <GDPIcon />,
+            color: '#4caf50',
+            bgColor: '#e8f5e9'
+          },
+          {
+            key: 'Area',
+            icon: <AreaIcon />,
+            color: '#ff9800',
+            bgColor: '#fff3e0'
+          }
+        ]
+
         for (let l = 0; l < 3; l++) {
           const colKey = `col_${globalColIndex}`
-          const title = leafTypes[l]
+          const leafType = leafTypes[l]
 
           stateCities.push(
-            createColumn<LargeDataRow>(colKey, 'string', title, {
-              width: 60, // Compact width
+            createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
+              width: 90,
               sortable: true,
+              headerContent: (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: leafType.bgColor,
+                  color: leafType.color,
+                  fontWeight: '600',
+                  fontSize: '11px',
+                  height: '100%'
+                }}>
+                  {leafType.icon}
+                  <span>{leafType.key}</span>
+                </div>
+              )
             })
           )
           globalColIndex++
         }
 
         countryStates.push({
-          title: `State ${r}-${c}-${s}`,
+          title: stateName,
+          headerContent: (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              fontWeight: '600',
+              fontSize: '12px'
+            }}>
+              <MapIcon />
+              <span>{stateName}</span>
+              <span style={{
+                backgroundColor: '#2196f3',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '10px',
+                fontSize: '9px',
+                fontWeight: 'bold',
+                marginLeft: '4px'
+              }}>
+                {s + 1}
+              </span>
+            </div>
+          ),
           children: stateCities
         })
       }
 
       regionCountries.push({
-        title: `Country ${r}-${c}`,
+        title: countryName,
+        headerContent: (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            fontWeight: 'bold',
+            fontSize: '13px',
+            color: countryColor
+          }}>
+            <GlobeIcon />
+            <span>{countryName}</span>
+            <span style={{
+              backgroundColor: countryColor,
+              color: 'white',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '10px',
+              fontWeight: 'bold'
+            }}>
+              {c === 0 ? 'A' : 'B'}
+            </span>
+          </div>
+        ),
         children: countryStates
       })
     }
 
     columns.push({
-      title: `Region ${r}`,
+      title: regionName,
+      headerContent: (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          fontWeight: 'bold',
+          fontSize: '14px',
+          color: 'white',
+          backgroundColor: regionColor,
+          height: '100%',
+          borderRadius: '4px',
+          padding: '0 12px'
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="white" />
+          </svg>
+          <span>{regionName}</span>
+          <span style={{
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            padding: '3px 10px',
+            borderRadius: '14px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            border: '1px solid rgba(255,255,255,0.5)'
+          }}>
+            R{r + 1}
+          </span>
+        </div>
+      ),
       children: regionCountries
     })
   }
@@ -294,6 +465,7 @@ export function LargeGridExample() {
         headerRowHeight={54}
         getRowId={(row) => row.id}
         enableColumnReorder={true}
+        stickyHeader={false}
         onSortChange={(model) => {
           if (model) {
             alert(`Сортировка по колонке: ${model.columnId}, направление: ${model.direction}`)

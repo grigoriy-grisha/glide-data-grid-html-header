@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
@@ -61,13 +62,62 @@ const columns: BasicGridColumn<DataRow>[] = [
 ]
 
 export function BasicGridExample() {
+  const rows = useMemo(() => {
+    const extraRows: DataRow[] = Array.from({ length: 100 }).map((_, i) => {
+      const id = i + 100
+      return {
+        employeeId: `EMP-${id}`,
+        firstName: `Сотрудник`,
+        lastName: `${id}`,
+        name: `Сотрудник ${id}`,
+        age: 20 + (i % 40),
+        role: i % 3 === 0 ? 'Developer' : i % 3 === 1 ? 'Manager' : 'Designer',
+        department: i % 2 === 0 ? 'Разработка' : 'Дизайн',
+        salary: 100000 + (i * 1000),
+        city: 'Москва',
+        email: `employee${id}@example.com`,
+        contact: { email: `employee${id}@example.com`, phone: '+7 000 000 00 00' },
+        address: { street1: 'Улица', city: 'Москва', state: 'Москва', country: 'Россия' },
+        status: { name: 'Активен', options: [] },
+        progress: i % 100,
+      }
+    })
+    return [...basicGridRows, ...extraRows]
+  }, [])
+
+  const summaryRows = useMemo(() => {
+    const totalSalary = rows.reduce((sum, row) => {
+      return sum + (typeof row.salary === 'number' ? row.salary : 0)
+    }, 0)
+
+    const summaryRow: DataRow = {
+      employeeId: 'total',
+      firstName: 'Итого',
+      lastName: '',
+      name: 'Итого',
+      age: 0,
+      role: '',
+      department: '',
+      salary: totalSalary,
+      city: '',
+      email: '',
+      contact: { email: '', phone: '' },
+      address: { street1: '', city: '', state: '', country: '' },
+      status: { name: '', options: [] },
+      progress: 0,
+    }
+
+    return [summaryRow]
+  }, [rows])
+
   return (
     <div className="data-grid-section">
       <h2 className="section-title">Basic Grid</h2>
       <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
       <BasicGrid<DataRow>
         columns={columns}
-        rows={basicGridRows}
+        rows={rows}
+        summaryRows={summaryRows}
         height={420}
         headerRowHeight={54}
         enableColumnReorder={true}

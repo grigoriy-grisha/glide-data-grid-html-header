@@ -103,6 +103,7 @@ export interface GridSortModel {
 export interface BasicGridProps<RowType = Record<string, unknown>> {
   columns: BasicGridColumn<RowType>[]
   rows: RowType[]
+  summaryRows?: RowType[]
   height?: number
   headerRowHeight?: number
   rowHeight?: number | ((row: RowType, rowIndex: number) => number)

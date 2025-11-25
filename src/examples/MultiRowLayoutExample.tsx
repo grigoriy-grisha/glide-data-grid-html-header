@@ -76,8 +76,8 @@ export function MultiRowLayoutExample() {
       title: 'Сотрудник',
       headerContent: <HeaderCard icon="👤" iconTone="blue" title="Сотрудник" subtitle="Основная информация" compact />,
       children: [
-        createColumn<DataRow>('employeeId', 'string', 'ID', { width: 120 }),
-        createColumn<DataRow>('email', 'string', 'Email', { width: 260 }),
+        createColumn<DataRow>('employeeId', 'string', 'ID', {grow: 1}),
+        createColumn<DataRow>('email', 'string', 'Email', {grow: 1}),
       ],
     },
     {
@@ -85,9 +85,8 @@ export function MultiRowLayoutExample() {
       headerContent: <HeaderCard icon="📄" iconTone="purple" title="Многострочная компоновка" subtitle="Несколько рядов" compact />,
       children: [
         createColumn<DataRow>('actions', 'canvas', 'Полная карточка', {
-          width: 400,
-          grow: 1,
-          sortable: false,
+          sortable: false, 
+          grow:1,
           canvasOptions: {
             render: (ctx, rect, theme, hoverX, hoverY, row) => {
               const dataRow = row as DataRow

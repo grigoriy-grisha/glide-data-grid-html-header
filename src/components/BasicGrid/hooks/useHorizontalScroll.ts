@@ -43,8 +43,7 @@ export function useHorizontalScroll({
     (value: number) => {
       const clampedValue = clampScrollLeft(value)
       scrollLeftRef.current = clampedValue
-      
-      // Применяем напрямую к DOM без перерендера React
+
       if (headerElementRef.current) {
         headerElementRef.current.style.transform = `translateX(-${clampedValue}px)`
       }
@@ -76,7 +75,6 @@ export function useHorizontalScroll({
     [applyScrollLeftToDOM, getScrollLeftFromRegion]
   )
 
-  // Инициализируем начальное значение скролла при монтировании
   useLayoutEffect(() => {
     if (headerElementRef.current && scrollLeftRef.current === 0) {
       headerElementRef.current.style.transform = 'translateX(0px)'
@@ -85,4 +83,3 @@ export function useHorizontalScroll({
 
   return { handleVisibleRegionChanged, viewportWidth, dataViewportWidth }
 }
-
