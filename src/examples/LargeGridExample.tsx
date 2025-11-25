@@ -23,7 +23,7 @@ class FastRandom {
 }
 
 // Константы для генерации данных
-const COL_COUNT_TARGET = 1500
+const COL_COUNT_TARGET = 16000
 const COLS_PER_REGION = 12 // 3 leaf * 2 states * 2 countries
 const REGIONS_COUNT = Math.ceil(COL_COUNT_TARGET / COLS_PER_REGION)
 const TOTAL_COLS = REGIONS_COUNT * COLS_PER_REGION
