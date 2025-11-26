@@ -2,16 +2,9 @@ import React, { useCallback, useMemo } from 'react'
 
 import type { GridHeaderCell } from '../models/GridHeaderCell'
 import type { GridColumn } from '../models/GridColumn'
-import type { SortDirection } from '../types'
 import { HeaderCell } from './HeaderCell'
 import { useHeaderVirtualization } from '../context/HeaderVirtualizationContext'
-
-type SortState = { columnId: string; direction: SortDirection } | null
-
-interface SelectedBounds {
-  start: number
-  end: number
-}
+import type { SortState, SelectedBounds } from './headerTypes'
 
 interface GridHeaderProps<RowType extends Record<string, unknown>> {
   columnPositions: number[]

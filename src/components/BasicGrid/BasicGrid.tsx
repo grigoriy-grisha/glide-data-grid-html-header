@@ -21,6 +21,7 @@ import {
   SELECTION_COLUMN_ID,
 } from './constants'
 import { GridHeader } from './components/GridHeader'
+import { CanvasHeader } from './components/CanvasHeader'
 import { useContainerWidth } from './hooks/useContainerWidth'
 import { useNormalizedColumnsData } from './hooks/useNormalizedColumnsData'
 import { useColumnMetrics } from './hooks/useColumnMetrics'
@@ -100,6 +101,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const overlayRef = useRef<HTMLDivElement>(null)
   const dataEditorRef = useRef<DataEditorRef>(null)
   const headerInnerRef = useRef<HTMLDivElement>(null)
+  const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
 
   const scrollbarReserve = useMemo(() => {
@@ -224,12 +226,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     orderedColumns.length
   )
   const { selectRange, selectedBounds, highlightRegions, clearSelection } = columnSelection
-  const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth } = useHorizontalScroll({
+  const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth, scrollLeft } = useHorizontalScroll({
     dataAreaWidth,
     rowMarkerWidth: markerWidth,
     containerWidth,
     columnPositions,
     headerElementRef: headerInnerRef,
+    canvasHeaderRef,
   })
 
 
@@ -506,33 +509,48 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       <div className={containerClassName}>
         <div className="basic-grid-wrapper" ref={gridRef}>
           {columnPositions.length > 0 && levelCount > 0 && (
-            <GridHeader
-              columnPositions={columnPositions}
-              columnWidths={columnWidths}
-              headerCells={headerCells}
-              orderedColumns={orderedColumns as any}
-              levelCount={levelCount}
-              headerRowHeight={headerRowHeight}
-              markerWidth={markerWidth}
-              showRowMarkers={showRowMarkers}
-              dataViewportWidth={dataViewportWidth}
-              dataAreaWidth={dataAreaWidth}
-              viewportWidth={viewportWidth}
-              scrollbarReserve={scrollbarReserve}
-              headerInnerRef={headerInnerRef}
-              selectRange={selectRange}
-              selectedBounds={selectedBounds}
-              handleColumnSort={handleColumnSort}
-              sortState={sortState}
-              enableColumnReorder={enableColumnReorder}
-              handleHeaderDragStart={handleHeaderDragStart}
-              registerHeaderCell={registerHeaderCell}
-              handleResizeMouseDown={handleResizeMouseDown}
-              handleResizeDoubleClick={handleResizeDoubleClick}
-              isAllRowsSelected={isAllRowsSelected}
-              handleSelectAllChange={handleSelectAllChange}
-              selectAllCheckboxRef={selectAllCheckboxRef}
-            />
+            <>
+              <GridHeader
+                columnPositions={columnPositions}
+                columnWidths={columnWidths}
+                headerCells={headerCells}
+                orderedColumns={orderedColumns as any}
+                levelCount={levelCount}
+                headerRowHeight={headerRowHeight}
+                markerWidth={markerWidth}
+                showRowMarkers={showRowMarkers}
+                dataViewportWidth={dataViewportWidth}
+                dataAreaWidth={dataAreaWidth}
+                viewportWidth={viewportWidth}
+                scrollbarReserve={scrollbarReserve}
+                headerInnerRef={headerInnerRef}
+                selectRange={selectRange}
+                selectedBounds={selectedBounds}
+                handleColumnSort={handleColumnSort}
+                sortState={sortState}
+                enableColumnReorder={enableColumnReorder}
+                handleHeaderDragStart={handleHeaderDragStart}
+                registerHeaderCell={registerHeaderCell}
+                handleResizeMouseDown={handleResizeMouseDown}
+                handleResizeDoubleClick={handleResizeDoubleClick}
+                isAllRowsSelected={isAllRowsSelected}
+                handleSelectAllChange={handleSelectAllChange}
+                selectAllCheckboxRef={selectAllCheckboxRef}
+              />
+              <CanvasHeader
+                width={dataViewportWidth}
+                height={levelCount * headerRowHeight}
+                headerCells={headerCells}
+                columnPositions={columnPositions}
+                columnWidths={columnWidths}
+                levelCount={levelCount}
+                headerRowHeight={headerRowHeight}
+                markerWidth={markerWidth}
+                showRowMarkers={showRowMarkers}
+                scrollLeft={scrollLeft}
+                canvasHeaderRef={canvasHeaderRef}
+              />
+            </>
           )}
 
         <div

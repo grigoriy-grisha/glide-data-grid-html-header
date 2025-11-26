@@ -2,14 +2,9 @@ import React, { useCallback, useMemo } from 'react'
 import { memoizeOne } from '../utils/memoizeOne'
 import type { GridHeaderCell } from '../models/GridHeaderCell'
 import type { GridColumn } from '../models/GridColumn'
-import type { SortDirection } from '../types'
 import { SELECTION_COLUMN_ID } from '../constants'
-
-type SortState = { columnId: string; direction: SortDirection } | null
-
-const HEADER_COLORS = ['#e3f2fd', '#f5f5f5', '#fafafa']
-const HEADER_TEXT_COLORS = ['#1565c0', '#333333', '#666666']
-const HEADER_FONT_SIZES = [14, 13, 12]
+import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from './headerConstants'
+import type { SortState } from './headerTypes'
 
 const getCellStyle = memoizeOne(
     (
@@ -89,10 +84,10 @@ export const HeaderCellComponent = function HeaderCell<RowType extends Record<st
     const cellMetadata = useMemo(() => {
         const startX = columnPositions[cell.startIndex] ?? 0
         const totalWidth = cell.getSpanWidth(columnWidths)
-        const bgColor = HEADER_COLORS[cell.level] ?? HEADER_COLORS[HEADER_COLORS.length - 1]
-        const textColor = HEADER_TEXT_COLORS[cell.level] ?? HEADER_TEXT_COLORS[HEADER_TEXT_COLORS.length - 1]
-        const fontSize = HEADER_FONT_SIZES[cell.level] ?? HEADER_FONT_SIZES[HEADER_FONT_SIZES.length - 1]
-        const fontWeight = cell.level <= 1 ? 'bold' : 'normal'
+        const bgColor = getHeaderColor(cell.level)
+        const textColor = getHeaderTextColor(cell.level)
+        const fontSize = getHeaderFontSize(cell.level)
+        const fontWeight = getHeaderFontWeight(cell.level)
         const columnIndex = cell.columnIndex
         const resolvedColumnIndex = columnIndex ?? -1
         const targetColumn = resolvedColumnIndex >= 0 ? orderedColumns[resolvedColumnIndex] : undefined
@@ -150,7 +145,7 @@ export const HeaderCellComponent = function HeaderCell<RowType extends Record<st
 
     const cellClasses = getCellClasses(
         cellMetadata.isSelectable,
-        cellMetadata.isSorted,
+        Boolean(cellMetadata.isSorted),
         Boolean(isCellSelected),
         cellMetadata.isReorderable
     )

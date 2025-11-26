@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import type { Rectangle } from '@glideapps/glide-data-grid'
 
@@ -8,6 +8,7 @@ interface HorizontalScrollOptions {
   containerWidth: number
   columnPositions: number[]
   headerElementRef: React.RefObject<HTMLDivElement>
+  canvasHeaderRef?: React.RefObject<HTMLCanvasElement>
 }
 
 export function useHorizontalScroll({
@@ -16,8 +17,10 @@ export function useHorizontalScroll({
   containerWidth,
   columnPositions,
   headerElementRef,
+  canvasHeaderRef,
 }: HorizontalScrollOptions) {
   const scrollLeftRef = useRef(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
 
   const viewportWidth = useMemo(() => {
     return Math.max(rowMarkerWidth + 260, Math.min(rowMarkerWidth + dataAreaWidth, containerWidth))
@@ -43,12 +46,17 @@ export function useHorizontalScroll({
     (value: number) => {
       const clampedValue = clampScrollLeft(value)
       scrollLeftRef.current = clampedValue
+      setScrollLeft(clampedValue)
 
       if (headerElementRef.current) {
         headerElementRef.current.style.transform = `translateX(-${clampedValue}px)`
       }
+
+      // if (canvasHeaderRef?.current) {
+      //   canvasHeaderRef.current.style.transform = `translateX(-${clampedValue}px)`
+      // }
     },
-    [clampScrollLeft, headerElementRef]
+    [clampScrollLeft, headerElementRef, canvasHeaderRef]
   )
 
   const getScrollLeftFromRegion = useCallback(
@@ -79,7 +87,10 @@ export function useHorizontalScroll({
     if (headerElementRef.current && scrollLeftRef.current === 0) {
       headerElementRef.current.style.transform = 'translateX(0px)'
     }
-  }, [headerElementRef])
+    if (canvasHeaderRef?.current && scrollLeftRef.current === 0) {
+      canvasHeaderRef.current.style.transform = 'translateX(0px)'
+    }
+  }, [headerElementRef, canvasHeaderRef])
 
-  return { handleVisibleRegionChanged, viewportWidth, dataViewportWidth }
+  return { handleVisibleRegionChanged, viewportWidth, dataViewportWidth, scrollLeft }
 }
