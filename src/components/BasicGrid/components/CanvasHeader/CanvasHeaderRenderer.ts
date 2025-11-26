@@ -10,6 +10,7 @@ import {
   HEADER_BACKGROUND_COLOR,
   HEADER_TEXT_PADDING,
 } from '../headerConstants'
+import { SELECTION_COLUMN_ID } from '../../constants'
 import type { GridHeaderCell } from '../../models/GridHeaderCell'
 
 export interface HeaderCellRect {
@@ -33,6 +34,8 @@ export interface HeaderRenderContext {
   scrollLeft: number
   mousePosition: { x: number; y: number } | null
   theme: any
+  handleResizeMouseDown?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
+  handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
 }
 
 export interface ClickableArea {
@@ -40,10 +43,17 @@ export interface ClickableArea {
   onClick: () => void
 }
 
+export interface ResizeArea {
+  rect: { x: number; y: number; width: number; height: number }
+  columnIndex: number
+  span: number
+}
+
 export class CanvasHeaderRenderer {
   private ctx: CanvasRenderingContext2D | null = null
   private shapes: CanvasShapes = new CanvasShapes()
   private clickableAreas: ClickableArea[] = []
+  private resizeAreas: ResizeArea[] = []
   private onRerenderRequested: (() => void) | null = null
 
   setContext(ctx: CanvasRenderingContext2D | null): void {
@@ -57,6 +67,25 @@ export class CanvasHeaderRenderer {
 
   getClickableAreas(): ClickableArea[] {
     return this.clickableAreas
+  }
+
+  getResizeAreaAt(x: number, y: number): ResizeArea | null {
+    for (const area of this.resizeAreas) {
+      const { rect } = area
+      if (
+        x >= rect.x &&
+        x < rect.x + rect.width &&
+        y >= rect.y &&
+        y < rect.y + rect.height
+      ) {
+        return area
+      }
+    }
+    return null
+  }
+
+  getResizeAreas(): ResizeArea[] {
+    return this.resizeAreas
   }
 
   // Устанавливает колбэк для запроса перерисовки
@@ -84,6 +113,7 @@ export class CanvasHeaderRenderer {
 
     this.ctx.clearRect(0, 0, rect.width, rect.height)
     this.clickableAreas = [] // Сбрасываем кликабельные области
+    this.resizeAreas = [] // Сбрасываем области для изменения размера
 
     this.shapes.drawRect(rect, {
       fillColor: HEADER_BACKGROUND_COLOR,
@@ -170,10 +200,31 @@ export class CanvasHeaderRenderer {
     const finalBgColor = isHovered ? hoverBgColor : bgColor
     this.drawCellBorders(clippedX, levelY, clippedWidth, cellHeight, cell, columnPositions, scrollLeft, finalBgColor)
 
+    // Определяем, можно ли изменять размер колонки
+    const column = cell.columnIndex !== undefined ? context.orderedColumns[cell.columnIndex] : undefined
+    const isSelectionColumn = column?.id === SELECTION_COLUMN_ID
+    const resizeStartIndex = cell.isLeaf ? (cell.columnIndex ?? -1) : cell.startIndex
+    const resizeSpan = Math.max(1, cell.colSpan)
+    const canResizeCell = resizeStartIndex != null && resizeStartIndex >= 0 && resizeSpan > 0 && !isSelectionColumn && cell.isLeaf
+
+    // Рисуем resize handle если можно изменять размер
+    if (canResizeCell && clippedX + clippedWidth > 0 && clippedX < viewportWidth) {
+      this.drawResizeHandle(
+        clippedX,
+        clippedWidth,
+        levelY,
+        cellHeight,
+        resizeStartIndex,
+        resizeSpan,
+        adjustedMousePosition,
+        absoluteX,
+        totalWidth
+      )
+    }
+
     // Текст рисуем только если ячейка видна
     if (clippedX < viewportWidth && clippedX + clippedWidth > 0) {
       // Проверяем, есть ли renderColumnContent для этой колонки
-      const column = cell.columnIndex !== undefined ? context.orderedColumns[cell.columnIndex] : undefined
       const renderColumnContent = column?.getRenderColumnContent()
       
       if (renderColumnContent && cell.isLeaf && this.ctx) {
@@ -237,6 +288,76 @@ export class CanvasHeaderRenderer {
         textElement.draw()
       }
     }
+  }
+
+  private drawResizeHandle(
+    clippedX: number,
+    clippedWidth: number,
+    levelY: number,
+    cellHeight: number,
+    columnIndex: number,
+    span: number,
+    mousePosition: { x: number; y: number } | null,
+    absoluteX: number,
+    totalWidth: number
+  ): void {
+    if (!this.ctx) {
+      return
+    }
+
+    const RESIZE_HANDLE_WIDTH = 8
+    const handleX = clippedX + clippedWidth - RESIZE_HANDLE_WIDTH / 2
+    const handleWidth = RESIZE_HANDLE_WIDTH
+    const handleHeight = cellHeight
+    const handleY = levelY
+
+    // Проверяем, видим ли мы handle (может быть обрезан)
+    const dpr = window.devicePixelRatio || 1
+    const viewportWidth = Math.round(this.ctx.canvas.width / dpr)
+    if (handleX + handleWidth / 2 < 0 || handleX - handleWidth / 2 > viewportWidth) {
+      return
+    }
+
+    // Определяем, наведен ли курсор на resize handle
+    // mousePosition использует координаты относительно viewport (уже вычтено scrollLeft)
+    // handleX также относительно viewport (clippedX)
+    const isResizeHovered = mousePosition && (
+      mousePosition.x >= handleX - handleWidth / 2 &&
+      mousePosition.x < handleX + handleWidth / 2 &&
+      mousePosition.y >= handleY &&
+      mousePosition.y < handleY + handleHeight
+    )
+
+    // Рисуем линию resize handle только при hover
+    if (isResizeHovered) {
+      const lineX = Math.round(clippedX + clippedWidth - 0.5)
+      const lineTop = Math.round(handleY + handleHeight * 0.25)
+      const lineBottom = Math.round(handleY + handleHeight * 0.75)
+
+      this.ctx.save()
+      this.ctx.strokeStyle = 'rgba(21, 101, 192, 0.4)'
+      this.ctx.lineWidth = 2
+      this.ctx.beginPath()
+      this.ctx.moveTo(lineX, lineTop)
+      this.ctx.lineTo(lineX, lineBottom)
+      this.ctx.stroke()
+      this.ctx.restore()
+    }
+
+    // Сохраняем область resize handle для обработки событий
+    // Используем абсолютные координаты (absoluteX + totalWidth - это правая граница ячейки)
+    const absoluteHandleX = absoluteX + totalWidth - RESIZE_HANDLE_WIDTH / 2
+    
+    this.resizeAreas.push({
+      rect: {
+        x: absoluteHandleX - handleWidth / 2,
+        y: handleY,
+        width: handleWidth,
+        height: handleHeight,
+      },
+      columnIndex,
+      span,
+    })
   }
 
   private drawCellBorders(

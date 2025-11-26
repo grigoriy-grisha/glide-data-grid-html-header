@@ -18,6 +18,11 @@ interface CanvasHeaderProps {
   showRowMarkers?: boolean
   scrollLeft?: number
   canvasHeaderRef?: React.RefObject<HTMLCanvasElement>
+  handleResizeMouseDown?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
+  handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
+  getColumnWidth?: (columnIndex: number) => number
+  setColumnWidths?: (updates: Array<{ columnId: string; width: number }>) => void
+  onVirtualResizeChange?: (x: number | null, columnIndex: number | null) => void
 }
 
 export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
@@ -33,6 +38,11 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   showRowMarkers = false,
   scrollLeft = 0,
   canvasHeaderRef,
+  handleResizeMouseDown,
+  handleResizeDoubleClick,
+  getColumnWidth,
+  setColumnWidths,
+  onVirtualResizeChange,
 }) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
   const canvasRef = canvasHeaderRef || internalCanvasRef
@@ -42,6 +52,18 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   const mousePositionRef = useRef<{ x: number; y: number } | null>(null)
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const { visibleIndices } = useHeaderVirtualization()
+  
+  // Состояние для виртуального resize
+  const virtualResizeRef = useRef<{
+    columnIndex: number
+    span: number
+    startX: number
+    startWidths: number[]
+    columnRange: Array<{ columnId: string; columnIndex: number; minWidth: number }>
+    minTotalWidth: number
+    virtualX: number | null
+  } | null>(null)
+  const resizeStartXRef = useRef<number | null>(null)
 
   // Фильтруем видимые ячейки для виртуализации
   const visibleCells = useMemo(() => {
@@ -157,6 +179,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         scrollLeft: state.scrollLeft,
         mousePosition: state.mousePosition,
         theme: {},
+        handleResizeMouseDown,
+        handleResizeDoubleClick,
       })
 
       rafIdRef.current = requestAnimationFrame(renderLoop)
@@ -222,8 +246,16 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         headerRowHeight
       )
 
+      // Проверяем, находимся ли мы на resize handle
+      const resizeArea = rendererRef.current.getResizeAreaAt(absoluteX, y)
       if (canvasRef.current) {
-        canvasRef.current.style.cursor = isCellHoverable(cell) ? 'pointer' : 'default'
+        if (resizeArea) {
+          canvasRef.current.style.cursor = 'col-resize'
+        } else if (cell) {
+          canvasRef.current.style.cursor = isCellHoverable(cell) ? 'pointer' : 'default'
+        } else {
+          canvasRef.current.style.cursor = 'default'
+        }
       }
 
       // Помечаем, что нужна перерисовка
@@ -239,6 +271,183 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     }
     renderStateRef.current.needsRender = true
   }, [])
+
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current || !rendererRef.current || !handleResizeMouseDown) {
+        return
+      }
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const relativeX = event.clientX - containerRect.left
+      
+      // Проверяем, что клик не на маркере строки
+      if (relativeX < markerWidthValue) {
+        return
+      }
+
+      const x = relativeX - markerWidthValue
+      const y = event.clientY - containerRect.top
+      
+      // Используем абсолютные координаты с учетом scrollLeft
+      const absoluteX = x + scrollLeft
+      
+      // Проверяем попадание в resize handle
+      const resizeArea = rendererRef.current.getResizeAreaAt(absoluteX, y)
+      if (resizeArea && getColumnWidth && setColumnWidths) {
+        event.preventDefault()
+        event.stopPropagation()
+        
+        // Начинаем виртуальный resize
+        const startWidths: number[] = []
+        const columnRange: Array<{ columnId: string; columnIndex: number; minWidth: number }> = []
+        for (let offset = 0; offset < resizeArea.span; offset++) {
+          const colIdx = resizeArea.columnIndex + offset
+          const column = orderedColumns[colIdx]
+          if (column) {
+            const width = getColumnWidth(colIdx)
+            startWidths.push(width)
+            columnRange.push({
+              columnId: column.id,
+              columnIndex: colIdx,
+              minWidth: column.minWidth,
+            })
+          }
+        }
+        
+        const minTotalWidth = columnRange.reduce((sum, item) => sum + item.minWidth, 0)
+        resizeStartXRef.current = event.clientX
+        virtualResizeRef.current = {
+          columnIndex: resizeArea.columnIndex,
+          span: resizeArea.span,
+          startX: event.clientX,
+          startWidths,
+          columnRange,
+          minTotalWidth,
+          virtualX: null,
+        }
+        
+        // Добавляем обработчики на document level
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          if (!virtualResizeRef.current || !resizeStartXRef.current) {
+            return
+          }
+          
+          // Вычисляем виртуальную позицию с учетом scrollLeft
+          const containerRect = containerRef.current?.getBoundingClientRect()
+          if (!containerRect) return
+          
+          const relativeX = moveEvent.clientX - containerRect.left - markerWidthValue
+          const virtualAbsoluteX = relativeX + scrollLeft
+          
+          virtualResizeRef.current.virtualX = virtualAbsoluteX
+          
+          // Уведомляем родительский компонент о изменении позиции виртуальной линии
+          if (onVirtualResizeChange) {
+            onVirtualResizeChange(virtualAbsoluteX, virtualResizeRef.current.columnIndex)
+          }
+          
+          renderStateRef.current.needsRender = true
+        }
+        
+        const handleMouseUp = (upEvent: MouseEvent) => {
+          if (!virtualResizeRef.current || !resizeStartXRef.current || !setColumnWidths) {
+            cleanup()
+            return
+          }
+          
+          // Применяем реальные изменения только при отпускании мыши
+          const delta = upEvent.clientX - resizeStartXRef.current
+          
+          const calculateWidths = (delta: number) => {
+            const startTotalWidth = virtualResizeRef.current!.startWidths.reduce((sum, w) => sum + w, 0)
+            
+            if (virtualResizeRef.current!.columnRange.length === 1) {
+              const width = Math.max(
+                virtualResizeRef.current!.columnRange[0].minWidth,
+                Math.round(virtualResizeRef.current!.startWidths[0] + delta)
+              )
+              return [width]
+            }
+            
+            const desiredTotal = Math.max(virtualResizeRef.current!.minTotalWidth, startTotalWidth + delta)
+            let remainingTotal = desiredTotal
+            let remainingStart = startTotalWidth
+            let remainingMin = virtualResizeRef.current!.minTotalWidth
+            
+            const widths: number[] = []
+            
+            for (let i = 0; i < virtualResizeRef.current!.columnRange.length; i++) {
+              const { minWidth } = virtualResizeRef.current!.columnRange[i]
+              if (i === virtualResizeRef.current!.columnRange.length - 1) {
+                widths.push(Math.max(minWidth, Math.round(remainingTotal)))
+                break
+              }
+              
+              const startWidth = virtualResizeRef.current!.startWidths[i]
+              const ratio = remainingStart > 0
+                ? startWidth / remainingStart
+                : 1 / (virtualResizeRef.current!.columnRange.length - i)
+              const proposed = startWidth + delta * ratio
+              const maxAvailable = remainingTotal - (remainingMin - minWidth)
+              const width = Math.max(
+                minWidth,
+                Math.min(Math.round(proposed), Math.round(maxAvailable))
+              )
+              
+              widths.push(width)
+              remainingTotal -= width
+              remainingStart -= startWidth
+              remainingMin -= minWidth
+            }
+            
+            return widths
+          }
+          
+          const nextWidths = calculateWidths(delta)
+          setColumnWidths(
+            virtualResizeRef.current.columnRange.map((item, index) => ({
+              columnId: item.columnId,
+              width: nextWidths[index],
+            }))
+          )
+          
+          cleanup()
+        }
+        
+        const cleanup = () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+          document.body.style.userSelect = ''
+          document.body.style.cursor = ''
+          
+          virtualResizeRef.current = null
+          resizeStartXRef.current = null
+          
+          // Уведомляем родительский компонент о завершении resize
+          if (onVirtualResizeChange) {
+            onVirtualResizeChange(null, null)
+          }
+          
+          renderStateRef.current.needsRender = true
+        }
+        
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'col-resize'
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+        
+        return
+      } else if (resizeArea && handleResizeMouseDown) {
+        // Fallback к старому способу если нет getColumnWidth/setColumnWidths
+        event.preventDefault()
+        event.stopPropagation()
+        handleResizeMouseDown(event, resizeArea.columnIndex, resizeArea.span)
+        return
+      }
+    },
+    [scrollLeft, markerWidthValue, handleResizeMouseDown, getColumnWidth, setColumnWidths, orderedColumns, onVirtualResizeChange]
+  )
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -260,7 +469,13 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       // Используем абсолютные координаты с учетом scrollLeft
       const absoluteX = x + scrollLeft
       
-      // Проверяем попадание в кликабельные области
+      // Проверяем попадание в кликабельные области (но не resize handle)
+      const resizeArea = rendererRef.current.getResizeAreaAt(absoluteX, y)
+      if (resizeArea) {
+        // Не обрабатываем клик, если это resize handle
+        return
+      }
+      
       const clickableAreas = rendererRef.current.getClickableAreas()
       
       for (const area of clickableAreas) {
@@ -281,6 +496,35 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     [scrollLeft, markerWidthValue]
   )
 
+  const handleDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current || !rendererRef.current || !handleResizeDoubleClick) {
+        return
+      }
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const relativeX = event.clientX - containerRect.left
+      
+      // Проверяем, что клик не на маркере строки
+      if (relativeX < markerWidthValue) {
+        return
+      }
+
+      const x = relativeX - markerWidthValue
+      const y = event.clientY - containerRect.top
+      
+      // Используем абсолютные координаты с учетом scrollLeft
+      const absoluteX = x + scrollLeft
+      
+      // Проверяем попадание в resize handle
+      const resizeArea = rendererRef.current.getResizeAreaAt(absoluteX, y)
+      if (resizeArea) {
+        handleResizeDoubleClick(event as any, resizeArea.columnIndex, resizeArea.span)
+      }
+    },
+    [scrollLeft, markerWidthValue, handleResizeDoubleClick]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -291,7 +535,9 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       {showRowMarkers && (
         <div

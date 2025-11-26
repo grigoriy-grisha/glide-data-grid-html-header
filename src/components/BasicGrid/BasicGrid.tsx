@@ -103,6 +103,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
+  const virtualResizeLineRef = useRef<HTMLDivElement>(null)
+  
+  // Состояние виртуальной линии resize
+  const [virtualResizeState, setVirtualResizeState] = useState<{
+    x: number
+    columnIndex: number
+  } | null>(null)
 
   const scrollbarReserve = useMemo(() => {
     if (scrollbarReserveProp !== undefined) {
@@ -504,10 +511,40 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [orderedColumns, columnWidths]
   )
 
+  // Вычисляем позицию виртуальной линии resize
+  const virtualResizeLineStyle = useMemo(() => {
+    if (!virtualResizeState) {
+      return { display: 'none' }
+    }
+    
+    const relativeX = virtualResizeState.x - scrollLeft + markerWidth
+    
+    return {
+      position: 'absolute' as const,
+      left: `${relativeX}px`,
+      top: '0',
+      bottom: '0',
+      width: '2px',
+      backgroundColor: 'rgba(21, 101, 192, 0.8)',
+      pointerEvents: 'none' as const,
+      zIndex: 1000,
+      display: relativeX >= 0 && relativeX <= dataViewportWidth + markerWidth ? 'block' : 'none',
+    }
+  }, [virtualResizeState, scrollLeft, markerWidth, dataViewportWidth])
+
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
-        <div className="basic-grid-wrapper" ref={gridRef}>
+        <div className="basic-grid-wrapper" ref={gridRef} style={{ position: 'relative' }}>
+          {/* Виртуальная линия resize на всю высоту таблицы */}
+          {virtualResizeState && (
+            <div
+              ref={virtualResizeLineRef}
+              className="basic-grid-virtual-resize-line"
+              style={virtualResizeLineStyle}
+            />
+          )}
+          
           {columnPositions.length > 0 && levelCount > 0 && (
             <>
               {/*<GridHeader*/}
@@ -550,6 +587,17 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                 showRowMarkers={showRowMarkers}
                 scrollLeft={scrollLeft}
                 canvasHeaderRef={canvasHeaderRef}
+                handleResizeMouseDown={handleResizeMouseDown}
+                handleResizeDoubleClick={handleResizeDoubleClick}
+                getColumnWidth={getColumnWidth}
+                setColumnWidths={setColumnWidths}
+                onVirtualResizeChange={(x, columnIndex) => {
+                  if (x !== null && columnIndex !== null) {
+                    setVirtualResizeState({ x, columnIndex })
+                  } else {
+                    setVirtualResizeState(null)
+                  }
+                }}
               />
             </>
           )}
