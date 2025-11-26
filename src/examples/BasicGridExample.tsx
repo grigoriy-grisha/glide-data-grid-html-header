@@ -2,6 +2,11 @@ import { useMemo } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
+import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/CanvasButton'
+import { CanvasFlex } from '../components/BasicGrid/components/CanvasHeader/CanvasFlex'
+import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/CanvasIcon'
+import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/CanvasText'
+import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/CanvasIconButton'
 
 const columns: BasicGridColumn<DataRow>[] = [
   {
@@ -53,6 +58,108 @@ const columns: BasicGridColumn<DataRow>[] = [
         selectPlaceholder: 'Выберите статус',
       }),
       createColumn<DataRow>('progress', 'percent', 'Прогресс %', { width: 140 }),
+      {
+        title: 'Действие',
+        dataType: 'string',
+        width: 150,
+        renderColumnContent: (ctx, rect, mousePosition, onRerenderRequested) => {
+          // Пример SVG иконки (стрелка вниз)
+          const arrowDownSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+          </svg>`
+
+          const flex = new CanvasFlex(
+            rect,
+            [
+              new CanvasIcon(
+                { x: 0, y: 0 },
+                arrowDownSvg,
+                {
+                  width: 20,
+                  height: 20,
+                  color: '#1565c0',
+                }
+              ),
+              new CanvasText(
+                'Текст:',
+                { x: 0, y: 0 },
+                {
+                  color: '#666',
+                  fontSize: 13,
+                  fontWeight: 'normal',
+                }
+              ),
+              new CanvasIconButton(
+                { x: 0, y: 0, width: 32, height: 28 },
+                '', // Текст не нужен, только иконка
+                arrowDownSvg,
+                {
+                  fillColor: '#e3f2fd',
+                  hoverFillColor: '#bbdefb',
+                  strokeColor: '#2196f3',
+                  borderRadius: 4,
+                  height: 28,
+                  iconSize: 16,
+                  iconColor: '#1565c0',
+                  showText: false, // Не показывать текст
+                  onClick: () => {
+                    console.log('Clicked on icon button!')
+                  },
+                }
+              ),
+              new CanvasButton(
+                { x: 0, y: 0, width: 60, height: 28 },
+                'Кнопка 1',
+                {
+                  fillColor: '#e3f2fd',
+                  hoverFillColor: '#bbdefb',
+                  strokeColor: '#2196f3',
+                  textColor: '#1565c0',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  height: 28,
+                  onClick: () => {
+                    console.log('Clicked on button 1!')
+                  },
+                }
+              ),
+              new CanvasButton(
+                { x: 0, y: 0, width: 60, height: 28 },
+                'Кнопка 2',
+                {
+                  fillColor: '#fff3e0',
+                  hoverFillColor: '#ffe0b2',
+                  strokeColor: '#ff9800',
+                  textColor: '#e65100',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  height: 28,
+                  onClick: () => {
+                    console.log('Clicked on button 2!')
+                  },
+                }
+              ),
+            ],
+            {
+              gap: 12,
+              direction: 'row',
+              alignItems: 'center',
+              padding: 6,
+              wrap: true, // Перенос элементов на новую строку при нехватке места
+            }
+          )
+          flex.setContext(ctx, onRerenderRequested)
+          
+          if (mousePosition) {
+            flex.updateMousePosition(mousePosition.x, mousePosition.y)
+          }
+          
+          flex.draw()
+          
+          // Возвращаем кликабельные области
+          return flex.getClickableAreas()
+        },
+      },
     ],
   },
   createColumn<DataRow>('salary', 'number', 'Зарплата', {

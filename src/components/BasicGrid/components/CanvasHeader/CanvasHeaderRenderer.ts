@@ -1,6 +1,5 @@
 import { CanvasShapes } from './CanvasShapes'
 import { CanvasText } from './CanvasText'
-import { CanvasLines } from './CanvasLines'
 import { sortHeaderCells, roundCoordinates, isCellHovered } from './utils'
 import { DEFAULT_BORDER_STYLE, createHideBorderStyle } from './borderStyles'
 import {
@@ -20,10 +19,13 @@ export interface HeaderCellRect {
   height: number
 }
 
+import type { GridColumn } from '../../models/GridColumn'
+
 export interface HeaderRenderContext {
   ctx: CanvasRenderingContext2D
   rect: HeaderCellRect
   headerCells: GridHeaderCell[]
+  orderedColumns: GridColumn<any>[]
   columnPositions: number[]
   columnWidths: number[]
   levelCount: number
@@ -33,21 +35,33 @@ export interface HeaderRenderContext {
   theme: any
 }
 
+export interface ClickableArea {
+  rect: { x: number; y: number; width: number; height: number }
+  onClick: () => void
+}
+
 export class CanvasHeaderRenderer {
   private ctx: CanvasRenderingContext2D | null = null
   private shapes: CanvasShapes = new CanvasShapes()
-  private text: CanvasText = new CanvasText()
-  private lines: CanvasLines = new CanvasLines()
+  private clickableAreas: ClickableArea[] = []
+  private onRerenderRequested: (() => void) | null = null
 
   setContext(ctx: CanvasRenderingContext2D | null): void {
     this.ctx = ctx
     this.shapes.setContext(ctx)
-    this.text.setContext(ctx)
-    this.lines.setContext(ctx)
   }
 
   getContext(): CanvasRenderingContext2D | null {
     return this.ctx
+  }
+
+  getClickableAreas(): ClickableArea[] {
+    return this.clickableAreas
+  }
+
+  // Устанавливает колбэк для запроса перерисовки
+  setOnRerenderRequested(callback: (() => void) | null): void {
+    this.onRerenderRequested = callback
   }
 
   render(context: HeaderRenderContext): void {
@@ -69,6 +83,7 @@ export class CanvasHeaderRenderer {
     const { rect, headerCells, columnPositions, columnWidths, headerRowHeight } = context
 
     this.ctx.clearRect(0, 0, rect.width, rect.height)
+    this.clickableAreas = [] // Сбрасываем кликабельные области
 
     this.shapes.drawRect(rect, {
       fillColor: HEADER_BACKGROUND_COLOR,
@@ -77,7 +92,7 @@ export class CanvasHeaderRenderer {
     const sortedCells = sortHeaderCells(headerCells)
 
     for (const cell of sortedCells) {
-      this.drawHeaderCell(cell, columnPositions, columnWidths, headerRowHeight, context.scrollLeft, context.mousePosition)
+      this.drawHeaderCell(cell, columnPositions, columnWidths, headerRowHeight, context.scrollLeft, context.mousePosition, context)
     }
   }
 
@@ -87,7 +102,8 @@ export class CanvasHeaderRenderer {
     columnWidths: number[],
     headerRowHeight: number,
     scrollLeft: number,
-    mousePosition: { x: number; y: number } | null
+    mousePosition: { x: number; y: number } | null,
+    context: HeaderRenderContext
   ): void {
     if (!this.ctx) {
       return
@@ -156,15 +172,70 @@ export class CanvasHeaderRenderer {
 
     // Текст рисуем только если ячейка видна
     if (clippedX < viewportWidth && clippedX + clippedWidth > 0) {
-      this.text.drawText(cell.title, {
-        x: clippedX + HEADER_TEXT_PADDING,
-        y: levelY + cellHeight / 2,
-      }, {
-        color: textColor,
-        fontSize,
-        fontWeight,
-        textBaseline: 'middle',
-      })
+      // Проверяем, есть ли renderColumnContent для этой колонки
+      const column = cell.columnIndex !== undefined ? context.orderedColumns[cell.columnIndex] : undefined
+      const renderColumnContent = column?.getRenderColumnContent()
+      
+      if (renderColumnContent && cell.isLeaf && this.ctx) {
+        // Рисуем кастомный canvas компонент через функцию рендеринга
+        const renderRect = {
+          x: clippedX,
+          y: levelY,
+          width: clippedWidth,
+          height: cellHeight,
+        }
+        
+        // Создаем колбэк для перерисовки после загрузки иконок
+        const rerenderCallback = () => {
+          if (this.onRerenderRequested) {
+            this.onRerenderRequested()
+          }
+        }
+        
+        // Передаем колбэк через специальную обертку для renderColumnContent
+        // Иконки будут использовать этот колбэк при загрузке
+        const clickableAreas = renderColumnContent(this.ctx, renderRect, adjustedMousePosition, rerenderCallback)
+        
+        // Сохраняем кликабельные области, преобразуя координаты в абсолютные (с учетом scrollLeft)
+        if (clickableAreas && Array.isArray(clickableAreas)) {
+          const cellAbsoluteX = columnPositions[cell.startIndex] ?? 0
+          for (const area of clickableAreas) {
+            // area.rect.x относительно renderRect.x (который = clippedX)
+            // renderRect.x начинается с clippedX, поэтому area.rect.x уже включает clippedX
+            // Чтобы получить абсолютную координату: нужно вычесть clippedX и добавить cellAbsoluteX
+            // absoluteAreaX = area.rect.x - clippedX + cellAbsoluteX
+            // Но если clippedX = 0 (обрезано), то area.rect.x уже относительно начала viewport, и нужно просто добавить cellAbsoluteX
+            // Упрощенно: absoluteAreaX = (area.rect.x - clippedX) + cellAbsoluteX
+            const absoluteAreaX = area.rect.x - clippedX + cellAbsoluteX
+            this.clickableAreas.push({
+              rect: {
+                x: absoluteAreaX,
+                y: area.rect.y,
+                width: area.rect.width,
+                height: area.rect.height,
+              },
+              onClick: area.onClick,
+            })
+          }
+        }
+      } else {
+        // Обычный текст
+        const textElement = new CanvasText(
+          cell.title,
+          {
+            x: clippedX + HEADER_TEXT_PADDING,
+            y: levelY + cellHeight / 2,
+          },
+          {
+            color: textColor,
+            fontSize,
+            fontWeight,
+            textBaseline: 'middle',
+          }
+        )
+        textElement.setContext(this.ctx)
+        textElement.draw()
+      }
     }
   }
 
@@ -187,7 +258,7 @@ export class CanvasHeaderRenderer {
     this.ctx.imageSmoothingEnabled = false
 
     if (cell.level === 0) {
-      this.lines.drawLine({
+      this.shapes.drawLine({
         x1: roundedX,
         y1: roundedY + 0.5,
         x2: roundedX + roundedWidth,
@@ -195,21 +266,21 @@ export class CanvasHeaderRenderer {
       }, DEFAULT_BORDER_STYLE)
     }
 
-    this.lines.drawLine({
+    this.shapes.drawLine({
       x1: roundedX,
       y1: roundedY + roundedHeight - 0.5,
       x2: roundedX + roundedWidth,
       y2: roundedY + roundedHeight - 0.5,
     }, DEFAULT_BORDER_STYLE)
 
-    this.lines.drawLine({
+    this.shapes.drawLine({
       x1: roundedX + 0.5,
       y1: roundedY,
       x2: roundedX + 0.5,
       y2: roundedY + roundedHeight,
     }, DEFAULT_BORDER_STYLE)
 
-    this.lines.drawLine({
+    this.shapes.drawLine({
       x1: roundedX + roundedWidth - 0.5,
       y1: roundedY,
       x2: roundedX + roundedWidth - 0.5,
@@ -229,21 +300,21 @@ export class CanvasHeaderRenderer {
           continue
         }
         
-        this.lines.drawLine({
+        this.shapes.drawLine({
           x1: borderX - 1,
           y1: roundedY,
           x2: borderX - 1,
           y2: roundedY + roundedHeight,
         }, hideBorderStyle)
         
-        this.lines.drawLine({
+        this.shapes.drawLine({
           x1: borderX,
           y1: roundedY,
           x2: borderX,
           y2: roundedY + roundedHeight,
         }, hideBorderStyle)
         
-        this.lines.drawLine({
+        this.shapes.drawLine({
           x1: borderX + 1,
           y1: roundedY,
           x2: borderX + 1,

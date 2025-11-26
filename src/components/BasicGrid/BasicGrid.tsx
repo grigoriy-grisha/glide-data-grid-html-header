@@ -510,37 +510,38 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
         <div className="basic-grid-wrapper" ref={gridRef}>
           {columnPositions.length > 0 && levelCount > 0 && (
             <>
-              <GridHeader
-                columnPositions={columnPositions}
-                columnWidths={columnWidths}
-                headerCells={headerCells}
-                orderedColumns={orderedColumns as any}
-                levelCount={levelCount}
-                headerRowHeight={headerRowHeight}
-                markerWidth={markerWidth}
-                showRowMarkers={showRowMarkers}
-                dataViewportWidth={dataViewportWidth}
-                dataAreaWidth={dataAreaWidth}
-                viewportWidth={viewportWidth}
-                scrollbarReserve={scrollbarReserve}
-                headerInnerRef={headerInnerRef}
-                selectRange={selectRange}
-                selectedBounds={selectedBounds}
-                handleColumnSort={handleColumnSort}
-                sortState={sortState}
-                enableColumnReorder={enableColumnReorder}
-                handleHeaderDragStart={handleHeaderDragStart}
-                registerHeaderCell={registerHeaderCell}
-                handleResizeMouseDown={handleResizeMouseDown}
-                handleResizeDoubleClick={handleResizeDoubleClick}
-                isAllRowsSelected={isAllRowsSelected}
-                handleSelectAllChange={handleSelectAllChange}
-                selectAllCheckboxRef={selectAllCheckboxRef}
-              />
+              {/*<GridHeader*/}
+              {/*  columnPositions={columnPositions}*/}
+              {/*  columnWidths={columnWidths}*/}
+              {/*  headerCells={headerCells}*/}
+              {/*  orderedColumns={orderedColumns as any}*/}
+              {/*  levelCount={levelCount}*/}
+              {/*  headerRowHeight={headerRowHeight}*/}
+              {/*  markerWidth={markerWidth}*/}
+              {/*  showRowMarkers={showRowMarkers}*/}
+              {/*  dataViewportWidth={dataViewportWidth}*/}
+              {/*  dataAreaWidth={dataAreaWidth}*/}
+              {/*  viewportWidth={viewportWidth}*/}
+              {/*  scrollbarReserve={scrollbarReserve}*/}
+              {/*  headerInnerRef={headerInnerRef}*/}
+              {/*  selectRange={selectRange}*/}
+              {/*  selectedBounds={selectedBounds}*/}
+              {/*  handleColumnSort={handleColumnSort}*/}
+              {/*  sortState={sortState}*/}
+              {/*  enableColumnReorder={enableColumnReorder}*/}
+              {/*  handleHeaderDragStart={handleHeaderDragStart}*/}
+              {/*  registerHeaderCell={registerHeaderCell}*/}
+              {/*  handleResizeMouseDown={handleResizeMouseDown}*/}
+              {/*  handleResizeDoubleClick={handleResizeDoubleClick}*/}
+              {/*  isAllRowsSelected={isAllRowsSelected}*/}
+              {/*  handleSelectAllChange={handleSelectAllChange}*/}
+              {/*  selectAllCheckboxRef={selectAllCheckboxRef}*/}
+              {/*/>*/}
               <CanvasHeader
                 width={dataViewportWidth}
                 height={levelCount * headerRowHeight}
                 headerCells={headerCells}
+                orderedColumns={orderedColumns}
                 columnPositions={columnPositions}
                 columnWidths={columnWidths}
                 levelCount={levelCount}

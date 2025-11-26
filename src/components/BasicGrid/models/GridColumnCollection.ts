@@ -68,11 +68,13 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
             : undefined)
 
         // Button ячейки не требуют valueGetter, так как данные берутся из buttonOptions
+        // Колонки с renderColumnContent тоже могут не иметь accessor
         const isButton = column.dataType === 'button'
-        const canRenderLeaf = Boolean(valueGetter) || isButton
+        const hasRenderColumnContent = Boolean(column.renderColumnContent)
+        const canRenderLeaf = Boolean(valueGetter) || isButton || hasRenderColumnContent
 
         if (canRenderLeaf) {
-          // Для button ячеек создаем пустой valueGetter, если его нет
+          // Для button ячеек и колонок с renderColumnContent создаем пустой valueGetter, если его нет
           const finalValueGetter = valueGetter ?? (() => null)
           const minWidth = column.minWidth ?? DEFAULT_MIN_COLUMN_WIDTH
           const baseWidth = Math.max(minWidth, column.width ?? DEFAULT_COLUMN_WIDTH)
@@ -99,6 +101,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
               selectPlaceholder: column.selectPlaceholder,
               buttonOptions: column.buttonOptions,
               canvasOptions: column.canvasOptions,
+              renderColumnContent: column.renderColumnContent,
             })
           )
         }

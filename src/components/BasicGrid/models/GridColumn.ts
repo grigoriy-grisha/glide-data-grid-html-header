@@ -26,6 +26,11 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   selectPlaceholder?: string
   buttonOptions?: ButtonCellOptions<RowType>
   canvasOptions?: CanvasCellOptions<RowType>
+  renderColumnContent?: (
+    ctx: CanvasRenderingContext2D,
+    rect: { x: number; y: number; width: number; height: number },
+    mousePosition: { x: number; y: number } | null
+  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -43,6 +48,12 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly selectPlaceholder?: string
   readonly buttonOptions?: ButtonCellOptions<RowType>
   readonly canvasOptions?: CanvasCellOptions<RowType>
+  readonly renderColumnContent?: (
+    ctx: CanvasRenderingContext2D,
+    rect: { x: number; y: number; width: number; height: number },
+    mousePosition: { x: number; y: number } | null,
+    onRerenderRequested?: () => void
+  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined
@@ -63,6 +74,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.selectPlaceholder = options.selectPlaceholder
     this.buttonOptions = options.buttonOptions
     this.canvasOptions = options.canvasOptions
+    this.renderColumnContent = options.renderColumnContent
     this.formatter = options.formatter
     this.valueGetter = options.valueGetter
     this.sortValueGetter = options.sortValueGetter
@@ -133,6 +145,10 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
   getCanvasOptions() {
     return this.canvasOptions
+  }
+
+  getRenderColumnContent() {
+    return this.renderColumnContent
   }
 
   getSelectOptions(row: RowType) {

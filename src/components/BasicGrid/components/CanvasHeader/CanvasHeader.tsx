@@ -3,11 +3,13 @@ import { CanvasHeaderRenderer } from './CanvasHeaderRenderer'
 import { isCellHoverable, getCellAtPosition } from './hoverUtils'
 import { useHeaderVirtualization } from '../../context/HeaderVirtualizationContext'
 import type { GridHeaderCell } from '../../models/GridHeaderCell'
+import type { GridColumn } from '../../models/GridColumn'
 
 interface CanvasHeaderProps {
   width: number
   height: number
   headerCells: GridHeaderCell[]
+  orderedColumns: GridColumn<any>[]
   columnPositions: number[]
   columnWidths: number[]
   levelCount: number
@@ -22,6 +24,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   width,
   height,
   headerCells,
+  orderedColumns,
   columnPositions,
   columnWidths,
   levelCount,
@@ -120,6 +123,11 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
   // Цикл рендеринга
   useEffect(() => {
+    // Устанавливаем колбэк для запроса перерисовки после загрузки иконок
+    rendererRef.current.setOnRerenderRequested(() => {
+      renderStateRef.current.needsRender = true
+    })
+
     const renderLoop = () => {
       const state = renderStateRef.current
       if (!ctxRef.current || !state.needsRender) {
@@ -141,6 +149,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           height: state.height,
         },
         headerCells: state.visibleCells,
+        orderedColumns,
         columnPositions: state.columnPositions,
         columnWidths: state.columnWidths,
         levelCount: state.levelCount,
@@ -160,6 +169,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         cancelAnimationFrame(rafIdRef.current)
         rafIdRef.current = null
       }
+      rendererRef.current.setOnRerenderRequested(null)
     }
   }, [])
 
@@ -230,6 +240,47 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     renderStateRef.current.needsRender = true
   }, [])
 
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current || !rendererRef.current) {
+        return
+      }
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const relativeX = event.clientX - containerRect.left
+      
+      // Проверяем, что клик не на маркере строки
+      if (relativeX < markerWidthValue) {
+        return
+      }
+
+      const x = relativeX - markerWidthValue
+      const y = event.clientY - containerRect.top
+      
+      // Используем абсолютные координаты с учетом scrollLeft
+      const absoluteX = x + scrollLeft
+      
+      // Проверяем попадание в кликабельные области
+      const clickableAreas = rendererRef.current.getClickableAreas()
+      
+      for (const area of clickableAreas) {
+        const { rect, onClick } = area
+        const isInside = (
+          absoluteX >= rect.x &&
+          absoluteX < rect.x + rect.width &&
+          y >= rect.y &&
+          y < rect.y + rect.height
+        )
+        
+        if (isInside) {
+          onClick()
+          return
+        }
+      }
+    },
+    [scrollLeft, markerWidthValue]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -240,6 +291,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
     >
       {showRowMarkers && (
         <div
