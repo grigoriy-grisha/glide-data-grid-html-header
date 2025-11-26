@@ -76,6 +76,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   const dragStateRef = useRef<{
     sourceIndex: number
     targetIndex: number
+    mouseX: number // Позиция мыши для визуального перетаскивания
+    mouseY: number
   } | null>(null)
 
   // Фильтруем видимые ячейки для виртуализации
@@ -101,7 +103,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     headerRowHeight,
     scrollLeft,
     mousePosition: null as { x: number; y: number } | null,
-    dragState: null as { sourceIndex: number; targetIndex: number } | null,
+    dragState: null as { sourceIndex: number; targetIndex: number; mouseX: number; mouseY: number } | null,
     needsRender: true,
   })
   
@@ -193,7 +195,12 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         headerRowHeight: state.headerRowHeight,
         scrollLeft: state.scrollLeft,
         mousePosition: state.mousePosition,
-        dragState: state.dragState,
+        dragState: state.dragState ? {
+          sourceIndex: state.dragState.sourceIndex,
+          targetIndex: state.dragState.targetIndex,
+          mouseX: state.dragState.mouseX,
+          mouseY: state.dragState.mouseY,
+        } : null,
         theme: {},
         handleResizeMouseDown,
         handleResizeDoubleClick,
@@ -483,8 +490,20 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           
           // Начинаем перетаскивание колонки
           const sourceIndex = cell.columnIndex
-          dragStateRef.current = { sourceIndex, targetIndex: sourceIndex }
-          renderStateRef.current.dragState = { sourceIndex, targetIndex: sourceIndex }
+          const startMouseX = event.clientX
+          const startMouseY = event.clientY
+          dragStateRef.current = { 
+            sourceIndex, 
+            targetIndex: sourceIndex,
+            mouseX: startMouseX,
+            mouseY: startMouseY,
+          }
+          renderStateRef.current.dragState = { 
+            sourceIndex, 
+            targetIndex: sourceIndex,
+            mouseX: startMouseX,
+            mouseY: startMouseY,
+          }
           renderStateRef.current.needsRender = true
           
           // Функция для получения X координаты относительно dataArea
@@ -539,11 +558,18 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             const nextDataX = getDataX(moveEvent.clientX)
             const nextTarget = getTargetIndex(nextDataX)
             
-            if (dragStateRef.current.targetIndex !== nextTarget) {
+            // Обновляем позицию мыши для визуального перетаскивания
+            dragStateRef.current.mouseX = moveEvent.clientX
+            dragStateRef.current.mouseY = moveEvent.clientY
+            
+            const targetChanged = dragStateRef.current.targetIndex !== nextTarget
+            if (targetChanged) {
               dragStateRef.current.targetIndex = nextTarget
-              renderStateRef.current.dragState = { ...dragStateRef.current }
-              renderStateRef.current.needsRender = true
             }
+            
+            // Всегда обновляем render, чтобы призрачная колонка двигалась
+            renderStateRef.current.dragState = { ...dragStateRef.current }
+            renderStateRef.current.needsRender = true
           }
           
           const handleMouseUp = () => {

@@ -33,7 +33,7 @@ export interface HeaderRenderContext {
   headerRowHeight: number
   scrollLeft: number
   mousePosition: { x: number; y: number } | null
-  dragState: { sourceIndex: number; targetIndex: number } | null
+  dragState: { sourceIndex: number; targetIndex: number; mouseX: number; mouseY: number } | null
   theme: any
   handleResizeMouseDown?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
@@ -128,17 +128,28 @@ export class CanvasHeaderRenderer {
     
     // Рисуем визуальную индикацию drag and drop если идет перетаскивание
     if (context.dragState) {
-      this.drawDragIndicators(context.dragState, columnPositions, columnWidths, headerRowHeight, context.levelCount, context.scrollLeft)
+      this.drawDragIndicators(
+        context.dragState, 
+        columnPositions, 
+        columnWidths, 
+        headerRowHeight, 
+        context.levelCount, 
+        context.scrollLeft,
+        context.headerCells,
+        context.orderedColumns
+      )
     }
   }
   
   private drawDragIndicators(
-    dragState: { sourceIndex: number; targetIndex: number },
+    dragState: { sourceIndex: number; targetIndex: number; mouseX: number; mouseY: number },
     columnPositions: number[],
     columnWidths: number[],
     headerRowHeight: number,
     levelCount: number,
-    scrollLeft: number
+    scrollLeft: number,
+    headerCells: GridHeaderCell[],
+    orderedColumns: GridColumn<any>[]
   ): void {
     if (!this.ctx) {
       return
@@ -149,6 +160,79 @@ export class CanvasHeaderRenderer {
     const dpr = window.devicePixelRatio || 1
     const viewportWidth = Math.round(this.ctx.canvas.width / dpr)
     const hasDropTarget = targetIndex !== sourceIndex
+    
+    // Находим ячейку для перетаскиваемой колонки
+    const sourceCell = headerCells.find(cell => 
+      cell.isLeaf && cell.columnIndex === sourceIndex
+    )
+    
+    if (!sourceCell) {
+      return
+    }
+    
+    const sourceColumn = orderedColumns[sourceIndex]
+    if (!sourceColumn) {
+      return
+    }
+    
+    const sourceWidth = columnWidths[sourceIndex] ?? 0
+    
+    // Вычисляем позицию, куда "прилипает" призрачная колонка
+    // targetIndex - это индекс, куда будет вставлена колонка
+    let ghostAbsoluteX: number
+    
+    if (targetIndex === sourceIndex) {
+      // Колонка остаётся на месте - прилипаем к текущей позиции
+      ghostAbsoluteX = columnPositions[sourceIndex] ?? 0
+    } else if (targetIndex === 0) {
+      // Вставка в начало
+      ghostAbsoluteX = 0
+    } else if (targetIndex >= columnPositions.length) {
+      // Вставка в конец
+      const lastIndex = columnPositions.length - 1
+      const lastPos = columnPositions[lastIndex] ?? 0
+      const lastWidth = columnWidths[lastIndex] ?? 0
+      ghostAbsoluteX = lastPos + lastWidth
+    } else {
+      // Вставка перед колонкой с индексом targetIndex
+      ghostAbsoluteX = columnPositions[targetIndex] ?? 0
+    }
+    
+    // Преобразуем в координаты относительно viewport
+    const ghostRelativeX = ghostAbsoluteX - scrollLeft
+    
+    // Рисуем призрачную колонку в позиции прилипания
+    if (ghostRelativeX >= -sourceWidth && ghostRelativeX <= viewportWidth + sourceWidth) {
+        this.ctx.save()
+        
+        // Тень для эффекта "поднятости"
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
+        this.ctx.shadowBlur = 12
+        this.ctx.shadowOffsetX = 0
+        this.ctx.shadowOffsetY = 4
+        
+        // Полупрозрачный фон
+        this.ctx.globalAlpha = 0.95
+        this.ctx.fillStyle = '#ffffff'
+        this.ctx.fillRect(ghostRelativeX, 0, sourceWidth, headerHeight)
+        
+        // Граница
+        this.ctx.strokeStyle = '#1e88e5'
+        this.ctx.lineWidth = 2
+        this.ctx.strokeRect(ghostRelativeX, 0, sourceWidth, headerHeight)
+        
+        // Рисуем содержимое колонки
+        this.ctx.globalAlpha = 1.0
+        this.drawHeaderCellContent(
+          sourceCell,
+          ghostRelativeX,
+          sourceWidth,
+          orderedColumns[sourceIndex],
+          headerRowHeight
+        )
+        
+        this.ctx.restore()
+      }
     
     // Рисуем эффекты для всех колонок
     for (let i = 0; i < columnPositions.length; i++) {
@@ -169,11 +253,11 @@ export class CanvasHeaderRenderer {
       const dropBefore = hasDropTarget && targetIndex === i
       const dropAfter = hasDropTarget && targetIndex === i + 1
       
-      // Рисуем полупрозрачный overlay для перетаскиваемой колонки
+      // Делаем оригинальную колонку прозрачной
       if (isSource) {
         this.ctx.save()
-        this.ctx.globalAlpha = 0.15
-        this.ctx.fillStyle = '#1565c0'
+        this.ctx.globalAlpha = 0.3
+        this.ctx.fillStyle = '#e0e0e0'
         this.ctx.fillRect(clippedX, 0, clippedWidth, headerHeight)
         this.ctx.restore()
       }
@@ -181,8 +265,8 @@ export class CanvasHeaderRenderer {
       // Рисуем placeholder эффект для других колонок во время drag
       if (isGhosted) {
         this.ctx.save()
-        this.ctx.globalAlpha = 0.55
-        this.ctx.fillStyle = '#e0e0e0'
+        this.ctx.globalAlpha = 0.6
+        this.ctx.fillStyle = '#f5f5f5'
         this.ctx.fillRect(clippedX, 0, clippedWidth, headerHeight)
         this.ctx.restore()
       }
@@ -203,6 +287,92 @@ export class CanvasHeaderRenderer {
           this.ctx.stroke()
           this.ctx.restore()
         }
+      }
+    }
+    
+    // Рисуем призрачную колонку, прилипающую к валидной позиции
+    if (ghostRelativeX >= -sourceWidth && ghostRelativeX <= viewportWidth + sourceWidth) {
+      this.ctx.save()
+      
+      // Тень для эффекта "поднятости"
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
+      this.ctx.shadowBlur = 12
+      this.ctx.shadowOffsetX = 0
+      this.ctx.shadowOffsetY = 4
+      
+      // Полупрозрачный фон
+      this.ctx.globalAlpha = 0.95
+      this.ctx.fillStyle = '#ffffff'
+      this.ctx.fillRect(ghostRelativeX, 0, sourceWidth, headerHeight)
+      
+      // Граница
+      this.ctx.strokeStyle = '#1e88e5'
+      this.ctx.lineWidth = 2
+      this.ctx.strokeRect(ghostRelativeX, 0, sourceWidth, headerHeight)
+      
+      // Рисуем содержимое колонки
+      this.ctx.globalAlpha = 1.0
+      this.drawHeaderCellContent(
+        sourceCell,
+        ghostRelativeX,
+        sourceWidth,
+        orderedColumns[sourceIndex],
+        headerRowHeight
+      )
+      
+      this.ctx.restore()
+    }
+  }
+  
+  private drawHeaderCellContent(
+    cell: GridHeaderCell,
+    x: number,
+    width: number,
+    column: GridColumn<any> | undefined,
+    headerRowHeight: number
+  ): void {
+    if (!this.ctx) {
+      return
+    }
+    
+    // Рисуем текст колонки
+    const levelY = cell.level * headerRowHeight
+    const cellHeight = headerRowHeight
+    
+    this.ctx.save()
+    this.ctx.fillStyle = '#333333'
+    this.ctx.font = `${getHeaderFontWeight(cell.level)} 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    this.ctx.textAlign = 'left'
+    this.ctx.textBaseline = 'middle'
+    
+    const padding = 8
+    const textX = x + padding
+    const textY = levelY + cellHeight / 2
+    
+    this.ctx.fillText(cell.title, textX, textY)
+    this.ctx.restore()
+    
+    // Если есть renderColumnContent, пытаемся отрисовать его
+    if (column && cell.isLeaf) {
+      const renderColumnContent = column.getRenderColumnContent()
+      if (renderColumnContent && this.ctx) {
+        const renderRect = {
+          x,
+          y: levelY,
+          width,
+          height: cellHeight,
+        }
+        
+        const rerenderCallback = () => {
+          // Не вызываем перерисовку для призрачной колонки
+        }
+        
+        renderColumnContent(
+          this.ctx,
+          renderRect,
+          null, // mousePosition - не нужно для призрачной колонки
+          rerenderCallback
+        )
       }
     }
   }
@@ -355,14 +525,14 @@ export class CanvasHeaderRenderer {
         const textElement = new CanvasText(
           cell.title,
           {
-            x: clippedX + HEADER_TEXT_PADDING,
-            y: levelY + cellHeight / 2,
+        x: clippedX + HEADER_TEXT_PADDING,
+        y: levelY + cellHeight / 2,
           },
           {
-            color: textColor,
-            fontSize,
-            fontWeight,
-            textBaseline: 'middle',
+        color: textColor,
+        fontSize,
+        fontWeight,
+        textBaseline: 'middle',
           }
         )
         textElement.setContext(this.ctx)
