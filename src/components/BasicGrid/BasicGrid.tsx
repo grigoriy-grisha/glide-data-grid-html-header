@@ -598,6 +598,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                     setVirtualResizeState(null)
                   }
                 }}
+                enableColumnReorder={enableColumnReorder}
+                onColumnReorder={reorderColumns}
+                dataAreaWidth={dataAreaWidth}
               />
             </>
           )}

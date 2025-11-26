@@ -4,6 +4,7 @@ import { isCellHoverable, getCellAtPosition } from './hoverUtils'
 import { useHeaderVirtualization } from '../../context/HeaderVirtualizationContext'
 import type { GridHeaderCell } from '../../models/GridHeaderCell'
 import type { GridColumn } from '../../models/GridColumn'
+import { SELECTION_COLUMN_ID } from '../../constants'
 
 interface CanvasHeaderProps {
   width: number
@@ -23,6 +24,9 @@ interface CanvasHeaderProps {
   getColumnWidth?: (columnIndex: number) => number
   setColumnWidths?: (updates: Array<{ columnId: string; width: number }>) => void
   onVirtualResizeChange?: (x: number | null, columnIndex: number | null) => void
+  enableColumnReorder?: boolean
+  onColumnReorder?: (sourceIndex: number, targetIndex: number) => void
+  dataAreaWidth?: number
 }
 
 export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
@@ -43,6 +47,9 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   getColumnWidth,
   setColumnWidths,
   onVirtualResizeChange,
+  enableColumnReorder = false,
+  onColumnReorder,
+  dataAreaWidth = 0,
 }) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
   const canvasRef = canvasHeaderRef || internalCanvasRef
@@ -64,6 +71,12 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     virtualX: number | null
   } | null>(null)
   const resizeStartXRef = useRef<number | null>(null)
+  
+  // Состояние для drag and drop
+  const dragStateRef = useRef<{
+    sourceIndex: number
+    targetIndex: number
+  } | null>(null)
 
   // Фильтруем видимые ячейки для виртуализации
   const visibleCells = useMemo(() => {
@@ -88,6 +101,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     headerRowHeight,
     scrollLeft,
     mousePosition: null as { x: number; y: number } | null,
+    dragState: null as { sourceIndex: number; targetIndex: number } | null,
     needsRender: true,
   })
   
@@ -139,6 +153,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       headerRowHeight,
       scrollLeft,
       mousePosition: mousePositionRef.current,
+      dragState: dragStateRef.current,
       needsRender: true,
     }
   }, [width, height, visibleCells, columnPositions, columnWidths, levelCount, headerRowHeight, scrollLeft])
@@ -178,6 +193,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         headerRowHeight: state.headerRowHeight,
         scrollLeft: state.scrollLeft,
         mousePosition: state.mousePosition,
+        dragState: state.dragState,
         theme: {},
         handleResizeMouseDown,
         handleResizeDoubleClick,
@@ -274,7 +290,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!containerRef.current || !rendererRef.current || !handleResizeMouseDown) {
+      if (!containerRef.current || !rendererRef.current) {
         return
       }
 
@@ -291,6 +307,16 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       
       // Используем абсолютные координаты с учетом scrollLeft
       const absoluteX = x + scrollLeft
+      
+      // Получаем ячейку для проверки drag and drop
+      const cell = getCellAtPosition(
+        absoluteX,
+        y,
+        headerCells,
+        columnPositions,
+        columnWidths,
+        headerRowHeight
+      )
       
       // Проверяем попадание в resize handle
       const resizeArea = rendererRef.current.getResizeAreaAt(absoluteX, y)
@@ -445,8 +471,108 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         handleResizeMouseDown(event, resizeArea.columnIndex, resizeArea.span)
         return
       }
+      
+      // Проверяем, можно ли перетаскивать колонку (drag and drop)
+      if (enableColumnReorder && onColumnReorder && cell && cell.isLeaf && cell.columnIndex !== undefined) {
+        const column = orderedColumns[cell.columnIndex]
+        const isSelectionColumn = column?.id === SELECTION_COLUMN_ID
+        
+        if (!isSelectionColumn && event.button === 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          
+          // Начинаем перетаскивание колонки
+          const sourceIndex = cell.columnIndex
+          dragStateRef.current = { sourceIndex, targetIndex: sourceIndex }
+          renderStateRef.current.dragState = { sourceIndex, targetIndex: sourceIndex }
+          renderStateRef.current.needsRender = true
+          
+          // Функция для получения X координаты относительно dataArea
+          const getDataX = (clientX: number) => {
+            const containerRect = containerRef.current?.getBoundingClientRect()
+            if (!containerRect) return 0
+            const relativeX = clientX - containerRect.left - markerWidthValue
+            const absoluteX = relativeX + scrollLeft
+            return Math.max(0, Math.min(absoluteX, dataAreaWidth))
+          }
+          
+          // Функция для определения целевого индекса колонки
+          const getTargetIndex = (dataX: number) => {
+            const length = orderedColumns.length
+            if (length === 0) return 0
+            
+            // Бинарный поиск для больших массивов
+            if (length > 20) {
+              let left = 0
+              let right = length - 1
+              
+              while (left <= right) {
+                const mid = Math.floor((left + right) / 2)
+                const start = columnPositions[mid] ?? 0
+                const width = columnWidths[mid] ?? 0
+                const midpoint = start + width / 2
+                
+                if (dataX < midpoint) {
+                  right = mid - 1
+                } else {
+                  left = mid + 1
+                }
+              }
+              return left
+            }
+            
+            // Линейный поиск для малых массивов
+            for (let i = 0; i < length; i++) {
+              const start = columnPositions[i] ?? 0
+              const width = columnWidths[i] ?? 0
+              const midpoint = start + width / 2
+              if (dataX < midpoint) {
+                return i
+              }
+            }
+            return length
+          }
+          
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            if (!dragStateRef.current) return
+            
+            const nextDataX = getDataX(moveEvent.clientX)
+            const nextTarget = getTargetIndex(nextDataX)
+            
+            if (dragStateRef.current.targetIndex !== nextTarget) {
+              dragStateRef.current.targetIndex = nextTarget
+              renderStateRef.current.dragState = { ...dragStateRef.current }
+              renderStateRef.current.needsRender = true
+            }
+          }
+          
+          const handleMouseUp = () => {
+            const dragState = dragStateRef.current
+            if (dragState && onColumnReorder) {
+              // Применяем изменение порядка колонок
+              onColumnReorder(dragState.sourceIndex, dragState.targetIndex)
+            }
+            
+            dragStateRef.current = null
+            renderStateRef.current.dragState = null
+            renderStateRef.current.needsRender = true
+            
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+            document.body.style.userSelect = ''
+            document.body.style.cursor = ''
+          }
+          
+          document.body.style.userSelect = 'none'
+          document.body.style.cursor = 'grabbing'
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+          
+          return
+        }
+      }
     },
-    [scrollLeft, markerWidthValue, handleResizeMouseDown, getColumnWidth, setColumnWidths, orderedColumns, onVirtualResizeChange]
+    [scrollLeft, markerWidthValue, handleResizeMouseDown, getColumnWidth, setColumnWidths, orderedColumns, onVirtualResizeChange, enableColumnReorder, onColumnReorder, dataAreaWidth, columnPositions, columnWidths, headerCells]
   )
 
   const handleClick = useCallback(

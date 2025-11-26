@@ -33,6 +33,7 @@ export interface HeaderRenderContext {
   headerRowHeight: number
   scrollLeft: number
   mousePosition: { x: number; y: number } | null
+  dragState: { sourceIndex: number; targetIndex: number } | null
   theme: any
   handleResizeMouseDown?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
@@ -123,6 +124,86 @@ export class CanvasHeaderRenderer {
 
     for (const cell of sortedCells) {
       this.drawHeaderCell(cell, columnPositions, columnWidths, headerRowHeight, context.scrollLeft, context.mousePosition, context)
+    }
+    
+    // Рисуем визуальную индикацию drag and drop если идет перетаскивание
+    if (context.dragState) {
+      this.drawDragIndicators(context.dragState, columnPositions, columnWidths, headerRowHeight, context.levelCount, context.scrollLeft)
+    }
+  }
+  
+  private drawDragIndicators(
+    dragState: { sourceIndex: number; targetIndex: number },
+    columnPositions: number[],
+    columnWidths: number[],
+    headerRowHeight: number,
+    levelCount: number,
+    scrollLeft: number
+  ): void {
+    if (!this.ctx) {
+      return
+    }
+    
+    const { sourceIndex, targetIndex } = dragState
+    const headerHeight = levelCount * headerRowHeight
+    const dpr = window.devicePixelRatio || 1
+    const viewportWidth = Math.round(this.ctx.canvas.width / dpr)
+    const hasDropTarget = targetIndex !== sourceIndex
+    
+    // Рисуем эффекты для всех колонок
+    for (let i = 0; i < columnPositions.length; i++) {
+      const absoluteX = columnPositions[i] ?? 0
+      const relativeX = absoluteX - scrollLeft
+      const width = columnWidths[i] ?? 0
+      
+      // Пропускаем ячейки вне видимой области
+      if (relativeX + width < 0 || relativeX > viewportWidth) {
+        continue
+      }
+      
+      const clippedX = Math.max(0, relativeX)
+      const clippedWidth = Math.min(width - (clippedX - relativeX), viewportWidth - clippedX)
+      
+      const isSource = i === sourceIndex
+      const isGhosted = hasDropTarget && i !== sourceIndex
+      const dropBefore = hasDropTarget && targetIndex === i
+      const dropAfter = hasDropTarget && targetIndex === i + 1
+      
+      // Рисуем полупрозрачный overlay для перетаскиваемой колонки
+      if (isSource) {
+        this.ctx.save()
+        this.ctx.globalAlpha = 0.15
+        this.ctx.fillStyle = '#1565c0'
+        this.ctx.fillRect(clippedX, 0, clippedWidth, headerHeight)
+        this.ctx.restore()
+      }
+      
+      // Рисуем placeholder эффект для других колонок во время drag
+      if (isGhosted) {
+        this.ctx.save()
+        this.ctx.globalAlpha = 0.55
+        this.ctx.fillStyle = '#e0e0e0'
+        this.ctx.fillRect(clippedX, 0, clippedWidth, headerHeight)
+        this.ctx.restore()
+      }
+      
+      // Рисуем индикатор места вставки (drop indicator)
+      if (dropBefore || dropAfter) {
+        const indicatorX = dropBefore ? clippedX : clippedX + clippedWidth
+        
+        if (indicatorX >= 0 && indicatorX <= viewportWidth) {
+          this.ctx.save()
+          this.ctx.strokeStyle = '#1e88e5'
+          this.ctx.lineWidth = 3
+          this.ctx.shadowColor = 'rgba(30, 136, 229, 0.5)'
+          this.ctx.shadowBlur = 6
+          this.ctx.beginPath()
+          this.ctx.moveTo(indicatorX, 4)
+          this.ctx.lineTo(indicatorX, headerHeight - 4)
+          this.ctx.stroke()
+          this.ctx.restore()
+        }
+      }
     }
   }
 
