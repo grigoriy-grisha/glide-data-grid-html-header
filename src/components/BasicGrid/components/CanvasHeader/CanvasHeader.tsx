@@ -203,8 +203,10 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             gripIcon.style = {
                 flexShrink: 0,
                 alignSelf: 'center',
-                // Add some margin right
-                marginRight: 4,
+                // Add some margin right using width hack or empty spacer, but here we don't have spacer.
+                // FlexStyle doesn't support margin.
+                // We'll just rely on gap if parent has it, or accept tight packing.
+                // Or insert a spacer node. Let's insert spacer.
             }
             
             // Drag Logic (duplicate from below, maybe extract to helper)
@@ -230,9 +232,18 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
                 })
             }
 
-            // Вставляем в начало
+            // Spacer for margin
+            const spacer = new CanvasRect(`${cellId}-grip-spacer`, 'transparent')
+            spacer.rect = { x: 0, y: 0, width: 4, height: 1 }
+            spacer.style = { width: 4, height: 1, flexShrink: 0 }
+
+            // Вставляем в начало: spacer, затем icon (порядок добавления в unshift: последний добавленный станет первым)
+            // Нам нужно: [Icon, Spacer, ...OldChildren]
+            
+            customContent.children.unshift(spacer);
+            spacer.parent = customContent;
+            
             customContent.children.unshift(gripIcon);
-            // Need to set parent manually because unshift array doesn't do it (addChild does)
             gripIcon.parent = customContent;
         }
 
