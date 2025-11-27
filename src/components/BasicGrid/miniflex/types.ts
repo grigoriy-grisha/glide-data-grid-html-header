@@ -18,6 +18,15 @@ export type Justify =
   | "space-around"
   | "space-evenly"
 
+export type AlignContent = 
+  | "flex-start" 
+  | "flex-end" 
+  | "center" 
+  | "space-between" 
+  | "space-around" 
+  | "space-evenly" 
+  | "stretch"
+
 export interface FlexStyle {
   id?: string
   flexGrow: number
@@ -37,8 +46,10 @@ export interface FlexStyle {
 export interface FlexBoxOptions {
   id?: string
   direction?: Direction
+  wrap?: "nowrap" | "wrap" | "wrap-reverse"
   columnGap?: number
   rowGap?: number
   justifyContent?: Justify
   alignItems?: Align
+  alignContent?: AlignContent
 }

@@ -1,8 +1,8 @@
-// minimal-flexbox.ts – single‑file flexbox engine with direction, gap, nesting & alignment
+// minimal-flexbox.ts – single‑file flexbox engine with direction, gap, nesting & alignment
 // -------------------------------------------------------------
 // Public API summary
 //   • new RootFlexBox(width, height, options?)
-//       options = { direction, columnGap, rowGap, justifyContent, alignItems }
+//       options = { direction, columnGap, rowGap, justifyContent, alignItems, wrap, alignContent }
 //   • root.addChild(style?)                 // add leaf element
 //   • root.addChild(childBox, style?)       // nest another flex container
 //   • root.build()                          // compute the layout
@@ -16,6 +16,7 @@ import type {
   Direction,
   Justify,
   Align,
+  AlignContent,
   FlexBoxOptions,
 } from "./types"
 
@@ -60,10 +61,12 @@ export class FlexBox extends FlexNode {
 
   // Container‑level layout options (with sensible defaults)
   public direction: Direction = "row"
+  public wrap: "nowrap" | "wrap" | "wrap-reverse" = "nowrap"
   public columnGap = 0
   public rowGap = 0
   public justifyContent: Justify = "flex-start"
   public alignItems: Align = "stretch"
+  public alignContent: AlignContent = "stretch"
 
   constructor(width: number, height: number, opts: FlexBoxOptions = {}) {
     super({})
@@ -101,152 +104,219 @@ export class FlexBox extends FlexNode {
     const mainProp: keyof Size = horizontal ? "width" : "height"
     const crossProp: keyof Size = horizontal ? "height" : "width"
     const mainGap = horizontal ? this.columnGap : this.rowGap
-    const crossGap = horizontal ? this.rowGap : this.columnGap // may be unused (single line)
-
-    // 2. Gather flex statistics
-    const gapTotal = mainGap * Math.max(0, this.children.length - 1)
+    const crossGap = horizontal ? this.rowGap : this.columnGap
+    
     const containerMain = this.size[mainProp]
     const containerCross = this.size[crossProp]
 
-    let totalBasis = 0
-    let totalGrow = 0
-    let totalShrink = 0
+    // 2. Group children into lines
+    const lines: FlexNode[][] = []
+    let currentLine: FlexNode[] = []
+    let currentMainSize = 0
 
     for (const child of this.children) {
-      totalBasis += child.style.flexBasis
-      totalGrow += child.style.flexGrow
-      totalShrink += child.style.flexShrink
-    }
+      const childBasis = child.style.flexBasis
 
-    const freeSpace = containerMain - totalBasis - gapTotal
-
-    // 3. Resolve main‑axis sizes -------------------------------------------------
-    for (const child of this.children) {
-      let main = child.style.flexBasis
-
-      if (freeSpace > 0 && totalGrow > 0) {
-        main += (freeSpace * child.style.flexGrow) / totalGrow
-      } else if (freeSpace < 0 && totalShrink > 0) {
-        main += (freeSpace * child.style.flexShrink) / totalShrink
-        if (main < 0) main = 0
-      }
-
-      child.size[mainProp] = main
-
-      // Cross‑axis size (alignItems / alignSelf)
-      const alignSelf =
-        child.style.alignSelf !== "auto"
-          ? (child.style.alignSelf as Align)
-          : this.alignItems
-
-      const explicitCrossSize = horizontal
-        ? child.style.height
-        : child.style.width
-
-      if (explicitCrossSize !== undefined) {
-        child.size[crossProp] = explicitCrossSize
-      } else if (alignSelf === "stretch") {
-        child.size[crossProp] = containerCross
+      if (this.wrap === 'nowrap') {
+        currentLine.push(child)
+        currentMainSize += childBasis
       } else {
-        // Item is not stretched and has no explicit cross size.
-        // Its cross size is not changed by alignment; it remains its current value
-        // (e.g., 0 for a FlexElement, or the defined size for a nested FlexBox).
+        const gap = currentLine.length > 0 ? mainGap : 0
+        if (currentLine.length > 0 && (currentMainSize + gap + childBasis) > containerMain) {
+          lines.push(currentLine)
+          currentLine = []
+          currentMainSize = 0
+        }
+        currentLine.push(child)
+        currentMainSize += (currentLine.length > 1 ? mainGap : 0) + childBasis
       }
     }
-
-    // 4. Justify content (main‑axis positioning) -------------------------------
-    const occupied =
-      this.children.reduce((sum, c) => sum + c.size[mainProp], 0) + gapTotal
-    const remaining = containerMain - occupied
-
-    let leading = 0
-    let between = mainGap
-    const n = this.children.length
-
-    switch (this.justifyContent) {
-      case "flex-start":
-        break // defaults are fine
-      case "flex-end":
-        leading = remaining
-        break
-      case "center":
-        leading = remaining / 2
-        break
-      case "space-between":
-        between = n > 1 ? mainGap + remaining / (n - 1) : 0
-        break
-      case "space-around":
-        between = mainGap + remaining / n
-        leading = between / 2
-        break
-      case "space-evenly":
-        between = mainGap + remaining / (n + 1)
-        leading = between
-        break
+    if (currentLine.length > 0) {
+      lines.push(currentLine)
     }
 
-    // 5. Position children ------------------------------------------------------
-    const ordered = this.direction.endsWith("reverse")
-      ? [...this.children].reverse()
-      : this.children
-    let cursor = leading
-
-    for (const child of ordered) {
-      if (horizontal) {
-        child.position.x =
-          this.direction === "row"
-            ? cursor
-            : containerMain - cursor - child.size.width
-        child.position.y = computeCross(
-          child,
-          crossProp,
-          containerCross,
-          this.alignItems,
-        )
-      } else {
-        child.position.y =
-          this.direction === "column"
-            ? cursor
-            : containerMain - cursor - child.size.height
-        child.position.x = computeCross(
-          child,
-          crossProp,
-          containerCross,
-          this.alignItems,
-        )
-      }
-      cursor += child.size[mainProp] + between
+    if (this.wrap === 'wrap-reverse') {
+        lines.reverse()
     }
 
-    // 6. Recurse into nested flex containers -----------------------------------
+    // 3. Calculate Line Heights
+    const lineHeights: number[] = []
+    let totalUsedCross = 0
+
+    for (const line of lines) {
+        if (this.wrap === 'nowrap') {
+            // Single line fills container (unless limited by something else? Flexbox defaults to filling cross)
+            // We'll defer to align-content logic: if one line, it acts as one line block.
+            // But commonly, nowrap lines stretch to fit container height if not auto.
+            // Let's compute content height first.
+            let maxH = 0
+            for (const child of line) {
+                const explicit = horizontal ? child.style.height : child.style.width
+                const measured = horizontal ? child.size.height : child.size.width
+                const h = explicit ?? measured ?? 0 // fallback 0?
+                maxH = Math.max(maxH, h)
+            }
+            lineHeights.push(maxH)
+            totalUsedCross += maxH // this is 'content' height
+        } else {
+            let maxCrossSize = 0
+            for (const child of line) {
+                let childCross = horizontal ? child.style.height : child.style.width
+                if (childCross === undefined) {
+                    childCross = horizontal ? child.size.height : child.size.width
+                }
+                if (childCross !== undefined) {
+                    maxCrossSize = Math.max(maxCrossSize, childCross)
+                }
+            }
+            lineHeights.push(maxCrossSize)
+            totalUsedCross += maxCrossSize
+        }
+    }
+
+    // 4. Determine Cross Axis Distribution (align-content)
+    // Total space for lines
+    const crossGapTotal = crossGap * Math.max(0, lines.length - 1)
+    const availableCross = containerCross - totalUsedCross - crossGapTotal
+    
+    // If nowrap, standard flex says line height stretches to fill container if we don't have specific sizing.
+    // If wrap, we use align-content.
+    // For simplicity, if nowrap, we often force the line to be containerCross (simulating stretch).
+    if (this.wrap === 'nowrap' && lineHeights.length === 1) {
+        lineHeights[0] = containerCross; // Force stretch for single line nowrap
+        totalUsedCross = containerCross; // No free space effectively
+        // But wait, what if align-items is not stretch? The line is still the container height usually.
+    }
+
+    let crossStart = 0
+    let crossBetween = crossGap
+
+    // Only apply align-content if we have extra space (positive or negative?)
+    // Standard flexbox applies it.
+    // Note: AlignContent type matches Justify roughly
+    
+    if (this.wrap !== 'nowrap') { // Align content only applies to multi-line (or single line with wrap enabled? Flex spec says yes)
+        switch (this.alignContent) {
+            case 'flex-end': crossStart = availableCross; break;
+            case 'center': crossStart = availableCross / 2; break;
+            case 'space-between': 
+                crossBetween = lines.length > 1 ? crossGap + availableCross / (lines.length - 1) : 0; 
+                break;
+            case 'space-around':
+                crossBetween = crossGap + availableCross / lines.length;
+                crossStart = crossBetween / 2;
+                break;
+            case 'space-evenly':
+                crossBetween = crossGap + availableCross / (lines.length + 1);
+                crossStart = crossBetween;
+                break;
+            case 'stretch':
+                // Distribute space into lines
+                if (availableCross > 0 && lines.length > 0) {
+                    const add = availableCross / lines.length
+                    for (let i = 0; i < lineHeights.length; i++) {
+                        lineHeights[i] += add
+                    }
+                }
+                break;
+        }
+    }
+
+    // 5. Position Lines & Items
+    let currentCrossPos = crossStart
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const lineHeight = lineHeights[i]
+
+        // 5a. Resolve Main Axis Items (Grow/Shrink) for this line
+        let lineMainUsed = 0
+        let totalGrow = 0
+        let totalShrink = 0
+        let totalBasis = 0
+        
+        for (const child of line) {
+            totalBasis += child.style.flexBasis
+            totalGrow += child.style.flexGrow
+            totalShrink += child.style.flexShrink
+        }
+        // Gap inside line
+        const lineGapSum = mainGap * Math.max(0, line.length - 1)
+        const lineFreeSpace = containerMain - totalBasis - lineGapSum
+
+        for (const child of line) {
+            let main = child.style.flexBasis
+            if (lineFreeSpace > 0 && totalGrow > 0) {
+                main += (lineFreeSpace * child.style.flexGrow) / totalGrow
+            } else if (lineFreeSpace < 0 && totalShrink > 0) {
+                main += (lineFreeSpace * child.style.flexShrink) / totalShrink
+                if (main < 0) main = 0
+            }
+            child.size[mainProp] = main
+            lineMainUsed += main
+        }
+
+        // 5b. Justify Content (Main Axis)
+        // const occupied = lineMainUsed + lineGapSum // same as above
+        let leading = 0
+        let between = mainGap
+        const n = line.length
+        
+        let justifySpace = 0
+        if (totalGrow === 0) {
+            justifySpace = containerMain - (line.reduce((s,c)=>s+c.size[mainProp],0) + lineGapSum)
+        }
+
+        switch (this.justifyContent) {
+            case "flex-end": leading = justifySpace; break;
+            case "center": leading = justifySpace / 2; break;
+            case "space-between": between = n > 1 ? mainGap + justifySpace / (n - 1) : 0; break;
+            case "space-around": between = mainGap + justifySpace / n; leading = between / 2; break;
+            case "space-evenly": between = mainGap + justifySpace / (n + 1); leading = between; break;
+        }
+
+        // 5c. Position Items
+        const ordered = this.direction.endsWith("reverse") ? [...line].reverse() : line
+        let mainCursor = leading
+
+        for (const child of ordered) {
+            // Main Position
+            if (horizontal) {
+                child.position.x = (this.direction === "row") ? mainCursor : containerMain - mainCursor - child.size.width
+            } else {
+                child.position.y = (this.direction === "column") ? mainCursor : containerMain - mainCursor - child.size.height
+            }
+
+            // Cross Position (Align Items)
+            const alignSelf = child.style.alignSelf !== "auto" ? (child.style.alignSelf as Align) : this.alignItems
+            
+            const explicitCross = horizontal ? child.style.height : child.style.width
+            if (explicitCross !== undefined) child.size[crossProp] = explicitCross
+            else if (alignSelf === 'stretch') child.size[crossProp] = lineHeight // Stretch to line height
+            // else child.size[crossProp] is natural
+
+            let crossOffset = 0
+            switch (alignSelf) {
+                case "flex-end": crossOffset = lineHeight - child.size[crossProp]; break;
+                case "center": crossOffset = (lineHeight - child.size[crossProp]) / 2; break;
+            }
+
+            if (horizontal) {
+                child.position.y = currentCrossPos + crossOffset
+            } else {
+                child.position.x = currentCrossPos + crossOffset
+            }
+
+            mainCursor += child.size[mainProp] + between
+        }
+
+        currentCrossPos += lineHeight + crossBetween
+    }
+
+    // 6. Recurse into nested flex containers
     for (const child of this.children) {
       if (child instanceof FlexBox) {
-        // Ensure the nested box matches the computed size (already on .size)
         child.build()
-      }
-    }
-
-    // ---------- helpers ----------
-    function computeCross(
-      child: FlexNode,
-      prop: keyof Size,
-      containerCross: number,
-      alignItems: Align,
-    ): number {
-      const alignSelf =
-        child.style.alignSelf !== "auto"
-          ? (child.style.alignSelf as Align)
-          : alignItems
-      switch (alignSelf) {
-        case "flex-start":
-          return 0
-        case "flex-end":
-          return containerCross - child.size[prop]
-        case "center":
-          return (containerCross - child.size[prop]) / 2
-        case "stretch":
-        default:
-          return 0
       }
     }
   }
@@ -260,6 +330,7 @@ export type {
   Direction,
   Justify,
   Align,
+  AlignContent,
   FlexBoxOptions,
 } from "./types"
 
