@@ -5,6 +5,7 @@ import { basicGridRows, type DataRow } from './data'
 import { CanvasContainer } from '../components/BasicGrid/components/CanvasHeader/core/CanvasContainer'
 import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
 import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIcon'
+import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
 
 const svgIcon = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -74,6 +75,17 @@ const columns: BasicGridColumn<DataRow>[] = [
             columnGap: 6,
           })
 
+          // Создаем вертикальный контейнер для кнопок
+          const columnContainer = new CanvasContainer('col-container', {
+            direction: 'column',
+            rowGap: 4,
+            alignItems: 'stretch', // Растянуть кнопки на всю ширину колонки
+          })
+          columnContainer.style = {
+             flexGrow: 0,
+             flexShrink: 0,
+          }
+
           // Устанавливаем размеры корневого контейнера
           root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
 
@@ -91,17 +103,29 @@ const columns: BasicGridColumn<DataRow>[] = [
           icon.onClick = () => {
             console.log('SVG Icon clicked via CanvasNode!')
           }
-
           icon.onMouseEnter = () => {
-            icon.color = '#666'
+            icon.color = '#9065c0'
           }
-
           icon.onMouseLeave = () => {
             icon.color = '#1565c0'
           }
 
           root.addChild(icon)
 
+          // Кнопка
+          const button = new CanvasButton('btn-test', 'Button 1', { variant: 'secondary' })
+          button.onClick = () => {
+            console.log('Button 1 clicked!')
+          }
+          columnContainer.addChild(button)
+
+          const button1 = new CanvasButton('btn-test-2', 'Button 2', { variant: 'secondary' })
+          button1.onClick = () => {
+            console.log('Button 2 clicked!')
+          }
+          columnContainer.addChild(button1)
+
+          root.addChild(columnContainer)
 
           console.log({root})
           // Возвращаем root ноду для интеграции

@@ -1,68 +1,65 @@
 import {CanvasNode} from "../core/CanvasNode.ts";
+import {drawButton} from '../../../customCells/canvasCell/buttons';
 
 export class CanvasButton extends CanvasNode {
     text: string;
-    fillColor: string = '#e3f2fd';
-    hoverFillColor: string = '#bbdefb';
-    textColor: string = '#1565c0';
-    borderColor: string = '#2196f3';
-    borderRadius: number = 4;
-    fontSize: number = 12;
-    fontWeight: string = 'normal';
-    private isHovered: boolean = false;
+    variant: 'primary' | 'secondary' | 'danger' = 'primary';
+    disabled: boolean = false;
+    isHovered: boolean = false;
 
     constructor(id: string, text: string, options?: {
-        fillColor?: string;
-        hoverFillColor?: string;
-        textColor?: string;
-        borderColor?: string;
-        borderRadius?: number;
-        fontSize?: number;
-        fontWeight?: string;
+        variant?: 'primary' | 'secondary' | 'danger';
+        disabled?: boolean;
         onClick?: () => void;
     }) {
         super(id);
         this.text = text;
-        if (options) {
-            this.fillColor = options.fillColor ?? this.fillColor;
-            this.hoverFillColor = options.hoverFillColor ?? this.hoverFillColor;
-            this.textColor = options.textColor ?? this.textColor;
-            this.borderColor = options.borderColor ?? this.borderColor;
-            this.borderRadius = options.borderRadius ?? this.borderRadius;
-            this.fontSize = options.fontSize ?? this.fontSize;
-            this.fontWeight = options.fontWeight ?? this.fontWeight;
-            if (options.onClick) {
-                this.onClick = () => options.onClick!();
-            }
+        this.variant = options?.variant ?? this.variant;
+        this.disabled = options?.disabled ?? this.disabled;
+        if (options?.onClick) {
+            this.onClick = () => options.onClick!();
         }
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        ctx.font = `${this.fontWeight} ${this.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        const metrics = ctx.measureText(this.text);
-        this.rect.width = metrics.width + 16; // padding
-        this.rect.height = 28;
+        // We need to measure the button size using the drawButton helper
+        // Since drawButton does drawing, we can use a "dry run" or just rely on its internal logic if extracted
+        // For now, let's use a simplified estimation or call drawButton with a dummy context if needed,
+        // but drawButton takes x/y which we don't know yet.
+        // Ideally drawButton logic should be split into measure and paint.
+        // For this implementation, we'll use a temporary estimation similar to drawButton.
+        
+        // Simple estimation based on drawButton logic
+        ctx.font = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"; // Approximate theme font
+        const textMetrics = ctx.measureText(this.text);
+        const paddingX = 12; // 6px * 2 roughly
+        
+        this.rect.width = textMetrics.width + paddingX * 2 + 8; 
+        this.rect.height = 24; // Standard height
     }
 
     paint(ctx: CanvasRenderingContext2D) {
-        const { x, y, width, height } = this.rect;
-        // Draw rounded rectangle background
-        ctx.fillStyle = this.isHovered ? this.hoverFillColor : this.fillColor;
-        ctx.beginPath();
-        ctx.roundRect(x, y, width, height, this.borderRadius);
-        ctx.fill();
-
-        // Draw border
-        ctx.strokeStyle = this.borderColor;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Draw text
-        ctx.fillStyle = this.textColor;
-        ctx.font = `${this.fontWeight} ${this.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.text, x + width / 2, y + height / 2);
+        drawButton(
+            ctx,
+            this.rect.x,
+            this.rect.y,
+            this.rect.width,
+            this.rect.height,
+            this.text,
+            {
+                // Mock theme
+                accentColor: '#1e88e5',
+                accentLight: 'rgba(30, 136, 229, 0.16)',
+                accentFg: '#ffffff',
+                bgCell: '#ffffff',
+                borderColor: '#e0e0e0',
+                textLight: '#9e9e9e',
+                baseFontFull: "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+            },
+            this.variant,
+            this.disabled,
+            this.isHovered
+        );
     }
 
     onMouseEnter() {
