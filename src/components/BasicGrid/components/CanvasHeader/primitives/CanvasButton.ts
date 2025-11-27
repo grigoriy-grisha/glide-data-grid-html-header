@@ -1,7 +1,9 @@
 import {CanvasNode} from "../core/CanvasNode.ts";
 import {drawButton} from '../../../customCells/canvasCell/buttons';
+import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 
-export class CanvasButton extends CanvasNode {
+export class CanvasButton extends CanvasLeaf {
+    type= "button"
     text: string;
     variant: 'primary' | 'secondary' | 'danger' = 'primary';
     disabled: boolean = false;

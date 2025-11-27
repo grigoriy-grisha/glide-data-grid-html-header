@@ -1,7 +1,8 @@
 import {ButtonIcon, drawIcon} from '../../../customCells/canvasCell/buttons';
 import {CanvasNode} from "../core/CanvasNode.ts";
+import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 
-export class CanvasIcon extends CanvasNode {
+export class CanvasIcon extends CanvasLeaf {
     icon: ButtonIcon;
     size: number;
     color?: string;

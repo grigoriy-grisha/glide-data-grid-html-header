@@ -67,6 +67,7 @@ export class FlexBox extends FlexNode {
   public justifyContent: Justify = "flex-start"
   public alignItems: Align = "stretch"
   public alignContent: AlignContent = "stretch"
+  public padding: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 }
 
   constructor(width: number, height: number, opts: FlexBoxOptions = {}) {
     super({})
@@ -76,6 +77,14 @@ export class FlexBox extends FlexNode {
     this.size.height = height
     this.id = opts.id
     Object.assign(this, opts)
+    
+    if (opts.padding !== undefined) {
+        if (typeof opts.padding === 'number') {
+            this.padding = { top: opts.padding, right: opts.padding, bottom: opts.padding, left: opts.padding }
+        } else {
+            this.padding = opts.padding
+        }
+    }
   }
 
   // --------------- Building the tree -----------------------
@@ -106,8 +115,12 @@ export class FlexBox extends FlexNode {
     const mainGap = horizontal ? this.columnGap : this.rowGap
     const crossGap = horizontal ? this.rowGap : this.columnGap
     
-    const containerMain = this.size[mainProp]
-    const containerCross = this.size[crossProp]
+    // Adjust container size for padding
+    const paddingMain = horizontal ? (this.padding.left + this.padding.right) : (this.padding.top + this.padding.bottom)
+    const paddingCross = horizontal ? (this.padding.top + this.padding.bottom) : (this.padding.left + this.padding.right)
+
+    const containerMain = Math.max(0, this.size[mainProp] - paddingMain)
+    const containerCross = Math.max(0, this.size[crossProp] - paddingCross)
 
     // 2. Group children into lines
     const lines: FlexNode[][] = []
@@ -151,13 +164,27 @@ export class FlexBox extends FlexNode {
             // Let's compute content height first.
             let maxH = 0
             for (const child of line) {
+                // Calculate implicit size if not set
+                // This is basic and doesn't account for wrapped text height yet because widths are not final.
                 const explicit = horizontal ? child.style.height : child.style.width
                 const measured = horizontal ? child.size.height : child.size.width
-                const h = explicit ?? measured ?? 0 // fallback 0?
+                const h = explicit ?? measured ?? 0 
                 maxH = Math.max(maxH, h)
             }
+            // If wrapping text depends on final width, maxH here might be wrong (too small).
+            // In a 1-pass engine, we can't know for sure.
+            // However, if we have a heuristic or if we can trust that shrinking won't happen significantly? No.
+            
+            // If we are in 'nowrap', text won't wrap unless width is constrained externally.
+            // If it wraps, it grows in height.
+            
+            // If containerCross is auto (undefined in this engine structure usually implies fit content for nested),
+            // we use maxH.
+            // If containerCross is fixed, we might use it?
+            
+            // For now, use maxH.
             lineHeights.push(maxH)
-            totalUsedCross += maxH // this is 'content' height
+            totalUsedCross += maxH 
         } else {
             let maxCrossSize = 0
             for (const child of line) {
@@ -233,12 +260,14 @@ export class FlexBox extends FlexNode {
         let lineMainUsed = 0
         let totalGrow = 0
         let totalShrink = 0
+        let totalWeightedShrink = 0
         let totalBasis = 0
         
         for (const child of line) {
             totalBasis += child.style.flexBasis
             totalGrow += child.style.flexGrow
             totalShrink += child.style.flexShrink
+            totalWeightedShrink += child.style.flexShrink * child.style.flexBasis
         }
         // Gap inside line
         const lineGapSum = mainGap * Math.max(0, line.length - 1)
@@ -248,13 +277,63 @@ export class FlexBox extends FlexNode {
             let main = child.style.flexBasis
             if (lineFreeSpace > 0 && totalGrow > 0) {
                 main += (lineFreeSpace * child.style.flexGrow) / totalGrow
-            } else if (lineFreeSpace < 0 && totalShrink > 0) {
+            } else if (lineFreeSpace < 0 && totalWeightedShrink > 0) {
+                // Shrink proportional to flexShrink * flexBasis
+                const weightedShrink = child.style.flexShrink * child.style.flexBasis
+                main += (lineFreeSpace * weightedShrink) / totalWeightedShrink
+                if (main < 0) main = 0
+            } else if (lineFreeSpace < 0 && totalWeightedShrink === 0 && totalShrink > 0) {
+                // Fallback: if all basis are 0 but shrink > 0, shrink equally or proportionally to shrink factor
                 main += (lineFreeSpace * child.style.flexShrink) / totalShrink
                 if (main < 0) main = 0
             }
+
             child.size[mainProp] = main
             lineMainUsed += main
         }
+
+        // Re-calculate line height if needed (e.g. if items wrapped differently due to width change)
+        // This is a simplified approach: we assume max cross size might have changed if width changed.
+        // We can iterate again to update lineHeight[i] if we had a mechanism to re-measure content.
+        // Since we don't have a callback to the node to re-measure based on new size here easily without tight coupling,
+        // we assume the initial measure was "good enough" or that the node handles layout in paint.
+        // BUT, for correct alignment (align-items: flex-start), we need the correct line height.
+        // If a text wrapped, its height increased.
+        // The FlexNode abstraction here stores size. If size[crossProp] was derived from natural size, 
+        // and natural size depends on main size (wrapping), we need to update it.
+        // But FlexNode.size is just numbers. 
+        
+        // Hack/Fix: If we could know the new height given the new width...
+        // For now, let's just ensure we respect the cross size if it was set explicitly?
+        // Or update maxH based on current size?
+        // The problem is 'child.size.height' hasn't been updated based on 'child.size.width' yet.
+        // The nodes are passive data structs here.
+        
+        // However, in the CanvasContainer.performLayout, we do:
+        // 1. measureRecursive (sets rect width/height based on initial state/text)
+        // 2. build (this function)
+        // 3. applyLayout
+        
+        // If text wraps, 'measure' needs to know the width.
+        // But 'measure' happened before flex layout determined the width!
+        // This is the circular dependency of layout.
+        // Standard flexbox solves this by multi-pass or intrinsic sizing.
+        
+        // Workaround for this engine: 
+        // We can't solve the full measure-layout loop inside this single-pass 'build'.
+        // The user sees that height is not accounted for because 'measure' used 'style.width' (which might be undefined or different)
+        // or 'measure' used infinite width (no wrapping).
+        // When we shrink here, the width becomes smaller, text wraps (visually in paint), but the box height remains small.
+        
+        // To fix: The 'paint' method calculates wrapped height correctly. 
+        // We should probably support a 2-pass layout in CanvasContainer if we want dynamic height.
+        // Or, for this specific issue, ensure that IF we provided a width constraint in style, measure used it.
+        // If flexbox shrinks it further, we are out of luck in 1 pass.
+        
+        // But wait, the user said "dimensions of height text which wraps seems to be ignored".
+        // This likely means the container height (row height) is too small for the wrapped text.
+        // This confirms we need the row height to match the wrapped text height.
+
 
         // 5b. Justify Content (Main Axis)
         // const occupied = lineMainUsed + lineGapSum // same as above
@@ -264,7 +343,15 @@ export class FlexBox extends FlexNode {
         
         let justifySpace = 0
         if (totalGrow === 0) {
-            justifySpace = containerMain - (line.reduce((s,c)=>s+c.size[mainProp],0) + lineGapSum)
+            // If we shrank items (lineFreeSpace < 0), justifySpace should be 0 because we filled the container
+            // But if we have space left, we calculate it.
+            // lineFreeSpace is calculated BEFORE shrinking logic.
+            // After shrinking/growing, lineMainUsed holds the final size of items.
+            // So we should use containerMain - lineMainUsed - lineGapSum
+            
+            justifySpace = containerMain - lineMainUsed - lineGapSum
+            // Ensure we don't have negative space here if calculation was slightly off or exactly 0
+            if (justifySpace < 0) justifySpace = 0 
         }
 
         switch (this.justifyContent) {
@@ -279,12 +366,37 @@ export class FlexBox extends FlexNode {
         const ordered = this.direction.endsWith("reverse") ? [...line].reverse() : line
         let mainCursor = leading
 
+        // Add padding offset
+        let offsetX = this.padding.left
+        let offsetY = this.padding.top
+
+        // Re-evaluate line height after items have settled their main size (and potentially wrapping height)
+        // This is a patch for the 1-pass limitation.
+        let finalLineHeight = lineHeight;
+        if (this.wrap === 'nowrap') { // Only straightforward for single line per container logic here
+             let maxH = 0;
+             for (const child of line) {
+                 const explicitCross = horizontal ? child.style.height : child.style.width
+                 const measuredCross = horizontal ? child.size.height : child.size.width
+                 // Use the size that might have been updated by a re-measure or is intrinsic
+                 const h = explicitCross ?? measuredCross ?? 0
+                 maxH = Math.max(maxH, h)
+             }
+             // If items grew in height (e.g. text wrapping), expand line height
+             // But only if we are not constrained by containerCross? 
+             // If container aligns stretch, items stretch to line height. 
+             // If line height grows, stretched items grow.
+             if (maxH > finalLineHeight) {
+                 finalLineHeight = maxH;
+             }
+        }
+
         for (const child of ordered) {
             // Main Position
             if (horizontal) {
-                child.position.x = (this.direction === "row") ? mainCursor : containerMain - mainCursor - child.size.width
+                child.position.x = offsetX + ((this.direction === "row") ? mainCursor : containerMain - mainCursor - child.size.width)
             } else {
-                child.position.y = (this.direction === "column") ? mainCursor : containerMain - mainCursor - child.size.height
+                child.position.y = offsetY + ((this.direction === "column") ? mainCursor : containerMain - mainCursor - child.size.height)
             }
 
             // Cross Position (Align Items)
@@ -292,25 +404,25 @@ export class FlexBox extends FlexNode {
             
             const explicitCross = horizontal ? child.style.height : child.style.width
             if (explicitCross !== undefined) child.size[crossProp] = explicitCross
-            else if (alignSelf === 'stretch') child.size[crossProp] = lineHeight // Stretch to line height
+            else if (alignSelf === 'stretch') child.size[crossProp] = finalLineHeight // Use updated line height
             // else child.size[crossProp] is natural
 
             let crossOffset = 0
             switch (alignSelf) {
-                case "flex-end": crossOffset = lineHeight - child.size[crossProp]; break;
-                case "center": crossOffset = (lineHeight - child.size[crossProp]) / 2; break;
+                case "flex-end": crossOffset = finalLineHeight - child.size[crossProp]; break;
+                case "center": crossOffset = (finalLineHeight - child.size[crossProp]) / 2; break;
             }
 
             if (horizontal) {
-                child.position.y = currentCrossPos + crossOffset
+                child.position.y = offsetY + currentCrossPos + crossOffset
             } else {
-                child.position.x = currentCrossPos + crossOffset
+                child.position.x = offsetX + currentCrossPos + crossOffset
             }
 
             mainCursor += child.size[mainProp] + between
         }
 
-        currentCrossPos += lineHeight + crossBetween
+        currentCrossPos += finalLineHeight + crossBetween
     }
 
     // 6. Recurse into nested flex containers

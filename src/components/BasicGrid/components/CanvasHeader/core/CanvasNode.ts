@@ -50,37 +50,35 @@ export abstract class CanvasNode {
         }
     }
 
-    // Calculate size requirements and update rect size
     abstract measure(ctx: CanvasRenderingContext2D): void;
 
-    // Draw the component
     abstract paint(ctx: CanvasRenderingContext2D): void;
 
-    // Hit test
-    hitTest(x: number, y: number): CanvasNode | null {
+    hitTest(x: number, y: number): CanvasNode[] {
+        const hits: CanvasNode[] = [];
+
         if (x >= this.rect.x && x <= this.rect.x + this.rect.width &&
             y >= this.rect.y && y <= this.rect.y + this.rect.height) {
-
-            // Check children in reverse order (top to bottom)
+            
             for (let i = this.children.length - 1; i >= 0; i--) {
-                const hit = this.children[i].hitTest(x, y);
-                if (hit) return hit;
+                const childHits = this.children[i].hitTest(x, y);
+                if (childHits.length > 0) {
+                    hits.push(...childHits);
+                }
             }
-
-            return this;
+            
+            hits.push(this);
         }
 
-        return null;
+        return hits;
     }
 
-    // Request a layout update (which will likely trigger a repaint)
     requestLayout() {
         if (this.parent) {
             this.parent.requestLayout();
         }
     }
 
-    // Request a repaint (layout assumed valid)
     requestPaint() {
         if (this.parent) {
             this.parent.requestPaint();

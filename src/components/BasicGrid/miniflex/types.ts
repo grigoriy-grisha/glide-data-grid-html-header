@@ -52,4 +52,10 @@ export interface FlexBoxOptions {
   justifyContent?: Justify
   alignItems?: Align
   alignContent?: AlignContent
+  padding?: {
+    top?: number
+    right?: number
+    bottom?: number
+    left?: number
+  } | number
 }

@@ -4,77 +4,33 @@ import { CanvasContainer } from './CanvasContainer';
 export class CanvasRoot {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
-    rootNode: CanvasContainer;
+    rootNode: CanvasNode; // Changed from CanvasContainer to CanvasNode to support generic roots
+    hoveredNode: CanvasNode | null = null;
 
-    private hoveredNode: CanvasNode | null = null;
-
-    constructor(canvas: HTMLCanvasElement, rootNode: CanvasContainer) {
+    constructor(canvas: HTMLCanvasElement, rootNode: CanvasNode) {
         this.canvas = canvas;
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) throw new Error("Could not get 2d context");
-        this.ctx = ctx;
+        this.ctx = canvas.getContext('2d')!;
         this.rootNode = rootNode;
 
-        // Hook into rootNode to handle requests
-        // Since requestLayout/Paint bubble up, they will eventually reach the root node (if it had a parent)
-        // But rootNode has no parent. We need to intercept the calls.
-        // Since CanvasNode methods check this.parent, the root node's methods won't bubble further.
-        // We can override them on the instance.
-        this.rootNode.requestLayout = () => {
-            this.render();
-        };
-        this.rootNode.requestPaint = () => {
-            // For now, just render everything. Optimization possible later.
-            this.render();
-        };
-
         this.setupEvents();
-    }
-
-    render() {
-        // 1. Update root rect
-        const dpr = window.devicePixelRatio || 1;
-        this.rootNode.rect = {
-            x: 0,
-            y: 0,
-            width: this.canvas.width / dpr,
-            height: this.canvas.height / dpr
-        };
-
-        // 2. Layout
-        this.rootNode.performLayout(this.ctx);
-
-        // 3. Paint
-        this.ctx.save();
-        this.ctx.scale(dpr, dpr);
-        this.ctx.clearRect(0, 0, this.rootNode.rect.width, this.rootNode.rect.height);
-        this.rootNode.paint(this.ctx);
-        this.ctx.restore();
     }
 
     private setupEvents() {
         const getEventCoords = (e: MouseEvent) => {
             const rect = this.canvas.getBoundingClientRect();
+            // dpr is not needed for logical coords if rects are in logical coords
             return {
                 x: e.clientX - rect.left,
                 y: e.clientY - rect.top
             };
         };
 
-        const getPath = (node: CanvasNode | null): CanvasNode[] => {
-            const path: CanvasNode[] = [];
-            let curr = node;
-            while (curr) {
-                path.unshift(curr);
-                curr = curr.parent;
-            }
-            return path;
-        };
-
         const dispatchEvent = (e: MouseEvent, type: CanvasEvent['type']) => {
             const { x, y } = getEventCoords(e);
 
-            const target = this.rootNode.hitTest(x, y);
+            // Get all hits (leaf -> root)
+            const hits = this.rootNode.hitTest(x, y);
+            const target = hits.length > 0 ? hits[0] : undefined;
 
             let stopped = false;
             const canvasEvent: CanvasEvent = {
@@ -82,87 +38,80 @@ export class CanvasRoot {
                 x,
                 y,
                 originalEvent: e,
-                target: target || undefined,
+                target,
                 stopPropagation: () => { stopped = true; },
-                preventDefault: () => e.preventDefault(),
+                preventDefault: () => e.preventDefault()
             };
 
-            if (target && type !== 'mousemove') {
-                let node: CanvasNode | null = target;
-                while (node && !stopped) {
-
+            // Bubbling phase: target -> parent -> root
+            if (hits.length > 0) {
+                for (const node of hits) {
+                    if (stopped) break;
                     switch (type) {
                         case 'click': node.onClick(canvasEvent); break;
                         case 'mousedown': node.onMouseDown(canvasEvent); break;
                         case 'mouseup': node.onMouseUp(canvasEvent); break;
                         case 'dblclick': node.onDoubleClick(canvasEvent); break;
                     }
-                    node = node.parent;
                 }
             }
 
-            // Handle hover (mouseenter/mouseleave)
+            // Special handling for hover (mousemove)
             if (type === 'mousemove') {
                 if (this.hoveredNode !== target) {
-                    const oldPath = getPath(this.hoveredNode);
-                    const newPath = getPath(target);
-
-                    // Find common ancestor index
-                    let commonAncestorIndex = 0;
-                    while (
-                        commonAncestorIndex < oldPath.length &&
-                        commonAncestorIndex < newPath.length &&
-                        oldPath[commonAncestorIndex] === newPath[commonAncestorIndex]
-                    ) {
-                        commonAncestorIndex++;
-                    }
-
-                    // Fire mouseleave on old path (reverse order, from leaf to ancestor)
-                    for (let i = oldPath.length - 1; i >= commonAncestorIndex; i--) {
-                        oldPath[i].onMouseLeave({ ...canvasEvent, type: 'mouseleave', target: oldPath[i] });
-                    }
-
-                    // Fire mouseenter on new path (from ancestor to leaf)
-                    for (let i = commonAncestorIndex; i < newPath.length; i++) {
-                        newPath[i].onMouseEnter({ ...canvasEvent, type: 'mouseenter', target: newPath[i] });
-                    }
-
-                    this.hoveredNode = target || null;
+                     if (this.hoveredNode) {
+                         const leaveEvent = { ...canvasEvent, type: 'mouseleave' as const };
+                         this.hoveredNode.onMouseLeave(leaveEvent);
+                     }
+                     
+                     if (target) {
+                         const enterEvent = { ...canvasEvent, type: 'mouseenter' as const };
+                         target.onMouseEnter(enterEvent);
+                     }
+                     
+                     this.hoveredNode = target || null;
                 }
 
-                // Also dispatch mousemove (bubbling)
-                if (target) {
-                    let node: CanvasNode | null = target;
-                    while (node && !stopped) {
-                        node.onMouseMove(canvasEvent);
-                        node = node.parent;
-                    }
+                // Dispatch mousemove
+                 for (const node of hits) {
+                    if (stopped) break;
+                    node.onMouseMove(canvasEvent);
                 }
             }
         };
 
-        this.canvas.addEventListener('click', e => dispatchEvent(e, 'click'));
-        this.canvas.addEventListener('mousedown', e => dispatchEvent(e, 'mousedown'));
-        this.canvas.addEventListener('mouseup', e => dispatchEvent(e, 'mouseup'));
-        this.canvas.addEventListener('mousemove', e => dispatchEvent(e, 'mousemove'));
-        this.canvas.addEventListener('dblclick', e => dispatchEvent(e, 'dblclick'));
-        this.canvas.addEventListener('mouseleave', e => {
-            if (this.hoveredNode) {
-                const { x, y } = getEventCoords(e);
-                const path = getPath(this.hoveredNode);
-                // Fire mouseleave on all
-                for (let i = path.length - 1; i >= 0; i--) {
-                    path[i].onMouseLeave({
-                        type: 'mouseleave',
-                        x, y,
-                        originalEvent: e,
-                        target: path[i],
-                        stopPropagation: () => { },
-                        preventDefault: () => { }
-                    });
-                }
-                this.hoveredNode = null;
-            }
-        });
+        this.canvas.addEventListener('click', (e) => dispatchEvent(e, 'click'));
+        this.canvas.addEventListener('mousedown', (e) => dispatchEvent(e, 'mousedown'));
+        this.canvas.addEventListener('mouseup', (e) => dispatchEvent(e, 'mouseup'));
+        this.canvas.addEventListener('mousemove', (e) => dispatchEvent(e, 'mousemove'));
+        this.canvas.addEventListener('dblclick', (e) => dispatchEvent(e, 'dblclick'));
+    }
+
+    render() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+
+        // Clear
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Setup scaling
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.scale(dpr, dpr);
+
+        // Update root size
+        this.rootNode.rect.width = rect.width;
+        this.rootNode.rect.height = rect.height;
+        this.rootNode.rect.x = 0;
+        this.rootNode.rect.y = 0;
+
+        // Layout & Paint
+        if (this.rootNode instanceof CanvasContainer) {
+            this.rootNode.performLayout(this.ctx);
+        } else {
+             this.rootNode.measure(this.ctx);
+        }
+        
+        this.rootNode.paint(this.ctx);
     }
 }

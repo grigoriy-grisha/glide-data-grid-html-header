@@ -46,7 +46,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
 
     handles.push(
       <div
-        key={`resize-${col.id}`}
+        key={`resize-${col.id}-${i}`}
         className="basic-grid-resize-handle"
         style={{
           position: 'absolute',

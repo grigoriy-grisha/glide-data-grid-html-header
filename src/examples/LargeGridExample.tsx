@@ -1,5 +1,11 @@
 import React from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
+import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIcon'
+import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
+import { CanvasFlex } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasFlex'
+import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
+import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIconButton'
+
 
 
 // Тип для строки данных с большим количеством колонок
@@ -24,8 +30,9 @@ class FastRandom {
 }
 
 // Константы для генерации данных
+const LEAF_COLUMNS_COUNT = 5
+const COLS_PER_REGION = LEAF_COLUMNS_COUNT * 2 * 2 // 5 leaf * 2 states * 2 countries
 const COL_COUNT_TARGET = 16000
-const COLS_PER_REGION = 12 // 3 leaf * 2 states * 2 countries
 const REGIONS_COUNT = Math.ceil(COL_COUNT_TARGET / COLS_PER_REGION)
 const TOTAL_COLS = REGIONS_COUNT * COLS_PER_REGION
 
@@ -73,12 +80,19 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
 
         // Simplified data generation for generic columns
         const random = rng.next()
-        if (col % 3 === 0) {
+        const type = col % LEAF_COLUMNS_COUNT
+
+        if (type === 0) {
           value = Math.floor(random * 1000000).toLocaleString() // Pop
-        } else if (col % 3 === 1) {
+        } else if (type === 1) {
           value = `$${(random * 100).toFixed(2)}B` // GDP
-        } else {
+        } else if (type === 2) {
           value = `${Math.floor(random * 1000)} km²` // Area
+        } else if (type === 3) {
+           const statuses = ['Active', 'Pending', 'Done', 'Failed']
+           value = statuses[Math.floor(random * statuses.length)] // Status
+        } else {
+           value = Math.floor(random * 100) // Progress
         }
 
         // Кэшируем значение
@@ -130,10 +144,26 @@ const AreaIcon = () => (
   </svg>
 )
 
+const StatusIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+    <circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.5"/>
+  </svg>
+)
+
+const ProgressIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+    <rect x="2" y="8" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="2"/>
+    <path d="M5 10h10v4H5z" fill="currentColor" opacity="0.5"/>
+  </svg>
+)
+
 
 // SVG строки для Canvas компонентов
 const POPULATION_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" /></svg>'
 const GDP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor" /></svg>'
+const STATUS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.5"/></svg>'
+const PROGRESS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="8" width="20" height="8" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 10h10v4H5z" fill="currentColor" opacity="0.5"/></svg>'
 const GLOBE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor" /></svg>'
 const MAP_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" fill="currentColor" /></svg>'
 const LOCATION_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" /></svg>'
@@ -142,13 +172,6 @@ const LOCATION_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none
 const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
   const startTime = performance.now()
   const columns: BasicGridColumn<LargeDataRow>[] = []
-
-  // Структура:
-  // Region (Level 1) -> Country (Level 2) -> State (Level 3) -> City Data (Level 4 - Leaves)
-  // 3 leaf columns per State
-  // 2 States per Country
-  // 2 Countries per Region
-  // Total columns per Region = 3 * 2 * 2 = 12
 
   let globalColIndex = 0
 
@@ -186,147 +209,89 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
         const stateCities: BasicGridColumn<LargeDataRow>[] = []
         const stateName = statePairs[r % statePairs.length][s]
 
-        // 3 Leaf columns: Pop, GDP, Area
+        // 5 Leaf columns: Pop, GDP, Area, Status, Progress
         const leafTypes = [
-          {
-            key: 'Pop',
-            icon: <PopulationIcon />,
-            color: '#e91e63',
-            bgColor: '#fce4ec'
-          },
-          {
-            key: 'GDP',
-            icon: <GDPIcon />,
-            color: '#4caf50',
-            bgColor: '#e8f5e9'
-          },
-          {
-            key: 'Area',
-            icon: <AreaIcon />,
-            color: '#ff9800',
-            bgColor: '#fff3e0'
-          }
+          { key: 'Pop', icon: <PopulationIcon />, color: '#e91e63', bgColor: '#fce4ec' },
+          { key: 'GDP', icon: <GDPIcon />, color: '#4caf50', bgColor: '#e8f5e9' },
+          { key: 'Area', icon: <AreaIcon />, color: '#ff9800', bgColor: '#fff3e0' },
+          { key: 'Status', icon: <StatusIcon />, color: '#9c27b0', bgColor: '#f3e5f5' },
+          { key: 'Progress', icon: <ProgressIcon />, color: '#00bcd4', bgColor: '#e0f7fa' }
         ]
 
-        for (let l = 0; l < 3; l++) {
+        for (let l = 0; l < LEAF_COLUMNS_COUNT; l++) {
           const colKey = `col_${globalColIndex}`
           const leafType = leafTypes[l]
 
-          // Создаем разные варианты Canvas компонентов для разных индексов
           let renderColumnContent: any
 
-          if (l === 0) {
-            // Вариант 1: CanvasFlex с иконкой и текстом
+          if (l === 0 || l === 3 || l === 4) {
+            // Вариант 1: CanvasFlex с иконкой и текстом (Pop, Status, Progress)
+            const svgIcon = l === 0 ? POPULATION_SVG : (l === 3 ? STATUS_SVG : PROGRESS_SVG)
+
             renderColumnContent = (
               ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
               _mousePosition: { x: number; y: number } | null,
-              onRerenderRequested?: () => void
+              _onRerenderRequested?: () => void
             ) => {
-              const icon = new CanvasIcon(
-                { x: 0, y: 0 },
-                POPULATION_SVG,
-                { width: 14, height: 14, color: leafType.color }
-              )
-              const text = new CanvasText(
-                leafType.key,
-                { x: 0, y: 0 },
-                {
-                  color: leafType.color,
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                  textAlign: 'left',
-                  textBaseline: 'middle'
-                }
-              )
-
-              const flex = new CanvasFlex(
-                { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-                [icon, text],
-                {
+              const flex = new CanvasFlex(`flex-${colKey}`, {
                   direction: 'row',
-                  gap: 4,
+                  columnGap: 4,
                   justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: 4
-                }
-              )
+                  alignItems: 'center'
+              })
+              flex.rect = rect
 
-              flex.setContext(ctx, onRerenderRequested)
-              flex.draw()
+              const icon = new CanvasIcon(`icon-${colKey}`, svgIcon, { size: 14, color: leafType.color })
+              flex.addChild(icon)
 
-              return flex.getClickableAreas()
+              const text = new CanvasText(`text-${colKey}`, leafType.key)
+              text.color = leafType.color
+              text.font = "bold 11px sans-serif"
+              flex.addChild(text)
+
+              flex.performLayout(ctx)
+              return flex
             }
           } else if (l === 1) {
             // Вариант 2: CanvasIconButton с иконкой и текстом
             renderColumnContent = (
-              ctx: CanvasRenderingContext2D,
+              _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
-              mousePosition: { x: number; y: number } | null,
+              _mousePosition: { x: number; y: number } | null,
               _onRerenderRequested?: () => void
             ) => {
               const button = new CanvasIconButton(
-                { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 },
-                leafType.key,
+                `btn-${colKey}`,
                 GDP_SVG,
                 {
-                  fillColor: leafType.bgColor,
-                  hoverFillColor: leafType.color,
-                  textColor: leafType.color,
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                  borderRadius: 4,
-                  iconSize: 14,
-                  iconColor: leafType.color,
-                  iconPosition: 'left',
-                  gapBetweenIconAndText: 4,
-                  onClick: () => {
-                    console.log(`Clicked ${leafType.key} column`)
-                  }
+                  size: 'auto',
+                  variant: 'primary',
+                  onClick: () => console.log(`Clicked ${leafType.key} column`)
                 }
               )
 
-              button.setContext(ctx, _onRerenderRequested)
-              if (mousePosition) {
-                button.updateMousePosition(mousePosition.x, mousePosition.y)
-              }
-              button.draw()
+              button.rect = { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 }
 
-              const clickableArea = button.getClickableArea()
-              return clickableArea ? [clickableArea] : []
+              return button
             }
           } else {
             // Вариант 3: CanvasButton с текстом
             renderColumnContent = (
-              ctx: CanvasRenderingContext2D,
+              _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
-              mousePosition: { x: number; y: number } | null,
+              _mousePosition: { x: number; y: number } | null,
               _onRerenderRequested?: () => void
             ) => {
               const button = new CanvasButton(
-                { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 },
+                `btn-${colKey}`,
                 leafType.key,
                 {
-                  fillColor: leafType.bgColor,
-                  hoverFillColor: leafType.color,
-                  textColor: leafType.color,
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                  borderRadius: 4,
-                  onClick: () => {
-                    console.log(`Clicked ${leafType.key} button`)
-                  }
+                   onClick: () => console.log(`Clicked ${leafType.key} button`)
                 }
               )
-
-              button.setContext(ctx)
-              if (mousePosition) {
-                button.updateMousePosition(mousePosition.x, mousePosition.y)
-              }
-              button.draw()
-
-              const clickableArea = button.getClickableArea()
-              return clickableArea ? [clickableArea] : []
+              button.rect = { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 }
+              return button
             }
           }
 
@@ -340,58 +305,36 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           globalColIndex++
         }
 
-        // Создаем renderColumnContent для State уровня с CanvasFlex
+        // State Level (Level 3)
         const stateRenderContent = (
           ctx: CanvasRenderingContext2D,
           rect: { x: number; y: number; width: number; height: number },
           _mousePosition: { x: number; y: number } | null,
-          onRerenderRequested?: () => void
+          _onRerenderRequested?: () => void
         ) => {
-          const icon = new CanvasIcon(
-            { x: 0, y: 0 },
-            MAP_SVG,
-            { width: 14, height: 14, color: '#2196f3' }
-          )
-          const text = new CanvasText(
-            stateName,
-            { x: 0, y: 0 },
-            {
-              color: '#333333',
-              fontSize: 12,
-              fontWeight: 'bold',
-              textAlign: 'left',
-              textBaseline: 'middle'
-            }
-          )
-          const badge = new CanvasButton(
-            { x: 0, y: 0, width: 20, height: 16 },
-            String(s + 1),
-            {
-              fillColor: '#2196f3',
-              textColor: 'white',
-              fontSize: 9,
-              fontWeight: 'bold',
-              borderRadius: 10,
-              height: 16
-            }
-          )
-
-          const flex = new CanvasFlex(
-            { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-            [icon, text, badge],
-            {
+          const flex = new CanvasFlex(`state-${r}-${c}-${s}`, {
               direction: 'row',
-              gap: 6,
+              columnGap: 6,
               justifyContent: 'center',
-              alignItems: 'center',
-              padding: 4
-            }
-          )
+              alignItems: 'center'
+          })
+          flex.rect = rect
 
-          flex.setContext(ctx, onRerenderRequested)
-          flex.draw()
+          const icon = new CanvasIcon(`icon-${stateName}`, MAP_SVG, { size: 14, color: '#2196f3' })
+          flex.addChild(icon)
 
-          return flex.getClickableAreas()
+          const text = new CanvasText(`text-${stateName}`, stateName)
+          text.color = '#333333'
+          text.font = "bold 12px sans-serif"
+          flex.addChild(text)
+
+          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1), {
+              // No styling options supported
+          })
+          flex.addChild(badge)
+
+          flex.performLayout(ctx)
+          return flex
         }
 
         countryStates.push({
@@ -401,42 +344,22 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
         })
       }
 
-      // Создаем renderColumnContent для Country уровня с CanvasIconButton
+      // Country Level (Level 2)
       const countryRenderContent = (
-        ctx: CanvasRenderingContext2D,
+        _ctx: CanvasRenderingContext2D,
         rect: { x: number; y: number; width: number; height: number },
         mousePosition: { x: number; y: number } | null,
         _onRerenderRequested?: () => void
       ) => {
         const button = new CanvasIconButton(
-          { x: rect.x + 4, y: rect.y + 4, width: rect.width - 8, height: rect.height - 8 },
-          `${countryName} ${c === 0 ? 'A' : 'B'}`,
+          `country-${r}-${c}`,
           GLOBE_SVG,
           {
-            fillColor: 'transparent',
-            hoverFillColor: countryColor + '20',
-            textColor: countryColor,
-            fontSize: 13,
-            fontWeight: 'bold',
-            borderRadius: 6,
-            iconSize: 16,
-            iconColor: countryColor,
-            iconPosition: 'left',
-            gapBetweenIconAndText: 8,
-            onClick: () => {
-              console.log(`Clicked country: ${countryName}`)
-            }
+             onClick: () => console.log(`Clicked country: ${countryName}`)
           }
         )
-
-        button.setContext(ctx, _onRerenderRequested)
-        if (mousePosition) {
-          button.updateMousePosition(mousePosition.x, mousePosition.y)
-        }
-        button.draw()
-
-        const clickableArea = button.getClickableArea()
-        return clickableArea ? [clickableArea] : []
+        button.rect = { x: rect.x + 4, y: rect.y + 4, width: rect.width - 8, height: rect.height - 8 }
+        return button
       }
 
       regionCountries.push({
@@ -446,64 +369,46 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       })
     }
 
-    // Создаем renderColumnContent для Region уровня с CanvasButton
+    // Region Level (Level 1)
     const regionRenderContent = (
       ctx: CanvasRenderingContext2D,
       rect: { x: number; y: number; width: number; height: number },
-      _mousePosition: { x: number; y: number } | null,
-      onRerenderRequested?: () => void
     ) => {
-      const icon = new CanvasIcon(
-        { x: 0, y: 0 },
-        LOCATION_SVG,
-        { width: 18, height: 18, color: 'white' }
-      )
-      const text = new CanvasText(
-        regionName,
-        { x: 0, y: 0 },
-        {
-          color: 'white',
-          fontSize: 14,
-          fontWeight: 'bold',
-          textAlign: 'left',
-          textBaseline: 'middle'
-        }
-      )
-      const badge = new CanvasButton(
-        { x: 0, y: 0, width: 30, height: 20 },
-        `R${r + 1}`,
-        {
-          fillColor: 'rgba(255,255,255,0.3)',
-          strokeColor: 'rgba(255,255,255,0.5)',
-          textColor: 'white',
-          fontSize: 11,
-          fontWeight: 'bold',
-          borderRadius: 14,
-          height: 20,
-          lineWidth: 1
-        }
-      )
+      const flexContainer = new CanvasFlex(`region-${r}`, {
+        direction: 'row',
+        alignItems: 'center'
+      })
 
-      const flex = new CanvasFlex(
-        { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-        [icon, text, badge],
-        {
+      const flex = new CanvasFlex(`region-${r}`, {
           direction: 'row',
-          gap: 10,
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: { left: 12, right: 12, top: 0, bottom: 0 }
-        }
-      )
+          alignItems: 'center'
+      })
+      flex.rect = rect
+      flex.backgroundColor = regionColor
 
-      // Рисуем фон для Region
-      ctx.fillStyle = regionColor
-      ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+      const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: 'white' })
+      flex.addChild(icon)
 
-      flex.setContext(ctx, onRerenderRequested)
-      flex.draw()
+      const text = new CanvasText(`text-region-${r}`, regionName)
+      text.color = 'white'
+      text.font = "bold 14px sans-serif"
+      flex.addChild(text)
 
-      return flex.getClickableAreas()
+
+      const flex2 = new CanvasFlex(`region-${r}`, {
+        direction: 'row',
+        columnGap: 10,
+        rowGap: 10,
+        justifyContent: 'center',
+        alignItems: 'center'
+      })
+
+      const badge = new CanvasButton(`badge-region-${r}`, `R${r + 1}`)
+      flex2.addChild(badge)
+
+      flexContainer.addChild(flex)
+      flexContainer.addChild(flex2)
+      return flex
     }
 
     columns.push({
