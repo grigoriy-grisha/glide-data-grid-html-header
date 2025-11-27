@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useRef, useEffect, useMemo, useState } from 'react'
 import { CanvasRoot } from './core/CanvasRoot'
 import { CanvasAbsoluteContainer } from './core/CanvasAbsoluteContainer'
 import { CanvasContainer } from './core/CanvasContainer'
 import { CanvasNode } from './core/CanvasNode'
+import { CanvasIcon } from './primitives/CanvasIcon'
 import { CanvasText } from './primitives/CanvasText'
 import { CanvasRect } from './primitives/CanvasRect'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../headerConstants'
@@ -48,12 +49,26 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   canvasHeaderRef,
   handleResizeMouseDown,
   handleResizeDoubleClick,
+  enableColumnReorder,
+  onColumnReorder,
 }) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
   const canvasRef = canvasHeaderRef || internalCanvasRef
   const rootRef = useRef<CanvasRoot | null>(null)
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
+
+  const [dragState, setDragState] = useState<{
+    sourceIndex: number
+    columnTitle: string
+    columnWidth: number
+    startX: number
+    initialLeft: number
+  } | null>(null)
+
+  // Ref for ghost element to avoid re-renders
+  const ghostRef = useRef<HTMLDivElement>(null)
+  const dropIndicatorRef = useRef<HTMLDivElement>(null)
 
   // Filter visible cells
   const visibleCells = useMemo(() => {
@@ -112,6 +127,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
     // Clear existing children
     rootContainer.children = []
+
+    const GRIP_ICON_SVG = `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 4C5 4.55228 4.55228 5 4 5C3.44772 5 3 4.55228 3 4C3 3.44772 3.44772 3 4 3C4.55228 3 5 3.44772 5 4Z" fill="currentColor" fill-opacity="0.4"/><path d="M5 8C5 8.55228 4.55228 9 4 9C3.44772 9 3 8.55228 3 8C3 7.44772 3.44772 7 4 7C4.55228 7 5 7.44772 5 8Z" fill="currentColor" fill-opacity="0.4"/><path d="M5 12C5 12.5523 4.55228 13 4 13C3.44772 13 3 12.5523 3 12C3 11.4477 3.44772 11 4 11C4.55228 11 5 11.4477 5 12Z" fill="currentColor" fill-opacity="0.4"/><path d="M11 4C11 4.55228 10.5523 5 10 5C9.44772 5 9 4.55228 9 4C9 3.44772 9.44772 3 10 3C10.5523 3 11 3.44772 11 4Z" fill="currentColor" fill-opacity="0.4"/><path d="M11 8C11 8.55228 10.5523 9 10 9C9.44772 9 9 8.55228 9 8C9 7.44772 9.44772 7 10 7C10.5523 7 11 7.44772 11 8Z" fill="currentColor" fill-opacity="0.4"/><path d="M11 12C11 12.5523 10.5523 13 10 13C9.44772 13 9 12.5523 9 12C9 11.4477 9.44772 11 10 11C10.5523 11 11 11.4477 11 12Z" fill="currentColor" fill-opacity="0.4"/></svg>`
 
     // Add visible cells
     visibleCells.forEach(cell => {
@@ -193,6 +210,45 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           height: cellHeight,
         }
 
+        // Drag Grip Icon
+        if (enableColumnReorder && column) {
+            const gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
+            gripIcon.style = {
+                flexShrink: 0,
+                alignSelf: 'center',
+            }
+            // Add right margin manually since Flex implementation is minimal
+            // Using an empty container as spacer
+            const spacer = new CanvasRect(`${cellId}-spacer`, 'transparent')
+            spacer.rect = { x: 0, y: 0, width: 4, height: 1 }
+            spacer.style = { width: 4, height: 1, flexShrink: 0 }
+
+            gripIcon.onMouseEnter = () => {
+                if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
+            }
+            gripIcon.onMouseLeave = () => {
+                if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+            }
+            gripIcon.onMouseDown = (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (e.originalEvent.button !== 0) return
+
+                const initialLeft = (columnPositions[cell.columnIndex!] ?? 0) - scrollLeft
+                
+                setDragState({
+                    sourceIndex: cell.columnIndex!,
+                    columnTitle: cell.title,
+                    columnWidth: cellWidth,
+                    startX: e.originalEvent.clientX,
+                    initialLeft
+                })
+            }
+
+            contentContainer.addChild(gripIcon)
+            contentContainer.addChild(spacer)
+        }
+
         const text = new CanvasText(`${cellId}-text`, cell.title)
         text.color = getHeaderTextColor(cell.level)
         text.font = `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
@@ -204,7 +260,78 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       rootContainer.addChild(cellWrapper)
     })
 
-  }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, markerWidthValue])
+  }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, markerWidthValue, enableColumnReorder, dragState])
+
+  // Global Drag Events
+  useEffect(() => {
+    if (!dragState) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!ghostRef.current) return
+
+        const deltaX = e.clientX - dragState.startX
+        ghostRef.current.style.transform = `translateX(${dragState.initialLeft + deltaX}px)`
+
+        // Calculate Drop Position
+        const headerRect = canvasRef.current?.getBoundingClientRect()
+        if (!headerRect) return
+
+        const relativeX = e.clientX - headerRect.left + scrollLeft
+        
+        // Find target index
+        let targetIndex = orderedColumns.length
+        for(let i = 0; i < orderedColumns.length; i++) {
+            const pos = columnPositions[i] ?? 0
+            const width = columnWidths[i] ?? 0
+            const center = pos + width / 2
+            if (relativeX < center) {
+                targetIndex = i
+                break
+            }
+        }
+
+        // Update Drop Indicator
+        if (dropIndicatorRef.current) {
+             // Calculate indicator position
+             let indicatorX = 0
+             if (targetIndex < orderedColumns.length) {
+                 indicatorX = (columnPositions[targetIndex] ?? 0) - scrollLeft
+             } else {
+                 const lastIndex = orderedColumns.length - 1
+                 indicatorX = (columnPositions[lastIndex] ?? 0) + (columnWidths[lastIndex] ?? 0) - scrollLeft
+             }
+             
+             dropIndicatorRef.current.style.transform = `translateX(${indicatorX}px)`
+             dropIndicatorRef.current.dataset.targetIndex = String(targetIndex)
+        }
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+        if (dropIndicatorRef.current) {
+            const targetIndexStr = dropIndicatorRef.current.dataset.targetIndex
+            if (targetIndexStr) {
+                const targetIndex = parseInt(targetIndexStr, 10)
+                if (!isNaN(targetIndex) && targetIndex !== dragState.sourceIndex && targetIndex !== dragState.sourceIndex + 1) {
+                     // Normalize target index: 
+                     // If dragging left to right, targetIndex might be sourceIndex + 1 (no change)
+                     // logic usually is: move item at sourceIndex to targetIndex.
+                     onColumnReorder?.(dragState.sourceIndex, targetIndex)
+                }
+            }
+        }
+
+        setDragState(null)
+        if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [dragState, columnPositions, columnWidths, scrollLeft, orderedColumns, onColumnReorder])
 
   // Resize Handles (HTML Overlay)
   const resizeHandles = useMemo(() => {
@@ -294,6 +421,55 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           }}
         />
         {resizeHandles}
+        
+        {/* Drag Overlays */}
+        {dragState && (
+            <>
+                {/* Drop Indicator */}
+                <div
+                    ref={dropIndicatorRef}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: 2,
+                        backgroundColor: '#1e88e5',
+                        zIndex: 100,
+                        pointerEvents: 'none',
+                        willChange: 'transform'
+                    }}
+                />
+                {/* Ghost Element */}
+                <div
+                    ref={ghostRef}
+                    style={{
+                        position: 'absolute',
+                        top: 4, // padding
+                        left: 0, // controlled by transform
+                        width: dragState.columnWidth,
+                        height: height - 8, // padding
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        border: '1px solid #1e88e5',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                        zIndex: 101,
+                        pointerEvents: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        paddingLeft: 8,
+                        borderRadius: 4,
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        fontSize: '13px',
+                        color: '#1e88e5',
+                        fontWeight: 600,
+                        transform: `translateX(${dragState.initialLeft}px)`,
+                        willChange: 'transform'
+                    }}
+                >
+                    {dragState.columnTitle}
+                </div>
+            </>
+        )}
       </div>
     </div>
   )
