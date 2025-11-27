@@ -1,12 +1,6 @@
 import React from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
-import { 
-  CanvasButton, 
-  CanvasText, 
-  CanvasIcon, 
-  CanvasIconButton, 
-  CanvasFlex 
-} from '../components/BasicGrid/components/CanvasHeader'
+
 
 // Тип для строки данных с большим количеством колонок
 interface LargeDataRow extends Record<string, unknown> {
@@ -220,7 +214,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
           // Создаем разные варианты Canvas компонентов для разных индексов
           let renderColumnContent: any
-          
+
           if (l === 0) {
             // Вариант 1: CanvasFlex с иконкой и текстом
             renderColumnContent = (
@@ -237,15 +231,15 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               const text = new CanvasText(
                 leafType.key,
                 { x: 0, y: 0 },
-                { 
-                  color: leafType.color, 
-                  fontSize: 11, 
+                {
+                  color: leafType.color,
+                  fontSize: 11,
                   fontWeight: 'bold',
                   textAlign: 'left',
                   textBaseline: 'middle'
                 }
               )
-              
+
               const flex = new CanvasFlex(
                 { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
                 [icon, text],
@@ -257,10 +251,10 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                   padding: 4
                 }
               )
-              
+
               flex.setContext(ctx, onRerenderRequested)
               flex.draw()
-              
+
               return flex.getClickableAreas()
             }
           } else if (l === 1) {
@@ -291,13 +285,13 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                   }
                 }
               )
-              
+
               button.setContext(ctx, _onRerenderRequested)
               if (mousePosition) {
                 button.updateMousePosition(mousePosition.x, mousePosition.y)
               }
               button.draw()
-              
+
               const clickableArea = button.getClickableArea()
               return clickableArea ? [clickableArea] : []
             }
@@ -324,13 +318,13 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                   }
                 }
               )
-              
+
               button.setContext(ctx)
               if (mousePosition) {
                 button.updateMousePosition(mousePosition.x, mousePosition.y)
               }
               button.draw()
-              
+
               const clickableArea = button.getClickableArea()
               return clickableArea ? [clickableArea] : []
             }
@@ -361,9 +355,9 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           const text = new CanvasText(
             stateName,
             { x: 0, y: 0 },
-            { 
-              color: '#333333', 
-              fontSize: 12, 
+            {
+              color: '#333333',
+              fontSize: 12,
               fontWeight: 'bold',
               textAlign: 'left',
               textBaseline: 'middle'
@@ -381,7 +375,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               height: 16
             }
           )
-          
+
           const flex = new CanvasFlex(
             { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
             [icon, text, badge],
@@ -393,10 +387,10 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               padding: 4
             }
           )
-          
+
           flex.setContext(ctx, onRerenderRequested)
           flex.draw()
-          
+
           return flex.getClickableAreas()
         }
 
@@ -434,13 +428,13 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
             }
           }
         )
-        
+
         button.setContext(ctx, _onRerenderRequested)
         if (mousePosition) {
           button.updateMousePosition(mousePosition.x, mousePosition.y)
         }
         button.draw()
-        
+
         const clickableArea = button.getClickableArea()
         return clickableArea ? [clickableArea] : []
       }
@@ -467,9 +461,9 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       const text = new CanvasText(
         regionName,
         { x: 0, y: 0 },
-        { 
-          color: 'white', 
-          fontSize: 14, 
+        {
+          color: 'white',
+          fontSize: 14,
           fontWeight: 'bold',
           textAlign: 'left',
           textBaseline: 'middle'
@@ -489,7 +483,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           lineWidth: 1
         }
       )
-      
+
       const flex = new CanvasFlex(
         { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
         [icon, text, badge],
@@ -501,14 +495,14 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           padding: { left: 12, right: 12, top: 0, bottom: 0 }
         }
       )
-      
+
       // Рисуем фон для Region
       ctx.fillStyle = regionColor
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
-      
+
       flex.setContext(ctx, onRerenderRequested)
       flex.draw()
-      
+
       return flex.getClickableAreas()
     }
 

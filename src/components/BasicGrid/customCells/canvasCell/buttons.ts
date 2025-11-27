@@ -56,7 +56,7 @@ function getIconImage(icon: ButtonIcon, color?: string): HTMLImageElement | null
   return null
 }
 
-function drawIcon(
+export function drawIcon(
   ctx: CanvasRenderingContext2D,
   icon: ButtonIcon,
   x: number,

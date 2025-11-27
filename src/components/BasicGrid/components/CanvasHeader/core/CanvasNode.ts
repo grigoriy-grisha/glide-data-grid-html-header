@@ -1,4 +1,4 @@
-import { FlexStyle } from '../../../miniflex/types';
+import {FlexStyle} from '../../../miniflex/types';
 
 export interface Rect {
     x: number;
@@ -21,7 +21,7 @@ export abstract class CanvasNode {
     id: string;
     parent: CanvasNode | null = null;
     children: CanvasNode[] = [];
-    rect: Rect = { x: 0, y: 0, width: 0, height: 0 };
+    rect: Rect = {x: 0, y: 0, width: 0, height: 0};
 
     // Style for flex layout
     style: Partial<FlexStyle> = {
@@ -60,22 +60,61 @@ export abstract class CanvasNode {
     hitTest(x: number, y: number): CanvasNode | null {
         if (x >= this.rect.x && x <= this.rect.x + this.rect.width &&
             y >= this.rect.y && y <= this.rect.y + this.rect.height) {
+            
             // Check children in reverse order (top to bottom)
             for (let i = this.children.length - 1; i >= 0; i--) {
                 const hit = this.children[i].hitTest(x, y);
                 if (hit) return hit;
             }
+            
             return this;
         }
+
         return null;
     }
 
+    // Request a layout update (which will likely trigger a repaint)
+    requestLayout() {
+        if (this.parent) {
+            this.parent.requestLayout();
+        }
+    }
+
+    // Request a repaint (layout assumed valid)
+    requestPaint() {
+        if (this.parent) {
+            this.parent.requestPaint();
+        }
+    }
+
+    // Alias for requestLayout/requestPaint as per user request
+    flushLayout() {
+        this.requestLayout();
+    }
+
+    flushPaint() {
+        this.requestPaint();
+    }
+
     // Event handlers
-    onClick(event: CanvasEvent) { }
-    onMouseDown(event: CanvasEvent) { }
-    onMouseUp(event: CanvasEvent) { }
-    onMouseEnter(event: CanvasEvent) { }
-    onMouseLeave(event: CanvasEvent) { }
-    onMouseMove(event: CanvasEvent) { }
-    onDoubleClick(event: CanvasEvent) { }
+    onClick(event: CanvasEvent) {
+    }
+
+    onMouseDown(event: CanvasEvent) {
+    }
+
+    onMouseUp(event: CanvasEvent) {
+    }
+
+    onMouseEnter(event: CanvasEvent) {
+    }
+
+    onMouseLeave(event: CanvasEvent) {
+    }
+
+    onMouseMove(event: CanvasEvent) {
+    }
+
+    onDoubleClick(event: CanvasEvent) {
+    }
 }

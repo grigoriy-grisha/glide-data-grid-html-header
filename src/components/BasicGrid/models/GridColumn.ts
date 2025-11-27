@@ -2,6 +2,8 @@ import type React from 'react'
 
 import type { BasicGridDataType, BasicGridSelectOption, ButtonCellOptions, CanvasCellOptions, SortDirection } from '../types'
 
+import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode';
+
 export interface GridHeaderSegment {
   title: string
   content?: React.ReactNode
@@ -29,8 +31,9 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   renderColumnContent?: (
     ctx: CanvasRenderingContext2D,
     rect: { x: number; y: number; width: number; height: number },
-    mousePosition: { x: number; y: number } | null
-  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void
+    mousePosition: { x: number; y: number } | null,
+    onRerenderRequested?: () => void
+  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void | CanvasNode
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -53,7 +56,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     rect: { x: number; y: number; width: number; height: number },
     mousePosition: { x: number; y: number } | null,
     onRerenderRequested?: () => void
-  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void
+  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void | CanvasNode
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined

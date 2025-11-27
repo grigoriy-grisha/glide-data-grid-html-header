@@ -39,7 +39,7 @@ function App() {
 
           <BasicGridExample />
           <NetworkTreeGridExample />
-          <LargeGridExample />
+          {/*<LargeGridExample />*/}
 
           <RowOverlayExample />
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>

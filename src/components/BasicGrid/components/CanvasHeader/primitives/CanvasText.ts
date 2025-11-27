@@ -22,7 +22,7 @@ export class CanvasText extends CanvasLeaf {
     paint(ctx: CanvasRenderingContext2D) {
         ctx.font = this.font;
         ctx.fillStyle = this.color;
-        ctx.textBaseline = "top"; // Important for consistent positioning
-        ctx.fillText(this.text, this.rect.x, this.rect.y);
+        ctx.textBaseline = "middle"; // Important for consistent positioning
+        ctx.fillText(this.text, this.rect.x, this.rect.y + this.rect.height / 2);
     }
 }

@@ -2,11 +2,15 @@ import { useMemo } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
-import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/CanvasButton'
-import { CanvasFlex } from '../components/BasicGrid/components/CanvasHeader/CanvasFlex'
-import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/CanvasIcon'
-import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/CanvasText'
-import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/CanvasIconButton'
+import { CanvasContainer } from '../components/BasicGrid/components/CanvasHeader/core/CanvasContainer'
+import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
+import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIcon'
+
+const svgIcon = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"/>
+</svg>
+`
 
 const columns: BasicGridColumn<DataRow>[] = [
   {
@@ -62,102 +66,46 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'Действие',
         dataType: 'string',
         width: 150,
-        renderColumnContent: (ctx, rect, mousePosition, onRerenderRequested) => {
-          // Пример SVG иконки (стрелка вниз)
-          const arrowDownSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-          </svg>`
+        renderColumnContent: (_ctx, rect, _mousePosition, _onRerenderRequested) => {
+          const root = new CanvasContainer('root', {
+            direction: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            columnGap: 6,
+          })
 
-          const flex = new CanvasFlex(
-            rect,
-            [
-              new CanvasIcon(
-                { x: 0, y: 0 },
-                arrowDownSvg,
-                {
-                  width: 20,
-                  height: 20,
-                  color: '#1565c0',
-                }
-              ),
-              new CanvasText(
-                'Текст:',
-                { x: 0, y: 0 },
-                {
-                  color: '#666',
-                  fontSize: 13,
-                  fontWeight: 'normal',
-                }
-              ),
-              new CanvasIconButton(
-                { x: 0, y: 0, width: 32, height: 28 },
-                '', // Текст не нужен, только иконка
-                arrowDownSvg,
-                {
-                  fillColor: '#e3f2fd',
-                  hoverFillColor: '#bbdefb',
-                  strokeColor: '#2196f3',
-                  borderRadius: 4,
-                  height: 28,
-                  iconSize: 16,
-                  iconColor: '#1565c0',
-                  showText: false, // Не показывать текст
-                  onClick: () => {
-                    console.log('Clicked on icon button!')
-                  },
-                }
-              ),
-              new CanvasButton(
-                { x: 0, y: 0, width: 60, height: 28 },
-                'Кнопка 1',
-                {
-                  fillColor: '#e3f2fd',
-                  hoverFillColor: '#bbdefb',
-                  strokeColor: '#2196f3',
-                  textColor: '#1565c0',
-                  fontSize: 12,
-                  borderRadius: 4,
-                  height: 28,
-                  onClick: () => {
-                    console.log('Clicked on button 1!')
-                  },
-                }
-              ),
-              new CanvasButton(
-                { x: 0, y: 0, width: 60, height: 28 },
-                'Кнопка 2',
-                {
-                  fillColor: '#fff3e0',
-                  hoverFillColor: '#ffe0b2',
-                  strokeColor: '#ff9800',
-                  textColor: '#e65100',
-                  fontSize: 12,
-                  borderRadius: 4,
-                  height: 28,
-                  onClick: () => {
-                    console.log('Clicked on button 2!')
-                  },
-                }
-              ),
-            ],
-            {
-              gap: 12,
-              direction: 'row',
-              alignItems: 'center',
-              padding: 6,
-              wrap: true, // Перенос элементов на новую строку при нехватке места
-            }
-          )
-          flex.setContext(ctx, onRerenderRequested)
-          
-          if (mousePosition) {
-            flex.updateMousePosition(mousePosition.x, mousePosition.y)
+          // Устанавливаем размеры корневого контейнера
+          root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+
+          // Текст
+          const text = new CanvasText('text-label', 'Текст:')
+          text.color = '#666'
+          root.addChild(text)
+
+          // Иконка SVG
+          const icon = new CanvasIcon('icon-svg', svgIcon, { size: 20, color: '#1565c0' })
+          icon.style = {
+            width: 20,
+            height: 20,
           }
-          
-          flex.draw()
-          
-          // Возвращаем кликабельные области
-          return flex.getClickableAreas()
+          icon.onClick = () => {
+            console.log('SVG Icon clicked via CanvasNode!')
+          }
+
+          icon.onMouseEnter = () => {
+            icon.color = '#666'
+          }
+
+          icon.onMouseLeave = () => {
+            icon.color = '#1565c0'
+          }
+
+          root.addChild(icon)
+
+
+          console.log({root})
+          // Возвращаем root ноду для интеграции
+          return root
         },
       },
     ],

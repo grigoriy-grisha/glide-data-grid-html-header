@@ -1,4 +1,5 @@
 import type React from 'react'
+import type { CanvasNode } from './components/CanvasHeader/core/CanvasNode'
 
 export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select' | 'button' | 'canvas'
 
@@ -75,7 +76,7 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
           rect: { x: number; y: number; width: number; height: number },
           mousePosition: { x: number; y: number } | null,
           onRerenderRequested?: () => void
-        ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void
+        ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void | CanvasNode
 }
 
 export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {
@@ -168,4 +169,3 @@ export interface ColumnSelectionRange {
   start: number
   length: number
 }
-

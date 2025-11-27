@@ -15,6 +15,19 @@ export class CanvasRoot {
         this.ctx = ctx;
         this.rootNode = rootNode;
 
+        // Hook into rootNode to handle requests
+        // Since requestLayout/Paint bubble up, they will eventually reach the root node (if it had a parent)
+        // But rootNode has no parent. We need to intercept the calls.
+        // Since CanvasNode methods check this.parent, the root node's methods won't bubble further.
+        // We can override them on the instance.
+        this.rootNode.requestLayout = () => {
+            this.render();
+        };
+        this.rootNode.requestPaint = () => {
+            // For now, just render everything. Optimization possible later.
+            this.render();
+        };
+
         this.setupEvents();
     }
 
@@ -60,6 +73,7 @@ export class CanvasRoot {
 
         const dispatchEvent = (e: MouseEvent, type: CanvasEvent['type']) => {
             const { x, y } = getEventCoords(e);
+
             const target = this.rootNode.hitTest(x, y);
 
             let stopped = false;
@@ -73,9 +87,10 @@ export class CanvasRoot {
                 preventDefault: () => e.preventDefault(),
             };
 
-            if (target && type !== 'mousemove') { // Mousemove handled separately for hover
+            if (target && type !== 'mousemove') {
                 let node: CanvasNode | null = target;
                 while (node && !stopped) {
+
                     switch (type) {
                         case 'click': node.onClick(canvasEvent); break;
                         case 'mousedown': node.onMouseDown(canvasEvent); break;
@@ -115,7 +130,7 @@ export class CanvasRoot {
                     this.hoveredNode = target || null;
                 }
 
-                // Also dispatch mousemove
+                // Also dispatch mousemove (bubbling)
                 if (target) {
                     let node: CanvasNode | null = target;
                     while (node && !stopped) {

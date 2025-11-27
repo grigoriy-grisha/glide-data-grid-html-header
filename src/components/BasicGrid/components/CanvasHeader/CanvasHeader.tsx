@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo } from 'react'
 import { CanvasRoot } from './core/CanvasRoot'
 import { CanvasAbsoluteContainer } from './core/CanvasAbsoluteContainer'
 import { CanvasContainer } from './core/CanvasContainer'
+import { CanvasNode } from './core/CanvasNode'
 import { CanvasText } from './primitives/CanvasText'
 import { CanvasRect } from './primitives/CanvasRect'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../headerConstants'
@@ -112,7 +113,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
     // Add visible cells
     visibleCells.forEach(cell => {
-      const cellId = `cell-${cell.id || cell.startIndex}-${cell.level}`
+      const cellId = `cell-${cell.startIndex}-${cell.level}`
 
       // Calculate position
       const absoluteX = columnPositions[cell.startIndex] ?? 0
@@ -151,28 +152,52 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         bgRect.color = normalColor;
       };
 
-      // Content Container (Flex)
-      const contentContainer = new CanvasContainer(`${cellId}-content`, {
-        direction: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-      })
-      // Position content container with padding
-      const padding = 8
-      contentContainer.rect = {
-        x: cellX + padding,
-        y: cellY,
-        width: Math.max(0, cellWidth - padding * 2),
-        height: cellHeight
+      // Custom Content or Default
+      const column = cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
+      const renderContent = column?.getRenderColumnContent()
+      let customContent: CanvasNode | undefined
+
+      if (renderContent) {
+        // Try to get custom content
+        const ctx = canvasRef.current?.getContext('2d')
+        if (ctx) {
+          const result = renderContent(
+            ctx,
+            { x: cellX, y: cellY, width: cellWidth, height: cellHeight },
+            null,
+            undefined
+          )
+          if (result instanceof CanvasNode) {
+            customContent = result
+          }
+        }
       }
 
-      const text = new CanvasText(`${cellId}-text`, cell.title)
-      text.color = getHeaderTextColor(cell.level)
-      text.font = `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      // text.style = { flexGrow: 1 } 
+      if (customContent) {
+        cellWrapper.addChild(customContent)
+      } else {
+        // Content Container (Flex)
+        const contentContainer = new CanvasContainer(`${cellId}-content`, {
+          direction: 'row',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+        })
+        // Position content container with padding
+        const padding = 8
+        contentContainer.rect = {
+          x: cellX + padding,
+          y: cellY,
+          width: Math.max(0, cellWidth - padding * 2),
+          height: cellHeight,
+        }
 
-      contentContainer.addChild(text)
-      cellWrapper.addChild(contentContainer)
+        const text = new CanvasText(`${cellId}-text`, cell.title)
+        text.color = getHeaderTextColor(cell.level)
+        text.font = `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+
+        contentContainer.addChild(text)
+        cellWrapper.addChild(contentContainer)
+      }
 
       rootContainer.addChild(cellWrapper)
     })

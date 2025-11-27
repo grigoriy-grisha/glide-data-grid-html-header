@@ -36,7 +36,7 @@ export class CanvasContainer extends CanvasNode {
                 const style = { ...child.style };
 
                 // Auto-calculate flexBasis if not set
-                if (style.flexBasis === 0) {
+                if (style.flexBasis === 0 || style.flexBasis === undefined) {
                     const naturalWidth = child.rect.width;
                     const naturalHeight = child.rect.height;
                     const naturalMainSize = isHorizontal ? naturalWidth : naturalHeight;
@@ -46,13 +46,19 @@ export class CanvasContainer extends CanvasNode {
                 if (child instanceof CanvasContainer) {
                     const childBox = new FlexBox(0, 0, child.flexOptions);
                     childBox.style = style as any;
+                    // Assign the measured size to the FlexBox so it's used if not stretched
+                    childBox.size.width = child.rect.width;
+                    childBox.size.height = child.rect.height;
                     fBox.addChild(childBox);
 
                     // Recurse
                     buildTree(child, childBox);
                 } else {
                     // Leaf
-                    fBox.addChild(style);
+                    const leaf = fBox.addChild(style);
+                    // Assign the measured size to the FlexElement
+                    leaf.size.width = child.rect.width;
+                    leaf.size.height = child.rect.height;
                 }
             });
         }
