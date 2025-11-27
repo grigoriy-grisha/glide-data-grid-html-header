@@ -64,6 +64,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     columnWidth: number
     startX: number
     initialLeft: number
+    snapshot?: string
   } | null>(null)
 
   // Ref for ghost element to avoid re-renders
@@ -223,12 +224,31 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
                 const initialLeft = (columnPositions[cell.columnIndex!] ?? 0) - scrollLeft
                 
+                let snapshot: string | undefined
+                if (canvasRef.current) {
+                    // Capture snapshot of the cell area
+                    const tempCanvas = document.createElement('canvas')
+                    const dpr = window.devicePixelRatio || 1
+                    tempCanvas.width = cellWidth * dpr
+                    tempCanvas.height = cellHeight * dpr
+                    const tempCtx = tempCanvas.getContext('2d')
+                    if (tempCtx) {
+                        tempCtx.drawImage(
+                            canvasRef.current,
+                            cellX * dpr, cellY * dpr, cellWidth * dpr, cellHeight * dpr,
+                            0, 0, cellWidth * dpr, cellHeight * dpr
+                        )
+                        snapshot = tempCanvas.toDataURL()
+                    }
+                }
+
                 setDragState({
                     sourceIndex: cell.columnIndex!,
                     columnTitle: cell.title,
                     columnWidth: cellWidth,
                     startX: e.originalEvent.clientX,
-                    initialLeft
+                    initialLeft,
+                    snapshot
                 })
             }
 
@@ -290,12 +310,31 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
                 const initialLeft = (columnPositions[cell.columnIndex!] ?? 0) - scrollLeft
                 
+                let snapshot: string | undefined
+                if (canvasRef.current) {
+                    // Capture snapshot of the cell area
+                    const tempCanvas = document.createElement('canvas')
+                    const dpr = window.devicePixelRatio || 1
+                    tempCanvas.width = cellWidth * dpr
+                    tempCanvas.height = cellHeight * dpr
+                    const tempCtx = tempCanvas.getContext('2d')
+                    if (tempCtx) {
+                        tempCtx.drawImage(
+                            canvasRef.current,
+                            cellX * dpr, cellY * dpr, cellWidth * dpr, cellHeight * dpr,
+                            0, 0, cellWidth * dpr, cellHeight * dpr
+                        )
+                        snapshot = tempCanvas.toDataURL()
+                    }
+                }
+
                 setDragState({
                     sourceIndex: cell.columnIndex!,
                     columnTitle: cell.title,
                     columnWidth: cellWidth,
                     startX: e.originalEvent.clientX,
-                    initialLeft
+                    initialLeft,
+                    snapshot
                 })
             }
 
@@ -517,10 +556,24 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
                         color: '#1e88e5',
                         fontWeight: 600,
                         transform: `translateX(${dragState.initialLeft}px)`,
-                        willChange: 'transform'
+                        willChange: 'transform',
+                        opacity: 0.5
                     }}
                 >
-                    {dragState.columnTitle}
+                    {dragState.snapshot ? (
+                        <img 
+                            src={dragState.snapshot} 
+                            alt="" 
+                            style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'contain',
+                                opacity: 0.9
+                            }} 
+                        />
+                    ) : (
+                        dragState.columnTitle
+                    )}
                 </div>
             </>
         )}
