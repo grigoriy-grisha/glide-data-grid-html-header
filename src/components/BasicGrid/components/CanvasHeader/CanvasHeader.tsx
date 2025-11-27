@@ -6,6 +6,7 @@ import { CanvasNode } from './core/CanvasNode'
 import { CanvasText } from './primitives/CanvasText'
 import { CanvasRect } from './primitives/CanvasRect'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../headerConstants'
+import { SELECTION_COLUMN_ID } from '../../constants'
 import type { GridHeaderCell } from '../../models/GridHeaderCell'
 import type { GridColumn } from '../../models/GridColumn'
 import { useHeaderVirtualization } from '../../context/HeaderVirtualizationContext'
@@ -40,12 +41,13 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   orderedColumns,
   columnPositions,
   columnWidths,
-  levelCount,
   headerRowHeight,
   markerWidth = 0,
   showRowMarkers = false,
   scrollLeft = 0,
   canvasHeaderRef,
+  handleResizeMouseDown,
+  handleResizeDoubleClick,
 }) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
   const canvasRef = canvasHeaderRef || internalCanvasRef
@@ -204,6 +206,57 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
   }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, markerWidthValue])
 
+  // Resize Handles (HTML Overlay)
+  const resizeHandles = useMemo(() => {
+    if (!handleResizeMouseDown || !visibleIndices) return null
+
+    const { start, end } = visibleIndices
+    // Buffer handles slightly to ensure edges are reachable
+    const buffer = 2
+    const safeStart = Math.max(0, start - buffer)
+    const safeEnd = Math.min(orderedColumns.length, end + buffer)
+
+    const handles: React.ReactNode[] = []
+    
+    for (let i = safeStart; i < safeEnd; i++) {
+      const col = orderedColumns[i]
+      if (col.id === SELECTION_COLUMN_ID) continue
+
+      const colWidth = columnWidths[i] ?? col.baseWidth ?? 0
+      const x = (columnPositions[i] ?? 0) + colWidth
+      const relativeX = x - scrollLeft
+      
+      // Only show handle if it's within the visible area (roughly)
+      // Although overflow hidden on parent handles clipping, we optimize.
+      if (relativeX < -10 || relativeX > width + 10) continue;
+
+      handles.push(
+        <div
+          key={`resize-${col.id}`}
+          className="basic-grid-resize-handle"
+          style={{
+            position: 'absolute',
+            left: `${relativeX - 5}px`,
+            top: 0,
+            bottom: 0,
+            width: '10px',
+            cursor: 'col-resize',
+            zIndex: 10,
+            // touchAction: 'none', // might be needed for touch
+          }}
+          onMouseDown={(e) => {
+             // Prevent default to avoid text selection etc, though hook handles some.
+             handleResizeMouseDown(e, i, 1)
+          }}
+          onDoubleClick={(e) => {
+             handleResizeDoubleClick?.(e, i, 1)
+          }}
+        />
+      )
+    }
+    return handles
+  }, [visibleIndices, orderedColumns, columnPositions, columnWidths, scrollLeft, width, handleResizeMouseDown, handleResizeDoubleClick])
+
   return (
     <div
       style={{
@@ -240,6 +293,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             height: `${height}px`,
           }}
         />
+        {resizeHandles}
       </div>
     </div>
   )

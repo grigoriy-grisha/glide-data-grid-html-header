@@ -8,6 +8,9 @@ interface UseColumnResizeOptions<RowType extends Record<string, unknown>> {
   getColumnWidth: (columnIndex: number) => number
   setColumnWidths: (updates: Array<{ columnId: string; width: number }>) => void
   clearColumnWidths: (columnIds: string[]) => void
+  onResizeStart?: (columnIndex: number) => void
+  onResizeProgress?: (updates: Array<{ columnId: string; width: number }>) => void
+  onResizeEnd?: (updates: Array<{ columnId: string; width: number }>) => void
 }
 
 type ColumnRangeEntry<RowType extends Record<string, unknown>> = {
@@ -21,6 +24,9 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
   getColumnWidth,
   setColumnWidths,
   clearColumnWidths,
+  onResizeStart,
+  onResizeProgress,
+  onResizeEnd,
 }: UseColumnResizeOptions<RowType>) {
   const handleResizeMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>, startIndex: number, span = 1) => {
@@ -30,6 +36,8 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
       if (columns.length === 0) {
         return
       }
+      
+      onResizeStart?.(startIndex)
 
       const safeStart = Math.max(0, Math.min(startIndex, columns.length - 1))
       const safeSpan = Math.max(1, Math.min(span, columns.length - safeStart))
@@ -101,15 +109,36 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
       const handleMouseMove = (moveEvent: MouseEvent) => {
         const delta = moveEvent.clientX - startX
         const nextWidths = calculateWidths(delta)
-        setColumnWidths(
-          columnRange.map((item, index) => ({
+        
+        const updates = columnRange.map((item, index) => ({
             columnId: item.column.id,
             width: nextWidths[index],
-          }))
-        )
+        }))
+
+        if (onResizeProgress) {
+            onResizeProgress(updates)
+        } else {
+            setColumnWidths(updates)
+        }
       }
 
-      const handleMouseUp = () => {
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        // Calculate final widths one last time to ensure consistency
+        const delta = upEvent.clientX - startX
+        const nextWidths = calculateWidths(delta)
+        
+        const updates = columnRange.map((item, index) => ({
+            columnId: item.column.id,
+            width: nextWidths[index],
+        }))
+
+        if (onResizeEnd) {
+            onResizeEnd(updates)
+        } else if (!onResizeProgress) {
+             // If no custom progress handler, we already updated via setColumnWidths in mousemove.
+             // But good to ensure final state is set if needed, though setColumnWidths is state setter.
+        }
+        
         cleanup()
       }
 

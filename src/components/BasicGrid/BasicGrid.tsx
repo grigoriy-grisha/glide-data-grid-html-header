@@ -309,8 +309,27 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const { handleResizeMouseDown, handleResizeDoubleClick } = useColumnResize({
     columns: orderedColumns,
     getColumnWidth,
-    setColumnWidths,
+    setColumnWidths: undefined, // We handle updates manually via onResizeEnd
     clearColumnWidths,
+    onResizeProgress: (updates) => {
+      if (updates.length === 0) return
+      
+      const firstColId = updates[0].columnId
+      const firstIndex = orderedColumns.findIndex((c) => c.id === firstColId)
+      if (firstIndex === -1) return
+
+      const startX = columnPositions[firstIndex] ?? 0
+      const totalWidth = updates.reduce((sum, u) => sum + u.width, 0)
+      
+      setVirtualResizeState({
+        x: startX + totalWidth,
+        columnIndex: firstIndex,
+      })
+    },
+    onResizeEnd: (updates) => {
+      setColumnWidths(updates)
+      setVirtualResizeState(null)
+    },
   })
 
   const { handleHeaderDragStart, registerHeaderCell } = useColumnReorderDrag({

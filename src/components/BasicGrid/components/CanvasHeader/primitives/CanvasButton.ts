@@ -28,13 +28,13 @@ export class CanvasButton extends CanvasNode {
         // but drawButton takes x/y which we don't know yet.
         // Ideally drawButton logic should be split into measure and paint.
         // For this implementation, we'll use a temporary estimation similar to drawButton.
-        
+
         // Simple estimation based on drawButton logic
         ctx.font = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"; // Approximate theme font
         const textMetrics = ctx.measureText(this.text);
         const paddingX = 12; // 6px * 2 roughly
-        
-        this.rect.width = textMetrics.width + paddingX * 2 + 8; 
+
+        this.rect.width = textMetrics.width + paddingX * 2 + 8;
         this.rect.height = 24; // Standard height
     }
 

@@ -60,13 +60,13 @@ export abstract class CanvasNode {
     hitTest(x: number, y: number): CanvasNode | null {
         if (x >= this.rect.x && x <= this.rect.x + this.rect.width &&
             y >= this.rect.y && y <= this.rect.y + this.rect.height) {
-            
+
             // Check children in reverse order (top to bottom)
             for (let i = this.children.length - 1; i >= 0; i--) {
                 const hit = this.children[i].hitTest(x, y);
                 if (hit) return hit;
             }
-            
+
             return this;
         }
 
@@ -87,14 +87,6 @@ export abstract class CanvasNode {
         }
     }
 
-    // Alias for requestLayout/requestPaint as per user request
-    flushLayout() {
-        this.requestLayout();
-    }
-
-    flushPaint() {
-        this.requestPaint();
-    }
 
     // Event handlers
     onClick(event: CanvasEvent) {
