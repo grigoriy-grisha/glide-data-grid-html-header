@@ -193,6 +193,49 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       }
 
       if (customContent) {
+        // Если есть customContent и разрешен реародер, мы должны попробовать добавить gripIcon внутрь customContent.
+        // Это возможно только если customContent является CanvasContainer, так как CanvasLeaf не имеет детей.
+        // Если это Leaf, то мы не можем добавить иконку (или должны обернуть его).
+        // Для простоты: если это Container, добавляем первым элементом.
+
+        if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
+            const gripIcon = new CanvasIcon(`${cellId}-grip-custom`, GRIP_ICON_SVG, { size: 12 })
+            gripIcon.style = {
+                flexShrink: 0,
+                alignSelf: 'center',
+                // Add some margin right
+                marginRight: 4,
+            }
+            
+            // Drag Logic (duplicate from below, maybe extract to helper)
+            gripIcon.onMouseEnter = () => {
+                if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
+            }
+            gripIcon.onMouseLeave = () => {
+                if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+            }
+            gripIcon.onMouseDown = (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (e.originalEvent.button !== 0) return
+
+                const initialLeft = (columnPositions[cell.columnIndex!] ?? 0) - scrollLeft
+                
+                setDragState({
+                    sourceIndex: cell.columnIndex!,
+                    columnTitle: cell.title,
+                    columnWidth: cellWidth,
+                    startX: e.originalEvent.clientX,
+                    initialLeft
+                })
+            }
+
+            // Вставляем в начало
+            customContent.children.unshift(gripIcon);
+            // Need to set parent manually because unshift array doesn't do it (addChild does)
+            gripIcon.parent = customContent;
+        }
+
         cellWrapper.addChild(customContent)
       } else {
         // Content Container (Flex)

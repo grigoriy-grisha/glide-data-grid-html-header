@@ -26,7 +26,51 @@ const columns: BasicGridColumn<DataRow>[] = [
       />
     ),
     children: [
-      createColumn<DataRow>('employeeId', 'string', 'ID', { width: 120 }),
+      {
+        accessor: 'employeeId',
+        dataType: "string",
+        title: 'ID',
+        width: 150,
+        renderColumnContent: (_ctx, rect, _mousePosition, _onRerenderRequested) => {
+          const root = new CanvasContainer('root', {
+            direction: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            columnGap: 6,
+            wrap: 'wrap',
+            alignContent: 'center',
+          })
+
+          // Устанавливаем размеры корневого контейнера
+          root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+
+          // Текст
+          const text = new CanvasText('text-label', 'Текст:')
+          text.color = '#666'
+          root.addChild(text)
+
+          // Иконка SVG
+          const icon = new CanvasIcon('icon-svg', svgIcon, { size: 20, color: '#1565c0' })
+          icon.style = {
+            width: 20,
+            height: 20,
+          }
+          icon.onClick = () => {
+            console.log('SVG Icon clicked via CanvasNode!')
+          }
+          icon.onMouseEnter = () => {
+            icon.color = '#9065c0'
+          }
+          icon.onMouseLeave = () => {
+            icon.color = '#1565c0'
+          }
+
+          root.addChild(icon)
+
+          console.log({root})
+          return root
+        },
+      },
       {
         title: 'ФИО',
         children: [
@@ -115,7 +159,6 @@ const columns: BasicGridColumn<DataRow>[] = [
           }
           root.addChild(button1)
 
-          console.log({root})
           // Возвращаем root ноду для интеграции
           return root
         },

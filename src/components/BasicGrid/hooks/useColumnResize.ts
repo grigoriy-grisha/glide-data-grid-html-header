@@ -154,7 +154,14 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     },
-    [columns, getColumnWidth, setColumnWidths]
+    [
+      columns,
+      getColumnWidth,
+      setColumnWidths,
+      onResizeStart,
+      onResizeProgress,
+      onResizeEnd,
+    ]
   )
 
   const handleResizeDoubleClick = useCallback(
