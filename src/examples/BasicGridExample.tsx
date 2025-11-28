@@ -31,7 +31,7 @@ const columns: BasicGridColumn<DataRow>[] = [
         dataType: "string",
         title: 'ID',
         width: 150,
-        renderColumnContent: (_ctx, rect, _mousePosition, _onRerenderRequested) => {
+        renderColumnContent: ( rect) => {
           const root = new CanvasContainer('root', {
             direction: 'row',
             alignItems: 'center',
@@ -111,7 +111,7 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'Действие',
         dataType: 'string',
         width: 150,
-        renderColumnContent: (_ctx, rect, _mousePosition, _onRerenderRequested) => {
+        renderColumnContent: ( rect) => {
           const root = new CanvasContainer('root', {
             direction: 'row',
             alignItems: 'center',

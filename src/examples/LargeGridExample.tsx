@@ -229,10 +229,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
             const svgIcon = l === 0 ? POPULATION_SVG : (l === 3 ? STATUS_SVG : PROGRESS_SVG)
 
             renderColumnContent = (
-              ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
-              _mousePosition: { x: number; y: number } | null,
-              _onRerenderRequested?: () => void
             ) => {
               const flex = new CanvasFlex(`flex-${colKey}`, {
                   direction: 'row',
@@ -250,13 +247,11 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               text.font = "bold 11px sans-serif"
               flex.addChild(text)
 
-              flex.performLayout(ctx)
               return flex
             }
           } else if (l === 1) {
             // Вариант 2: CanvasIconButton с иконкой и текстом
             renderColumnContent = (
-              _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
             ) => {
               const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
@@ -283,7 +278,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           } else {
             // Вариант 3: CanvasButton с текстом
             renderColumnContent = (
-              _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
             ) => {
               const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
@@ -321,7 +315,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
         // State Level (Level 3)
         const stateRenderContent = (
-          ctx: CanvasRenderingContext2D,
           rect: { x: number; y: number; width: number; height: number },
         ) => {
           const flex = new CanvasFlex(`state-${r}-${c}-${s}`, {
@@ -355,7 +348,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       }
 
       const countryRenderContent = (
-        _ctx: CanvasRenderingContext2D,
         rect: { x: number; y: number; width: number; height: number },
       ) => {
 
@@ -389,26 +381,26 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
     // Region Level (Level 1)
     const regionRenderContent = (
-      ctx: CanvasRenderingContext2D,
       rect: { x: number; y: number; width: number; height: number },
     ) => {
       const flexContainer = new CanvasFlex(`region-${r}`, {
         direction: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
       })
 
       const flex = new CanvasFlex(`region-${r}`, {
           direction: 'row',
           alignItems: 'center',
+          columnGap: 6
       })
       flex.rect = rect
       flex.backgroundColor = regionColor
 
-      const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: 'white' })
+      const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: '#2f75d5' })
       flex.addChild(icon)
 
       const text = new CanvasText(`text-region-${r}`, regionName, {
-        color: 'white',
+        color: 'black',
         font: "bold 14px sans-serif",
         wordWrap: true
       })

@@ -35,6 +35,7 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef }: UseCanvas
     }
     loop()
 
+    console.log({root})
     return () => cancelAnimationFrame(rafId)
   }, [])
 
