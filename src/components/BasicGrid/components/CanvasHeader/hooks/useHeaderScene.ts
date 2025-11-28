@@ -130,7 +130,7 @@ export const useHeaderScene = ({
             flexShrink: 0,
             alignSelf: 'center',
         }
-        
+
         gripIcon.onMouseEnter = () => {
             if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
         }
@@ -140,11 +140,11 @@ export const useHeaderScene = ({
         gripIcon.onMouseDown = (e) => {
             e.preventDefault()
             e.stopPropagation()
-            
+
             handleDragStart(
-                e.originalEvent, 
-                cell.columnIndex!, 
-                cell.title, 
+                e.originalEvent,
+                cell.columnIndex!,
+                cell.title,
                 cellWidth,
                 { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
             )
@@ -152,53 +152,49 @@ export const useHeaderScene = ({
         return gripIcon
       }
 
+      const padding = 8
+
+      const contentContainer = new CanvasContainer(`${cellId}-content`, {
+        direction: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        columnGap: 6,
+      })
+
+      contentContainer.style = {height: cellHeight}
+
+      contentContainer.rect = {
+        x: cellX + padding,
+        y: cellY,
+        width: Math.max(0, cellWidth - padding * 2),
+        height: cellHeight,
+      }
+
       if (customContent) {
-        // Inject grip icon into custom content if needed
+        contentContainer.addChild(customContent)
+
         if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
             const gripIcon = createGripIcon('grip-custom')
-            
-            // Spacer for margin
-            const spacer = new CanvasRect(`${cellId}-grip-spacer`, 'transparent')
-            spacer.rect = { x: 0, y: 0, width: 4, height: 1 }
-            spacer.style = { width: 4, height: 1, flexShrink: 0 }
 
-            customContent.children.unshift(spacer);
-            spacer.parent = customContent;
-            
-            customContent.children.unshift(gripIcon);
-            gripIcon.parent = customContent;
+            // customContent.children.unshift(spacer);
+            // spacer.parent = customContent;
+            // customContent.addChildStart(spacer);
+          contentContainer.addChildStart(gripIcon)
         }
 
-        cellWrapper.addChild(customContent)
+        cellWrapper.addChild(contentContainer)
       } else {
-        // Default Content Container (Flex)
-        const contentContainer = new CanvasContainer(`${cellId}-content`, {
-          direction: 'row',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-        })
-        
-        const padding = 8
-        contentContainer.rect = {
-          x: cellX + padding,
-          y: cellY,
-          width: Math.max(0, cellWidth - padding * 2),
-          height: cellHeight,
-        }
 
         if (enableColumnReorder && column) {
             const gripIcon = createGripIcon('grip')
-            const spacer = new CanvasRect(`${cellId}-spacer`, 'transparent')
-            spacer.rect = { x: 0, y: 0, width: 4, height: 1 }
-            spacer.style = { width: 4, height: 1, flexShrink: 0 }
 
             contentContainer.addChild(gripIcon)
-            contentContainer.addChild(spacer)
         }
 
-        const text = new CanvasText(`${cellId}-text`, cell.title)
-        text.color = getHeaderTextColor(cell.level)
-        text.font = `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        const text = new CanvasText(`${cellId}-text`, cell.title, {
+          color: getHeaderTextColor(cell.level),
+          font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        })
 
         contentContainer.addChild(text)
         cellWrapper.addChild(contentContainer)
@@ -207,10 +203,6 @@ export const useHeaderScene = ({
       rootContainer.addChild(cellWrapper)
     })
 
-  }, [
-      visibleCells, columnPositions, columnWidths, scrollLeft, 
-      headerRowHeight, enableColumnReorder, dragState, 
-      handleDragStart, orderedColumns, canvasRef
-  ])
+  }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, dragState, handleDragStart, orderedColumns, canvasRef, rootRef])
 }
 

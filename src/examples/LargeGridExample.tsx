@@ -258,31 +258,43 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
             renderColumnContent = (
               _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
-              _mousePosition: { x: number; y: number } | null,
-              _onRerenderRequested?: () => void
             ) => {
-              const button = new CanvasIconButton(
-                `btn-${colKey}`,
-                GDP_SVG,
-                {
-                  size: 'auto',
-                  variant: 'primary',
-                  onClick: () => console.log(`Clicked ${leafType.key} column`)
-                }
+              const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
+                direction: 'row',
+                columnGap: 6,
+                justifyContent: 'center',
+                alignItems: 'center',
+                wrap: 'wrap'
+              })
+
+
+              const button = new CanvasButton(
+                  `btn-${colKey}`,
+                  leafType.key,
+                  {
+                    onClick: () => console.log(`Clicked ${leafType.key} button`)
+                  }
               )
 
-              button.rect = { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 }
-
-              return button
+              flex.rect = { x: rect.x , y: rect.y, width: rect.width, height: rect.height }
+              flex.addChild(button)
+              return flex
             }
           } else {
             // Вариант 3: CanvasButton с текстом
             renderColumnContent = (
               _ctx: CanvasRenderingContext2D,
               rect: { x: number; y: number; width: number; height: number },
-              _mousePosition: { x: number; y: number } | null,
-              _onRerenderRequested?: () => void
             ) => {
+              const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
+                direction: 'row',
+                columnGap: 6,
+                justifyContent: 'center',
+                alignItems: 'center',
+                wrap: 'wrap'
+              })
+
+
               const button = new CanvasButton(
                 `btn-${colKey}`,
                 leafType.key,
@@ -290,8 +302,10 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                    onClick: () => console.log(`Clicked ${leafType.key} button`)
                 }
               )
-              button.rect = { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 }
-              return button
+
+              flex.rect = { x: rect.x , y: rect.y, width: rect.width, height: rect.height }
+              flex.addChild(button)
+              return flex
             }
           }
 
@@ -309,14 +323,13 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
         const stateRenderContent = (
           ctx: CanvasRenderingContext2D,
           rect: { x: number; y: number; width: number; height: number },
-          _mousePosition: { x: number; y: number } | null,
-          _onRerenderRequested?: () => void
         ) => {
           const flex = new CanvasFlex(`state-${r}-${c}-${s}`, {
               direction: 'row',
               columnGap: 6,
               justifyContent: 'center',
-              alignItems: 'center'
+              alignItems: 'center',
+              wrap: 'wrap'
           })
           flex.rect = rect
 
@@ -328,12 +341,9 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           text.font = "bold 12px sans-serif"
           flex.addChild(text)
 
-          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1), {
-              // No styling options supported
-          })
+          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1))
           flex.addChild(badge)
 
-          flex.performLayout(ctx)
           return flex
         }
 
@@ -344,22 +354,30 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
         })
       }
 
-      // Country Level (Level 2)
       const countryRenderContent = (
         _ctx: CanvasRenderingContext2D,
         rect: { x: number; y: number; width: number; height: number },
-        mousePosition: { x: number; y: number } | null,
-        _onRerenderRequested?: () => void
       ) => {
+
+        const flex = new CanvasFlex(`flex-country-${r}-${c}`, {
+          direction: 'row',
+          columnGap: 6,
+          justifyContent: 'center',
+          alignItems: 'center',
+          wrap: 'wrap'
+        })
+
         const button = new CanvasIconButton(
           `country-${r}-${c}`,
           GLOBE_SVG,
           {
-             onClick: () => console.log(`Clicked country: ${countryName}`)
+             onClick: () => console.log(`Clicked country: ${countryName}`),
           }
         )
-        button.rect = { x: rect.x + 4, y: rect.y + 4, width: rect.width - 8, height: rect.height - 8 }
-        return button
+
+        flex.rect = {width: rect.width, height: rect.height, y: rect.y, x: rect.x}
+        flex.addChild(button)
+        return flex
       }
 
       regionCountries.push({
@@ -381,7 +399,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
       const flex = new CanvasFlex(`region-${r}`, {
           direction: 'row',
-          alignItems: 'center'
+          alignItems: 'center',
       })
       flex.rect = rect
       flex.backgroundColor = regionColor
@@ -389,9 +407,12 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: 'white' })
       flex.addChild(icon)
 
-      const text = new CanvasText(`text-region-${r}`, regionName)
-      text.color = 'white'
-      text.font = "bold 14px sans-serif"
+      const text = new CanvasText(`text-region-${r}`, regionName, {
+        color: 'white',
+        font: "bold 14px sans-serif",
+        wordWrap: true
+      })
+
       flex.addChild(text)
 
 

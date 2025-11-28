@@ -42,6 +42,11 @@ export abstract class CanvasNode {
         this.children.push(child);
     }
 
+    addChildStart(child: CanvasNode) {
+        child.parent = this;
+        this.children.unshift(child);
+    }
+
     removeChild(child: CanvasNode) {
         const index = this.children.indexOf(child);
         if (index !== -1) {
@@ -59,14 +64,14 @@ export abstract class CanvasNode {
 
         if (x >= this.rect.x && x <= this.rect.x + this.rect.width &&
             y >= this.rect.y && y <= this.rect.y + this.rect.height) {
-            
+
             for (let i = this.children.length - 1; i >= 0; i--) {
                 const childHits = this.children[i].hitTest(x, y);
                 if (childHits.length > 0) {
                     hits.push(...childHits);
                 }
             }
-            
+
             hits.push(this);
         }
 

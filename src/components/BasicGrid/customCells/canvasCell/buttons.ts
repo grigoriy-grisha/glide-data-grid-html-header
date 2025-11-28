@@ -3,6 +3,9 @@ import type { HoverState } from './types'
 
 export type ButtonIcon = string | HTMLImageElement | null | undefined
 
+export const BUTTON_PADDING_Y = 4;
+export const ICON_SIZE_ADJUSTMENT = 4;
+
 const iconCache = new Map<string, HTMLImageElement>()
 
 function createSVGDataURL(svgString: string, color?: string): string {
@@ -215,8 +218,8 @@ export function drawIconButton(
   hovered: HoverState = false
 ): { x: number; y: number; width: number; height: number } {
   const paddingX = 0
-  const paddingY = 4
-  const iconSize = Math.min(height - paddingY * 2 - 4, 20)
+  const paddingY = BUTTON_PADDING_Y
+  const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20)
 
   let actualSize: number
   if (size === 'auto') {

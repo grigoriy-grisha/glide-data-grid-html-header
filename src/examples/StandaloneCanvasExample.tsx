@@ -19,6 +19,7 @@ export function StandaloneCanvasExample() {
       direction: 'column', // Changed to column to stack rows
       alignItems: 'flex-start',
       justifyContent: 'flex-start',
+      padding: 20,
     })
 
     // Row 1: Text items
@@ -60,11 +61,6 @@ export function StandaloneCanvasExample() {
       columnGap: 15,
     })
 
-    const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
-
-    row3.addChild(new CanvasIconButton('iconBtn1', iconSvg, { variant: 'secondary', onClick: () => console.log('Icon clicked') }))
-
-    row3.addChild(new CanvasButton('btn2', 'Action', { variant: 'secondary' }))
 
     const longText2 = new CanvasText(
       'text5',
@@ -76,6 +72,13 @@ export function StandaloneCanvasExample() {
     // Allow it to grow/shrink
     longText2.style.flexGrow = 1;
     longText2.style.flexShrink = 1;
+
+    const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+
+    row3.addChild(new CanvasIconButton('iconBtn1', iconSvg, { variant: 'secondary', onClick: () => console.log('Icon clicked') }))
+
+    row3.addChild(new CanvasButton('btn2', 'Action', { variant: 'secondary' }))
+
 
     row3.addChild(longText2)
 

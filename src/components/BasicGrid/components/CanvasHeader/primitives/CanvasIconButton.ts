@@ -1,6 +1,6 @@
-import {ButtonIcon, drawIconButton} from '../../../customCells/canvasCell/buttons';
-import {CanvasNode} from "../core/CanvasNode.ts";
-import {CanvasLeaf} from "../core/CanvasLeaf.ts";
+import { ButtonIcon, drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../../customCells/canvasCell/buttons';
+import { CanvasNode } from "../core/CanvasNode.ts";
+import { CanvasLeaf } from "../core/CanvasLeaf.ts";
 
 export class CanvasIconButton extends CanvasLeaf {
     icon: ButtonIcon;
@@ -26,10 +26,19 @@ export class CanvasIconButton extends CanvasLeaf {
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        // Base size for icon button
-        const baseSize = typeof this.size === 'number' ? this.size : 28;
-        this.rect.width = baseSize;
-        this.rect.height = baseSize;
+        // Base height/size
+        const height = typeof this.size === 'number' ? this.size : 28;
+        this.rect.height = height;
+
+        if (this.size === 'auto') {
+            const paddingX = 0;
+            const paddingY = BUTTON_PADDING_Y;
+            // Match logic in drawIconButton
+            const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
+            this.rect.width = iconSize + paddingX * 2;
+        } else {
+            this.rect.width = this.size;
+        }
     }
 
     paint(ctx: CanvasRenderingContext2D) {
@@ -59,5 +68,30 @@ export class CanvasIconButton extends CanvasLeaf {
 
     onMouseLeave() {
         this.isHovered = false;
+    }
+
+    hitTest(x: number, y: number): CanvasNode[] {
+        const paddingX = 0;
+        const paddingY = BUTTON_PADDING_Y;
+        const iconSize = Math.min(this.rect.height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
+
+        let actualSize: number;
+        if (this.size === 'auto') {
+            actualSize = iconSize + paddingX * 2;
+        } else {
+            actualSize = this.size;
+        }
+
+        const buttonX = this.rect.x + paddingX;
+        const buttonY = this.rect.y + paddingY;
+        const buttonWidth = actualSize - paddingX * 2;
+        const buttonHeight = this.rect.height - paddingY * 2;
+
+        if (x >= buttonX && x <= buttonX + buttonWidth &&
+            y >= buttonY && y <= buttonY + buttonHeight) {
+            return [this];
+        }
+
+        return [];
     }
 }

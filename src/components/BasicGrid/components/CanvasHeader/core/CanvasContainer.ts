@@ -57,8 +57,25 @@ export class CanvasContainer extends CanvasNode {
 
         // Clamp to parent width if we are not explicitly sized and we are overflowing
         if (this.style.width === undefined && this.parent && this.parent.rect.width > 0) {
-            if (this.rect.width > this.parent.rect.width) {
-                this.rect.width = this.parent.rect.width;
+            let availableWidth = this.parent.rect.width;
+
+            // Account for parent's padding if it's a container
+            if (this.parent instanceof CanvasContainer) {
+                const parentPadding = this.parent.flexOptions.padding;
+                let parentPLeft = 0, parentPRight = 0;
+
+                if (typeof parentPadding === 'number') {
+                    parentPLeft = parentPRight = parentPadding;
+                } else if (parentPadding) {
+                    parentPLeft = parentPadding.left ?? 0;
+                    parentPRight = parentPadding.right ?? 0;
+                }
+
+                availableWidth -= (parentPLeft + parentPRight);
+            }
+
+            if (this.rect.width > availableWidth) {
+                this.rect.width = availableWidth;
             }
         }
     }
