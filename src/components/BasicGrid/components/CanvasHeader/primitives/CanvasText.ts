@@ -13,7 +13,7 @@ export class CanvasText extends CanvasNode {
     font: string = "14px sans-serif";
     color: string = "black";
     wordWrap: boolean = false;
-    lineHeight: number = 0.8;
+    lineHeight: number = 1;
 
     constructor(id: string, text: string, options?: CanvasTextOptions) {
         super(id);

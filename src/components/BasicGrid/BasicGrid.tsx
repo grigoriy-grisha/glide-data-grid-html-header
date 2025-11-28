@@ -65,7 +65,11 @@ const DataEditorWithVirtualization = React.memo(
       [onVisibleRegionChanged, updateVisibleIndices]
     )
 
-    return <DataEditor ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
+    return <DataEditor drawHeader={(args, drawContent) => {
+      console.log({args})
+      console.log({drawContent})
+
+    }} ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
   })
 )
 
@@ -104,7 +108,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const virtualResizeLineRef = useRef<HTMLDivElement>(null)
-  
+
   // Состояние виртуальной линии resize
   const [virtualResizeState, setVirtualResizeState] = useState<{
     x: number
@@ -309,18 +313,18 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const { handleResizeMouseDown, handleResizeDoubleClick } = useColumnResize({
     columns: orderedColumns,
     getColumnWidth,
-    setColumnWidths: undefined, // We handle updates manually via onResizeEnd
+    setColumnWidths,
     clearColumnWidths,
     onResizeProgress: (updates) => {
       if (updates.length === 0) return
-      
+
       const firstColId = updates[0].columnId
       const firstIndex = orderedColumns.findIndex((c) => c.id === firstColId)
       if (firstIndex === -1) return
 
       const startX = columnPositions[firstIndex] ?? 0
       const totalWidth = updates.reduce((sum, u) => sum + u.width, 0)
-      
+
       setVirtualResizeState({
         x: startX + totalWidth,
         columnIndex: firstIndex,
@@ -535,9 +539,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     if (!virtualResizeState) {
       return { display: 'none' }
     }
-    
+
     const relativeX = virtualResizeState.x - scrollLeft + markerWidth
-    
+
     return {
       position: 'absolute' as const,
       left: `${relativeX}px`,
@@ -563,7 +567,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               style={virtualResizeLineStyle}
             />
           )}
-          
+
           {columnPositions.length > 0 && levelCount > 0 && (
             <>
               {/*<GridHeader*/}
@@ -620,46 +624,54 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                 enableColumnReorder={enableColumnReorder}
                 onColumnReorder={reorderColumns}
                 dataAreaWidth={dataAreaWidth}
+                sortColumn={sortState?.columnId}
+                sortDirection={sortState?.direction}
+                onColumnSort={(columnId) => {
+                  const index = orderedColumns.findIndex((c) => c.id === columnId)
+                  if (index >= 0) {
+                    handleColumnSort(index)
+                  }
+                }}
               />
             </>
           )}
 
-        <div
-          className="basic-grid-body"
-          ref={gridBodyRef}
-          style={overlayPaddingBottom > 0 ? { paddingBottom: overlayPaddingBottom } : undefined}
-        >
-          <DataEditorWithVirtualization
-            ref={dataEditorRef}
-            getCellContent={getCellContent}
-            columns={dataEditorColumns}
-            rows={gridRows.length + (summaryRows?.length ?? 0)}
-            freezeTrailingRows={summaryRows?.length ?? 0}
-            width={viewportWidth}
-            height={height}
-            theme={gridTheme}
-            customRenderers={customRenderers}
-            onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
-            onHeaderClicked={handleColumnSort}
-            onCellClicked={handleCellClicked}
-            onCellEdited={editable ? handleCellEdited : undefined}
-            highlightRegions={highlightRegions}
-            rowMarkers={rowMarkersSetting}
-            rowMarkerWidth={markerWidth}
-            rowHeight={resolvedRowHeight}
-            rowSelectionMode={rowSelectionEnabled ? 'multi' : undefined}
-            rowSelect={rowSelectionEnabled ? 'multi' : undefined}
-            smoothScrollX={true}
-            smoothScrollY={true}
-            headerHeight={0}
-          />
-          {overlayRow && overlayContent && overlayPosition && (
-            <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
-              <div className="basic-grid-row-overlay-content">{overlayContent}</div>
-            </div>
-          )}
+          <div
+            className="basic-grid-body"
+            ref={gridBodyRef}
+            style={overlayPaddingBottom > 0 ? { paddingBottom: overlayPaddingBottom } : undefined}
+          >
+            <DataEditorWithVirtualization
+              ref={dataEditorRef}
+              getCellContent={getCellContent}
+              columns={dataEditorColumns}
+              rows={gridRows.length + (summaryRows?.length ?? 0)}
+              freezeTrailingRows={summaryRows?.length ?? 0}
+              width={viewportWidth}
+              height={height}
+              theme={gridTheme}
+              customRenderers={customRenderers}
+              onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
+              onHeaderClicked={handleColumnSort}
+              onCellClicked={handleCellClicked}
+              onCellEdited={editable ? handleCellEdited : undefined}
+              highlightRegions={highlightRegions}
+              rowMarkers={rowMarkersSetting}
+              rowMarkerWidth={markerWidth}
+              rowHeight={resolvedRowHeight}
+              rowSelectionMode={rowSelectionEnabled ? 'multi' : undefined}
+              rowSelect={rowSelectionEnabled ? 'multi' : undefined}
+              smoothScrollX={true}
+              smoothScrollY={true}
+              // headerHeight={0}
+            />
+            {overlayRow && overlayContent && overlayPosition && (
+              <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
+                <div className="basic-grid-row-overlay-content">{overlayContent}</div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
     </HeaderVirtualizationProvider>
   )

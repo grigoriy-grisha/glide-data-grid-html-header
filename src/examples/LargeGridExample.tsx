@@ -383,18 +383,21 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
     const regionRenderContent = (
       rect: { x: number; y: number; width: number; height: number },
     ) => {
+
+      const flex = new CanvasFlex(`region-${r}`, {
+        direction: 'row',
+        alignItems: 'center',
+        columnGap: 6
+      })
+      flex.rect = rect
+      flex.backgroundColor = regionColor
+
       const flexContainer = new CanvasFlex(`region-${r}`, {
         direction: 'row',
         alignItems: 'center',
       })
 
-      const flex = new CanvasFlex(`region-${r}`, {
-          direction: 'row',
-          alignItems: 'center',
-          columnGap: 6
-      })
-      flex.rect = rect
-      flex.backgroundColor = regionColor
+
 
       const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: '#2f75d5' })
       flex.addChild(icon)

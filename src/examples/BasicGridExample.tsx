@@ -41,15 +41,12 @@ const columns: BasicGridColumn<DataRow>[] = [
             alignContent: 'center',
           })
 
-          // Устанавливаем размеры корневого контейнера
           root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
 
-          // Текст
           const text = new CanvasText('text-label', 'Текст:')
           text.color = '#666'
           root.addChild(text)
 
-          // Иконка SVG
           const icon = new CanvasIcon('icon-svg', svgIcon, { size: 20, color: '#1565c0' })
           icon.style = {
             width: 20,
@@ -67,7 +64,6 @@ const columns: BasicGridColumn<DataRow>[] = [
 
           root.addChild(icon)
 
-          console.log({root})
           return root
         },
       },

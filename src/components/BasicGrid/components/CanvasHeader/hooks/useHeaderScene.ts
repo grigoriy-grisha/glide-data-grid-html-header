@@ -1,16 +1,17 @@
-import {useEffect, useMemo} from 'react'
-import {CanvasRoot} from '../core/CanvasRoot'
-import {CanvasAbsoluteContainer} from '../core/CanvasAbsoluteContainer'
-import {CanvasContainer} from '../core/CanvasContainer'
-import {CanvasNode} from '../core/CanvasNode'
-import {CanvasRect} from '../primitives/CanvasRect'
-import {CanvasText} from '../primitives/CanvasText'
-import {CanvasIcon} from '../primitives/CanvasIcon'
-import {GridHeaderCell} from '../../../models/GridHeaderCell'
-import {GridColumn} from '../../../models/GridColumn'
-import {getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight} from '../../headerConstants'
-import {GRIP_ICON_SVG} from '../utils/icons'
-import {DragState} from './useHeaderDragDrop'
+import { useEffect, useMemo } from 'react'
+import { CanvasRoot } from '../core/CanvasRoot'
+import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
+import { CanvasContainer } from '../core/CanvasContainer'
+import { CanvasNode } from '../core/CanvasNode'
+import { CanvasRect } from '../primitives/CanvasRect'
+import { CanvasText } from '../primitives/CanvasText'
+import { CanvasIcon } from '../primitives/CanvasIcon'
+import { CanvasIconButton } from '../primitives/CanvasIconButton'
+import { GridHeaderCell } from '../../../models/GridHeaderCell'
+import { GridColumn } from '../../../models/GridColumn'
+import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
+import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
+import { DragState } from './useHeaderDragDrop'
 
 interface UseHeaderSceneProps {
     rootRef: React.MutableRefObject<CanvasRoot | null>
@@ -31,27 +32,33 @@ interface UseHeaderSceneProps {
         width: number,
         height: number
     }) => void
+    sortColumn?: string
+    sortDirection?: 'asc' | 'desc'
+    onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
 }
 
 export const useHeaderScene = ({
-                                   rootRef,
-                                   canvasRef,
-                                   visibleIndices,
-                                   headerCells,
-                                   orderedColumns,
-                                   columnPositions,
-                                   columnWidths,
-                                   scrollLeft,
-                                   headerRowHeight,
-                                   enableColumnReorder,
-                                   dragState,
-                                   handleDragStart
-                               }: UseHeaderSceneProps) => {
+    rootRef,
+    canvasRef,
+    visibleIndices,
+    headerCells,
+    orderedColumns,
+    columnPositions,
+    columnWidths,
+    scrollLeft,
+    headerRowHeight,
+    enableColumnReorder,
+    dragState,
+    handleDragStart,
+    sortColumn,
+    sortDirection,
+    onColumnSort
+}: UseHeaderSceneProps) => {
 
     const visibleCells = useMemo(() => {
         if (!visibleIndices) return headerCells
 
-        const {start, end} = visibleIndices
+        const { start, end } = visibleIndices
         return headerCells.filter(cell => {
             const cellEndIndex = cell.startIndex + cell.colSpan
             return cellEndIndex > start && cell.startIndex < end
@@ -68,15 +75,15 @@ export const useHeaderScene = ({
             const cellId = `cell-${cell.startIndex}-${cell.level}`
 
             const absoluteX = columnPositions[cell.startIndex] ?? 0
-            const cellX = absoluteX - scrollLeft
+            const cellX = Math.round(absoluteX - scrollLeft)
             const cellWidth = cell.getSpanWidth(columnWidths)
-            const cellY = cell.level * headerRowHeight
+            const cellY = Math.round(cell.level * headerRowHeight)
             const cellHeight = cell.rowSpan * headerRowHeight
 
             const cellWrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
-            cellWrapper.rect = {x: cellX, y: cellY, width: cellWidth, height: cellHeight}
+            cellWrapper.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
             const bgRect = new CanvasRect(`${cellId}-bg`, getHeaderColor(cell.level))
-            bgRect.rect = {x: cellX, y: cellY, width: cellWidth, height: cellHeight}
+            bgRect.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
             bgRect.borderColor = '#e0e0e0'
             bgRect.borderWidth = 1
 
@@ -105,12 +112,12 @@ export const useHeaderScene = ({
 
             if (renderContent) {
                 customContent = renderContent(
-                    {x: cellX, y: cellY, width: cellWidth, height: cellHeight},
+                    { x: cellX, y: cellY, width: cellWidth, height: cellHeight },
                 )
             }
 
             const createGripIcon = (idSuffix: string) => {
-                const gripIcon = new CanvasIcon(`${cellId}-${idSuffix}`, GRIP_ICON_SVG, {size: 12})
+                const gripIcon = new CanvasIcon(`${cellId}-${idSuffix}`, GRIP_ICON_SVG, { size: 12 })
                 gripIcon.style = {
                     flexShrink: 0,
                     alignSelf: 'center',
@@ -131,7 +138,7 @@ export const useHeaderScene = ({
                         cell.columnIndex!,
                         cell.title,
                         cellWidth,
-                        {x: cellX, y: cellY, width: cellWidth, height: cellHeight}
+                        { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
                     )
                 }
                 return gripIcon
@@ -140,12 +147,12 @@ export const useHeaderScene = ({
             const contentContainer = new CanvasContainer(`${cellId}-content`, {
                 direction: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'space-between',
                 columnGap: 6,
-                padding: 12
+                padding: 12,
             })
 
-            contentContainer.style = {height: cellHeight}
+            contentContainer.style = { height: cellHeight }
 
             contentContainer.rect = {
                 x: cellX,
@@ -154,34 +161,84 @@ export const useHeaderScene = ({
                 height: cellHeight,
             }
 
+            const contentContainerLeft = new CanvasContainer(`${cellId}-content`, {
+                direction: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                columnGap: 6,
+            })
+
+            const contentContainerRight = new CanvasContainer(`${cellId}-content`, {
+                direction: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                columnGap: 6,
+            })
+
             if (customContent) {
-                contentContainer.addChild(customContent)
+                contentContainerLeft.addChild(customContent)
 
                 if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
                     const gripIcon = createGripIcon('grip-custom')
-                    contentContainer.addChildStart(gripIcon)
+                    contentContainerLeft.addChildStart(gripIcon)
                 }
 
+
+                contentContainer.addChild(contentContainerLeft)
                 cellWrapper.addChild(contentContainer)
             } else {
                 if (enableColumnReorder && column) {
                     const gripIcon = createGripIcon('grip')
-
-                    contentContainer.addChild(gripIcon)
+                    contentContainerLeft.addChild(gripIcon)
                 }
 
                 const text = new CanvasText(`${cellId}-text`, cell.title, {
                     color: getHeaderTextColor(cell.level),
                     font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
                 })
+                text.style = { flexGrow: 1 }
 
-                contentContainer.addChild(text)
+                contentContainerLeft.addChild(text)
+
+                // Add sort icon if column is sortable
+                if (column && column.sortable) {
+                    let icon = SORT_DEFAULT_ICON
+                    if (sortColumn === column.id) {
+                        if (sortDirection === 'asc') icon = SORT_ASC_ICON
+                        else if (sortDirection === 'desc') icon = SORT_DESC_ICON
+                    }
+
+                    const sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
+                        size: 20,
+                        variant: 'secondary',
+                        onClick: () => {
+                            if (onColumnSort) {
+                                let newDirection: 'asc' | 'desc' | undefined = 'asc'
+                                if (sortColumn === column.id) {
+                                    if (sortDirection === 'asc') newDirection = 'desc'
+                                    else if (sortDirection === 'desc') newDirection = undefined
+                                }
+                                onColumnSort(column.id, newDirection)
+                            }
+                        }
+                    })
+
+                    sortButton.style = {
+                        flexShrink: 0,
+                        alignSelf: 'center',
+                    }
+
+                    contentContainerRight.addChild(sortButton)
+                }
+
+                contentContainer.addChild(contentContainerLeft)
+                contentContainer.addChild(contentContainerRight)
+
                 cellWrapper.addChild(contentContainer)
             }
 
             rootContainer.addChild(cellWrapper)
         })
 
-    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, dragState, handleDragStart, orderedColumns, canvasRef, rootRef])
+    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, dragState, handleDragStart, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort])
 }
-

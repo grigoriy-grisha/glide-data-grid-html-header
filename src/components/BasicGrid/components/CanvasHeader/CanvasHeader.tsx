@@ -28,6 +28,9 @@ interface CanvasHeaderProps {
   onVirtualResizeChange?: (x: number | null, columnIndex: number | null) => void
   enableColumnReorder?: boolean
   onColumnReorder?: (sourceIndex: number, targetIndex: number) => void
+  sortColumn?: string
+  sortDirection?: 'asc' | 'desc'
+  onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
   dataAreaWidth?: number
 }
 
@@ -47,15 +50,18 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   handleResizeDoubleClick,
   enableColumnReorder,
   onColumnReorder,
+  sortColumn,
+  sortDirection,
+  onColumnSort,
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
 
   // 1. Canvas Lifecycle & Ref Management
-  const { canvasRef, rootRef } = useCanvasLifecycle({ 
-    width, 
-    height, 
-    canvasHeaderRef 
+  const { canvasRef, rootRef } = useCanvasLifecycle({
+    width,
+    height,
+    canvasHeaderRef
   })
 
   // 2. Drag and Drop State & Logic
@@ -83,7 +89,10 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
     markerWidthValue,
     enableColumnReorder,
     dragState,
-    handleDragStart
+    handleDragStart,
+    sortColumn,
+    sortDirection,
+    onColumnSort
   })
 
   return (
@@ -122,25 +131,25 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             height: `${height}px`,
           }}
         />
-        
+
         {handleResizeMouseDown && (
-            <ResizeHandles 
-                visibleIndices={visibleIndices}
-                orderedColumns={orderedColumns}
-                columnWidths={columnWidths}
-                columnPositions={columnPositions}
-                scrollLeft={scrollLeft}
-                width={width}
-                handleResizeMouseDown={handleResizeMouseDown}
-                handleResizeDoubleClick={handleResizeDoubleClick}
-            />
+          <ResizeHandles
+            visibleIndices={visibleIndices}
+            orderedColumns={orderedColumns}
+            columnWidths={columnWidths}
+            columnPositions={columnPositions}
+            scrollLeft={scrollLeft}
+            width={width}
+            handleResizeMouseDown={handleResizeMouseDown}
+            handleResizeDoubleClick={handleResizeDoubleClick}
+          />
         )}
-        
-        <DragOverlays 
-            dragState={dragState}
-            height={height}
-            dropIndicatorRef={dropIndicatorRef}
-            ghostRef={ghostRef}
+
+        <DragOverlays
+          dragState={dragState}
+          height={height}
+          dropIndicatorRef={dropIndicatorRef}
+          ghostRef={ghostRef}
         />
       </div>
     </div>
