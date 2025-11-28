@@ -48,22 +48,60 @@ export const useHeaderScene = ({
     scrollLeft,
     headerRowHeight,
     enableColumnReorder,
-    dragState,
     handleDragStart,
     sortColumn,
     sortDirection,
     onColumnSort
 }: UseHeaderSceneProps) => {
 
+    const cellsByLevel = useMemo(() => {
+        const groups: GridHeaderCell[][] = []
+        for (const cell of headerCells) {
+            if (!groups[cell.level]) {
+                groups[cell.level] = []
+            }
+            groups[cell.level].push(cell)
+        }
+        return groups
+    }, [headerCells])
+
     const visibleCells = useMemo(() => {
         if (!visibleIndices) return headerCells
 
         const { start, end } = visibleIndices
-        return headerCells.filter(cell => {
-            const cellEndIndex = cell.startIndex + cell.colSpan
-            return cellEndIndex > start && cell.startIndex < end
-        })
-    }, [headerCells, visibleIndices])
+        const result: GridHeaderCell[] = []
+
+        for (const levelCells of cellsByLevel) {
+            if (!levelCells) continue
+
+            // Binary search to find the first visible cell
+            let left = 0
+            let right = levelCells.length - 1
+            let startIndex = -1
+
+            while (left <= right) {
+                const mid = (left + right) >> 1
+                const cell = levelCells[mid]
+                // Check if cell ends after the visible window starts
+                if (cell.startIndex + cell.colSpan > start) {
+                    startIndex = mid
+                    right = mid - 1
+                } else {
+                    left = mid + 1
+                }
+            }
+
+            if (startIndex !== -1) {
+                for (let i = startIndex; i < levelCells.length; i++) {
+                    const cell = levelCells[i]
+                    // Stop if cell starts after the visible window ends
+                    if (cell.startIndex >= end) break
+                    result.push(cell)
+                }
+            }
+        }
+        return result
+    }, [cellsByLevel, visibleIndices, headerCells])
 
     useEffect(() => {
         if (!rootRef.current) return
@@ -240,5 +278,7 @@ export const useHeaderScene = ({
             rootContainer.addChild(cellWrapper)
         })
 
-    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, dragState, handleDragStart, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort])
+        rootRef.current.render()
+
+    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, handleDragStart, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort])
 }

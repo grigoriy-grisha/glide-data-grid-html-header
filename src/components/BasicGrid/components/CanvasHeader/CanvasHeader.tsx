@@ -34,7 +34,7 @@ interface CanvasHeaderProps {
   dataAreaWidth?: number
 }
 
-export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
+export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   width,
   height,
   headerCells,
@@ -56,6 +56,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
+  const [isHovered, setIsHovered] = React.useState(false)
 
   // 1. Canvas Lifecycle & Ref Management
   const { canvasRef, rootRef } = useCanvasLifecycle({
@@ -122,6 +123,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           position: 'relative',
           flexShrink: 0,
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <canvas
           ref={canvasRef}
@@ -132,7 +135,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           }}
         />
 
-        {handleResizeMouseDown && (
+        {handleResizeMouseDown && isHovered && (
           <ResizeHandles
             visibleIndices={visibleIndices}
             orderedColumns={orderedColumns}
@@ -154,4 +157,4 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
       </div>
     </div>
   )
-}
+})

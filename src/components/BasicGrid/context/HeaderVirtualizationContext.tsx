@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
 interface VisibleIndices {
   start: number
@@ -22,21 +22,14 @@ export function HeaderVirtualizationProvider({
   initialIndices = { start: 0, end: 20 },
 }: HeaderVirtualizationProviderProps) {
   const [visibleIndices, setVisibleIndices] = useState<VisibleIndices>(initialIndices)
-  const rafIdRef = useRef<number | null>(null)
-
+  
   const updateVisibleIndices = useCallback((indices: VisibleIndices) => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current)
-    }
-    rafIdRef.current = requestAnimationFrame(() => {
-      setVisibleIndices((prev) => {
-        // Only update if there's a meaningful change
-        if (Math.abs(prev.start - indices.start) < 2 && Math.abs(prev.end - indices.end) < 2) {
-          return prev
-        }
-        return indices
-      })
-      rafIdRef.current = null
+    setVisibleIndices((prev) => {
+      // Only update if there's a meaningful change
+      if (Math.abs(prev.start - indices.start) < 2 && Math.abs(prev.end - indices.end) < 2) {
+        return prev
+      }
+      return indices
     })
   }, [])
 

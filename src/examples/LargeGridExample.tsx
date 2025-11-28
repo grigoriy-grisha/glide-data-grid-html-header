@@ -334,8 +334,12 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           text.font = "bold 12px sans-serif"
           flex.addChild(text)
 
-          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1))
+          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1), {
+            onClick: () => console.log(`Clicked country: ${countryName}`),
+          })
           flex.addChild(badge)
+
+
 
           return flex
         }

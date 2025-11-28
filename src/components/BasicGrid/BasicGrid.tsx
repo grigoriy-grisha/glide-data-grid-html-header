@@ -555,6 +555,21 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [virtualResizeState, scrollLeft, markerWidth, dataViewportWidth])
 
+  const handleVirtualResizeChange = useCallback((x: number | null, columnIndex: number | null) => {
+    if (x !== null && columnIndex !== null) {
+      setVirtualResizeState({ x, columnIndex })
+    } else {
+      setVirtualResizeState(null)
+    }
+  }, [])
+
+  const handleHeaderSort = useCallback((columnId: string, direction: 'asc' | 'desc' | undefined) => {
+    const index = orderedColumns.findIndex((c) => c.id === columnId)
+    if (index >= 0) {
+      handleColumnSort(index)
+    }
+  }, [orderedColumns, handleColumnSort])
+
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
@@ -614,24 +629,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                 handleResizeDoubleClick={handleResizeDoubleClick}
                 getColumnWidth={getColumnWidth}
                 setColumnWidths={setColumnWidths}
-                onVirtualResizeChange={(x, columnIndex) => {
-                  if (x !== null && columnIndex !== null) {
-                    setVirtualResizeState({ x, columnIndex })
-                  } else {
-                    setVirtualResizeState(null)
-                  }
-                }}
+                onVirtualResizeChange={handleVirtualResizeChange}
                 enableColumnReorder={enableColumnReorder}
                 onColumnReorder={reorderColumns}
                 dataAreaWidth={dataAreaWidth}
                 sortColumn={sortState?.columnId}
                 sortDirection={sortState?.direction}
-                onColumnSort={(columnId) => {
-                  const index = orderedColumns.findIndex((c) => c.id === columnId)
-                  if (index >= 0) {
-                    handleColumnSort(index)
-                  }
-                }}
+                onColumnSort={handleHeaderSort}
               />
             </>
           )}
@@ -663,7 +667,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               rowSelect={rowSelectionEnabled ? 'multi' : undefined}
               smoothScrollX={true}
               smoothScrollY={true}
-              // headerHeight={0}
+              headerHeight={0}
             />
             {overlayRow && overlayContent && overlayPosition && (
               <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
