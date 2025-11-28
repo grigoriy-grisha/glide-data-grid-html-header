@@ -35,6 +35,7 @@ interface UseHeaderSceneProps {
     sortColumn?: string
     sortDirection?: 'asc' | 'desc'
     onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
+    debugMode?: boolean
 }
 
 export const useHeaderScene = ({
@@ -51,8 +52,17 @@ export const useHeaderScene = ({
     handleDragStart,
     sortColumn,
     sortDirection,
-    onColumnSort
+    onColumnSort,
+    debugMode = false
 }: UseHeaderSceneProps) => {
+
+    // Update global debug mode
+    useEffect(() => {
+        CanvasNode.DEBUG = debugMode;
+        if (rootRef.current) {
+            rootRef.current.render();
+        }
+    }, [debugMode, rootRef]);
 
     const cellsByLevel = useMemo(() => {
         const groups: GridHeaderCell[][] = []
@@ -120,13 +130,12 @@ export const useHeaderScene = ({
 
             const cellWrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
             cellWrapper.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-            const bgRect = new CanvasRect(`${cellId}-bg`, getHeaderColor(cell.level))
-            bgRect.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-            bgRect.borderColor = '#e0e0e0'
-            bgRect.borderWidth = 1
-
-            cellWrapper.addChild(bgRect)
-
+            
+            // Styles moved from bgRect to cellWrapper
+            cellWrapper.backgroundColor = getHeaderColor(cell.level)
+            cellWrapper.borderColor = '#e0e0e0'
+            cellWrapper.borderWidth = 1
+            
             const normalColor = getHeaderColor(cell.level);
             const getHoverColor = (c: string) => {
                 if (c === '#e3f2fd') return '#bbdefb';
@@ -138,10 +147,10 @@ export const useHeaderScene = ({
             const hoverColor = getHoverColor(normalColor);
 
             cellWrapper.onMouseEnter = () => {
-                bgRect.color = hoverColor;
+                cellWrapper.backgroundColor = hoverColor;
             };
             cellWrapper.onMouseLeave = () => {
-                bgRect.color = normalColor;
+                cellWrapper.backgroundColor = normalColor;
             };
 
             const column = cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
@@ -188,10 +197,13 @@ export const useHeaderScene = ({
                 justifyContent: 'space-between',
                 columnGap: 6,
                 padding: 12,
+                wrap: 'wrap'
             })
 
-            contentContainer.style = { height: cellHeight }
 
+            contentContainer.style = {
+                height: cellHeight,
+            }
             contentContainer.rect = {
                 x: cellX,
                 y: cellY,
@@ -199,19 +211,31 @@ export const useHeaderScene = ({
                 height: cellHeight,
             }
 
+            // If we remove the style assignment, the CanvasContainer logic will overwrite rect.height with intrinsic.
+
+            // Let's modify the search/replace to remove the style assignment.
+
+
+
             const contentContainerLeft = new CanvasContainer(`${cellId}-content`, {
                 direction: 'row',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
+                justifyContent: 'center',
                 columnGap: 6,
             })
+
+
 
             const contentContainerRight = new CanvasContainer(`${cellId}-content`, {
                 direction: 'row',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
+                justifyContent: 'center',
                 columnGap: 6,
             })
+
+            contentContainerRight.debugColor = "#000"
+            // contentContainerRight.style = {height: cellHeight}
+
 
             if (customContent) {
                 contentContainerLeft.addChild(customContent)

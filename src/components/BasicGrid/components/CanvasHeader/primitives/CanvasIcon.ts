@@ -1,5 +1,4 @@
 import {ButtonIcon, drawIcon} from '../../../customCells/canvasCell/buttons';
-import {CanvasNode} from "../core/CanvasNode.ts";
 import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 
 export class CanvasIcon extends CanvasLeaf {
@@ -19,7 +18,7 @@ export class CanvasIcon extends CanvasLeaf {
         this.rect.height = this.size;
     }
 
-    paint(ctx: CanvasRenderingContext2D) {
+    onPaint(ctx: CanvasRenderingContext2D) {
         // Draw background if set
         if (this.backgroundColor && this.backgroundColor !== 'transparent') {
             ctx.fillStyle = this.backgroundColor;

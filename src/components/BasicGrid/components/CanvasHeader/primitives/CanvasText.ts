@@ -63,7 +63,7 @@ export class CanvasText extends CanvasNode {
         }
     }
 
-    paint(ctx: CanvasRenderingContext2D) {
+    onPaint(ctx: CanvasRenderingContext2D) {
         ctx.save();
 
         // Calculate layout using logical width (rect.width)

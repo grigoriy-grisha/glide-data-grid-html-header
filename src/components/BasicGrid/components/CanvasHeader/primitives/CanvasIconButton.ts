@@ -41,7 +41,7 @@ export class CanvasIconButton extends CanvasLeaf {
         }
     }
 
-    paint(ctx: CanvasRenderingContext2D) {
+    onPaint(ctx: CanvasRenderingContext2D) {
         drawIconButton(
             ctx,
             this.rect.x,

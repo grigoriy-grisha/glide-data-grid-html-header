@@ -1,4 +1,3 @@
-import {CanvasNode} from "../core/CanvasNode.ts";
 import {drawButton} from '../../../customCells/canvasCell/buttons';
 import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 
@@ -40,7 +39,7 @@ export class CanvasButton extends CanvasLeaf {
         this.rect.height = 24; // Standard height
     }
 
-    paint(ctx: CanvasRenderingContext2D) {
+    onPaint(ctx: CanvasRenderingContext2D) {
         drawButton(
             ctx,
             this.rect.x,

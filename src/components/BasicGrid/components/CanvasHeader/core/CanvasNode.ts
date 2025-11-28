@@ -18,6 +18,7 @@ export interface CanvasEvent {
 }
 
 export abstract class CanvasNode {
+    debugColor = 'magenta';
     id: string;
     parent: CanvasNode | null = null;
     children: CanvasNode[] = [];
@@ -31,7 +32,10 @@ export abstract class CanvasNode {
         alignSelf: 'auto',
     };
 
+    static DEBUG = false;
     backgroundColor: string = 'transparent';
+    borderColor: string = 'transparent';
+    borderWidth: number = 0;
 
     constructor(id: string) {
         this.id = id;
@@ -57,7 +61,18 @@ export abstract class CanvasNode {
 
     abstract measure(ctx: CanvasRenderingContext2D): void;
 
-    abstract paint(ctx: CanvasRenderingContext2D): void;
+    paint(ctx: CanvasRenderingContext2D) {
+        this.onPaint(ctx);
+        if (CanvasNode.DEBUG) {
+            ctx.save();
+            ctx.strokeStyle = this.debugColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+            ctx.restore();
+        }
+    }
+
+    abstract onPaint(ctx: CanvasRenderingContext2D): void;
 
     hitTest(x: number, y: number): CanvasNode[] {
         const hits: CanvasNode[] = [];

@@ -14,7 +14,7 @@ export class CanvasRect extends CanvasLeaf {
         // Rect doesn't have intrinsic size
     }
 
-    paint(ctx: CanvasRenderingContext2D) {
+    onPaint(ctx: CanvasRenderingContext2D) {
         if (this.color !== "transparent") {
             ctx.fillStyle = this.color;
             ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);

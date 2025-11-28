@@ -32,6 +32,7 @@ interface CanvasHeaderProps {
   sortDirection?: 'asc' | 'desc'
   onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
   dataAreaWidth?: number
+  debugMode?: boolean
 }
 
 export const CanvasHeader = React.memo<CanvasHeaderProps>(({
@@ -53,6 +54,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   sortColumn,
   sortDirection,
   onColumnSort,
+  debugMode
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
@@ -93,7 +95,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     handleDragStart,
     sortColumn,
     sortDirection,
-    onColumnSort
+    onColumnSort,
+    debugMode
   })
 
   return (

@@ -278,7 +278,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           } else {
             // Вариант 3: CanvasButton с текстом
             renderColumnContent = (
-              rect: { x: number; y: number; width: number; height: number },
             ) => {
               const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
                 direction: 'row',
@@ -297,7 +296,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                 }
               )
 
-              flex.rect = { x: rect.x , y: rect.y, width: rect.width, height: rect.height }
               flex.addChild(button)
               return flex
             }
@@ -324,7 +322,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               alignItems: 'center',
               wrap: 'wrap'
           })
-          flex.rect = rect
 
           const icon = new CanvasIcon(`icon-${stateName}`, MAP_SVG, { size: 14, color: '#2196f3' })
           flex.addChild(icon)
@@ -338,8 +335,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
             onClick: () => console.log(`Clicked country: ${countryName}`),
           })
           flex.addChild(badge)
-
-
 
           return flex
         }
