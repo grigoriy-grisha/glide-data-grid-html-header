@@ -159,14 +159,15 @@ export const useHeaderScene = ({
         alignItems: 'center',
         justifyContent: 'center',
         columnGap: 6,
+        padding: 4
       })
 
       contentContainer.style = {height: cellHeight}
 
       contentContainer.rect = {
-        x: cellX + padding,
+        x: cellX ,
         y: cellY,
-        width: Math.max(0, cellWidth - padding * 2),
+        width: Math.max(0, cellWidth  * 2),
         height: cellHeight,
       }
 
