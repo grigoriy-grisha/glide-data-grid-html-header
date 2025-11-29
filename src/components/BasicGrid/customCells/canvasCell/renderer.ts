@@ -4,6 +4,33 @@ import type { CanvasCell } from './types'
 import { CANVAS_CELL_KIND } from './types'
 import { buildCellId, getCellIndices, normalizeHoverPoint, resolveClickPoint, toRelativePoint, isPointInArea } from './helpers'
 import { retrieveRenderData, storeRenderData, updateHoverState } from './state'
+import { CellCanvasRoot } from './CellCanvasRoot'
+import type { RectBounds } from './types'
+
+const POINTER_CANDIDATE_KEYS: Array<['hoverX' | 'mouseX' | 'pointerX' | 'posX' | 'x', 'hoverY' | 'mouseY' | 'pointerY' | 'posY' | 'y']> = [
+  ['hoverX', 'hoverY'],
+  ['mouseX', 'mouseY'],
+  ['pointerX', 'pointerY'],
+  ['posX', 'posY'],
+  ['x', 'y'],
+]
+
+function getRelativePointerPosition(argsAny: Record<string, any>, rect: RectBounds) {
+  for (const [keyX, keyY] of POINTER_CANDIDATE_KEYS) {
+    const x = argsAny[keyX]
+    const y = argsAny[keyY]
+    if (typeof x === 'number' && typeof y === 'number' && !Number.isNaN(x) && !Number.isNaN(y)) {
+      // Determine whether coords are already relative or absolute by checking bounds
+      if (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height) {
+        return { x: x - rect.x, y: y - rect.y }
+      }
+      if (x >= -5 && x <= rect.width + 5 && y >= -5 && y <= rect.height + 5) {
+        return { x, y }
+      }
+    }
+  }
+  return undefined
+}
 
 export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
   kind: GridCellKind.Custom,
@@ -24,6 +51,13 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     const indices = getCellIndices(argsAny)
     const cellId = buildCellId(indices, rect)
     const renderData = retrieveRenderData(cellId, cell)
+
+    if (renderData?.canvasRoot instanceof CellCanvasRoot) {
+      const handled = renderData.canvasRoot.dispatchPointerEvent('click', relativePoint.x, relativePoint.y, argsAny.event)
+      if (handled) {
+        return cell
+      }
+    }
 
     if (renderData?.clickHandlers && Array.isArray(renderData.clickHandlers)) {
       for (const { area, handler } of renderData.clickHandlers) {
@@ -57,7 +91,8 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
 
     const indices = getCellIndices(argsAny)
     const cellId = buildCellId(indices, rect)
-    const relativeHover = normalizeHoverPoint(argsAny.hoverX, argsAny.hoverY, rect)
+    const relativeHover =
+      normalizeHoverPoint(argsAny.hoverX, argsAny.hoverY, rect) ?? getRelativePointerPosition(argsAny, rect)
 
     ctx.save()
     ctx.beginPath()
@@ -69,11 +104,18 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
 
     storeRenderData(cellId, cell, renderResult)
 
-    const isHovered =
-      !!relativeHover &&
-      hoveredAreas.some((area) => isPointInArea(relativeHover.x, relativeHover.y, area))
+    if (renderResult?.canvasRoot instanceof CellCanvasRoot) {
+      if (relativeHover) {
+        renderResult.canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, argsAny.event)
+      } else {
+        renderResult.canvasRoot.handleMouseLeave()
+      }
+    }
 
-    updateHoverState(cell.data, isHovered)
+    const isHovered =
+      Boolean(relativeHover && hoveredAreas.some((area) => isPointInArea(relativeHover.x, relativeHover.y, area)))
+
+    updateHoverState(cell.data, Boolean(relativeHover))
 
     if (isHovered) {
       args.overrideCursor?.('pointer')

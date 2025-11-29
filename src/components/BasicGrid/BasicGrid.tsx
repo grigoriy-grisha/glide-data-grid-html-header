@@ -207,7 +207,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   )
 
   const hasCanvasColumns = useMemo(
-    () => orderedColumns.some((column) => column.isCanvas()),
+    () => orderedColumns.some((column) => column.isCanvas() || column.hasRenderCellContent()),
     [orderedColumns]
   )
 

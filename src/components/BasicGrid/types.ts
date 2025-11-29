@@ -73,6 +73,11 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
     renderColumnContent?: (
         rect: { x: number; y: number; width: number; height: number },
     ) => CanvasNode
+    renderCellContent?: (
+        row: RowType,
+        rowIndex: number,
+        rect: { x: number; y: number; width: number; height: number },
+    ) => CanvasNode
 }
 
 export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {

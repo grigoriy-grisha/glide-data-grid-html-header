@@ -29,11 +29,13 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   buttonOptions?: ButtonCellOptions<RowType>
   canvasOptions?: CanvasCellOptions<RowType>
   renderColumnContent?: (
-    ctx: CanvasRenderingContext2D,
     rect: { x: number; y: number; width: number; height: number },
-    mousePosition: { x: number; y: number } | null,
-    onRerenderRequested?: () => void
-  ) => Array<{ rect: { x: number; y: number; width: number; height: number }; onClick: () => void }> | void | CanvasNode
+  ) => CanvasNode
+  renderCellContent?: (
+    row: RowType,
+    rowIndex: number,
+    rect: { x: number; y: number; width: number; height: number },
+  ) => CanvasNode
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -52,6 +54,11 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly buttonOptions?: ButtonCellOptions<RowType>
   readonly canvasOptions?: CanvasCellOptions<RowType>
   readonly renderColumnContent?: (
+    rect: { x: number; y: number; width: number; height: number },
+  ) => CanvasNode
+  readonly renderCellContent?: (
+    row: RowType,
+    rowIndex: number,
     rect: { x: number; y: number; width: number; height: number },
   ) => CanvasNode
   private readonly formatter?: (value: unknown, row: RowType) => string
@@ -75,6 +82,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.buttonOptions = options.buttonOptions
     this.canvasOptions = options.canvasOptions
     this.renderColumnContent = options.renderColumnContent
+    this.renderCellContent = options.renderCellContent
     this.formatter = options.formatter
     this.valueGetter = options.valueGetter
     this.sortValueGetter = options.sortValueGetter
@@ -149,6 +157,14 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
   getRenderColumnContent() {
     return this.renderColumnContent
+  }
+
+  hasRenderCellContent() {
+    return Boolean(this.renderCellContent)
+  }
+
+  getRenderCellContent() {
+    return this.renderCellContent
   }
 
   getSelectOptions(row: RowType) {

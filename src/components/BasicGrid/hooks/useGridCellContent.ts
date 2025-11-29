@@ -6,6 +6,7 @@ import { createButtonCell } from '../customCells/buttonCell'
 import { createCanvasCell } from '../customCells/canvasCell/index'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
+import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
 
 const EMPTY_TEXT_CELL: GridCell = {
   kind: GridCellKind.Text,
@@ -164,6 +165,40 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 
           return buttonCell
         }
+      }
+
+      const renderCellContent = column.getRenderCellContent()
+      if (renderCellContent) {
+        let cellCanvasRoot: CellCanvasRoot | null = null
+        const render = (
+          ctx: CanvasRenderingContext2D,
+          rect: { x: number; y: number; width: number; height: number },
+          _theme: any,
+          _hoverX: number | undefined,
+          _hoverY: number | undefined
+        ) => {
+          const node = renderCellContent(dataRow, row, rect)
+          if (!node) {
+            return {}
+          }
+
+          if (!cellCanvasRoot) {
+            cellCanvasRoot = new CellCanvasRoot(node)
+          } else {
+            cellCanvasRoot.setRootNode(node)
+          }
+
+          const hoverPos = _hoverX !== undefined && _hoverY !== undefined ? { x: _hoverX, y: _hoverY } : undefined
+          cellCanvasRoot.rootNode.style = { width: rect.width }
+
+          cellCanvasRoot.render(ctx, rect, hoverPos)
+ 
+          return {
+            canvasRoot: cellCanvasRoot,
+          }
+        }
+
+        return createCanvasCell(render)
       }
 
       if (column.isCanvas()) {

@@ -66,6 +66,45 @@ const columns: BasicGridColumn<DataRow>[] = [
 
           return root
         },
+        renderCellContent: (row, rowIndex, rect) => {
+          const root = new CanvasContainer(`cell-root-${row.employeeId ?? rowIndex}`, {
+            direction: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            columnGap: 8,
+            padding: 8,
+            wrap: 'wrap'
+          })
+          root.rect = { x: 0, y: 0, width: rect.width, height: rect.height }
+
+          const left = new CanvasContainer(`cell-left-${row.employeeId ?? rowIndex}`, {
+            direction: 'column',
+            rowGap: 2,
+          })
+          left.style.width = '100%'
+
+          const title = new CanvasText(`cell-title-${row.employeeId ?? rowIndex}`, row.employeeId ?? '—')
+          title.color = '#0d47a1'
+          title.style = { flexGrow: 1 }
+          left.addChild(title)
+
+          const subtitle = new CanvasText(`cell-sub-${row.employeeId ?? rowIndex}`, row.role ?? '—')
+          subtitle.color = '#607d8b'
+          subtitle.style = { flexGrow: 1 }
+          left.addChild(subtitle)
+
+          const actionButton = new CanvasButton(`cell-btn-${row.employeeId ?? rowIndex}`, 'Подробнее', {
+            variant: 'secondary',
+          })
+          actionButton.onClick = () => {
+            console.log('Подробнее по сотруднику', row.employeeId)
+          }
+
+          root.addChild(left)
+          root.addChild(actionButton)
+
+          return root
+        },
       },
       {
         title: 'ФИО',
@@ -77,7 +116,160 @@ const columns: BasicGridColumn<DataRow>[] = [
       {
         title: 'Позиция',
         children: [
-          createColumn<DataRow>('role', 'string', 'Роль', { width: 220, grow: 1 }),
+          createColumn<DataRow>('role', 'string', 'Роль', {
+            width: 320,
+            grow: 1,
+            renderCellContent: (row, rowIndex) => {
+              // Root: Row layout
+              const root = new CanvasContainer(`role-root-${rowIndex}`, {
+                direction: 'row',
+                justifyContent: 'space-between',
+                padding: 4,
+                columnGap: 8,
+              })
+
+
+              const statusStrip = new CanvasContainer(`status-strip-${rowIndex}`, {
+                direction: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              })
+              statusStrip.style = { width: 4, alignSelf: 'stretch', flexShrink: 0 }
+
+              // Color based on role
+              let stripColor = '#e0e0e0'
+              if (row.role === 'Developer') stripColor = '#4caf50' // Green
+              if (row.role === 'Manager') stripColor = '#2196f3' // Blue
+              if (row.role === 'Designer') stripColor = '#e91e63' // Pink
+
+              const avatarArea = new CanvasContainer(`avatar-area-${rowIndex}`, {
+                direction: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                rowGap: 2,
+              })
+              avatarArea.style = { width: 40, flexShrink: 0 }
+
+              let iconChar = '👤'
+              if (row.role === 'Developer') iconChar = '💻'
+              if (row.role === 'Manager') iconChar = '💼'
+              if (row.role === 'Designer') iconChar = '🎨'
+
+              const icon = new CanvasText(`icon-${rowIndex}`, iconChar, { font: '24px sans-serif' })
+              avatarArea.addChild(icon)
+              
+              // Small ID text below icon
+              const idText = new CanvasText(`id-${rowIndex}`, `#${rowIndex + 1}`, { font: '9px sans-serif', color: '#999' })
+              avatarArea.addChild(idText)
+
+              root.addChild(avatarArea)
+
+              // SECTION 2: Main Content (Column, Flex Grow)
+              const contentArea = new CanvasContainer(`content-area-${rowIndex}`, {
+                direction: 'column',
+                justifyContent: 'flex-start', // Push header to top, tags to bottom
+                padding: { left: 4, right: 4 },
+              })
+
+              // 2.1 Header Row (Row: Title + Badge)
+              const headerRow = new CanvasContainer(`header-row-${rowIndex}`, {
+                direction: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              })
+              
+              const titleText = new CanvasText(`title-${rowIndex}`, row.role as string, { 
+                font: 'bold 12px sans-serif', 
+                color: '#333' 
+              })
+              headerRow.addChild(titleText)
+
+              // Status badge (Auto width)
+              const statusText = new CanvasText(`status-${rowIndex}`, row.status?.name || 'Active', {
+                  font: '10px sans-serif',
+                  color: '#4caf50'
+              })
+              headerRow.addChild(statusText)
+
+              contentArea.addChild(headerRow)
+
+              // 2.2 Description Row (Row with wrapping text)
+              const descRow = new CanvasContainer(`desc-row-${rowIndex}`, {
+                  direction: 'row',
+                  alignItems: 'flex-start',
+                  padding: { top: 2, bottom: 2 }
+              })
+              
+              let desc = 'Сотрудник'
+              if (row.role === 'Developer') desc = 'Full-stack разработка, React/Node.js'
+              if (row.role === 'Manager') desc = 'Управление проектами, Agile/Scrum'
+              if (row.role === 'Designer') desc = 'UI/UX дизайн, Figma, прототипирование'
+
+              const descText = new CanvasText(`desc-text-${rowIndex}`, desc, {
+                  font: '10px sans-serif',
+                  color: '#666',
+                  wordWrap: true,
+                  lineHeight: 1.2
+              })
+              descRow.addChild(descText)
+              contentArea.addChild(descRow)
+
+              // 2.3 Tags Row (Row: Flex-start with gap)
+              const tagsRow = new CanvasContainer(`tags-row-${rowIndex}`, {
+                  direction: 'row',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  columnGap: 4
+              })
+
+              // Mock tags
+              const tags = ['FullTime', 'Office']
+              tags.forEach((tag, i) => {
+                  const tagBtn = new CanvasButton(`tag-${rowIndex}-${i}`, tag, { variant: 'secondary' })
+                  // Hack to make button smaller
+                  // tagBtn.style = { height: 16, fontSize: 9 } // hypothetical style support
+                  tagsRow.addChild(tagBtn)
+              })
+              contentArea.addChild(tagsRow)
+
+              root.addChild(contentArea)
+
+              // SECTION 3: Actions Area (Column: Space Around)
+              const actionsArea = new CanvasContainer(`actions-area-${rowIndex}`, {
+                  direction: 'column',
+                  justifyContent: 'space-around',
+                  alignItems: 'flex-end',
+                  padding: { left: 4 }
+              })
+              actionsArea.style = { width: 80, flexShrink: 0 }
+
+              // Top Action
+              const msgBtn = new CanvasButton(`msg-btn-${rowIndex}`, 'Chat', { variant: 'primary' })
+              msgBtn.onClick = () => console.log('Chat', row.employeeId)
+              actionsArea.addChild(msgBtn)
+
+              // Bottom Info (Right aligned text column)
+              const metaInfo = new CanvasContainer(`meta-${rowIndex}`, {
+                  direction: 'column',
+                  alignItems: 'flex-end',
+                  rowGap: 2
+              })
+              const dateText = new CanvasText(`date-${rowIndex}`, '2 ч. назад', { font: '9px sans-serif', color: '#aaa' })
+              metaInfo.addChild(dateText)
+              
+              const deptText = new CanvasText(`dept-${rowIndex}`, (row.department as string).substring(0, 8) + '...', { 
+                  font: '9px sans-serif', 
+                  color: '#999' 
+              })
+              metaInfo.addChild(deptText)
+              
+              actionsArea.addChild(metaInfo)
+
+              root.addChild(actionsArea)
+
+              return root
+            },
+          }),
           createColumn<DataRow>('department', 'string', 'Отдел', { width: 180 }),
         ],
       },
@@ -224,8 +416,9 @@ export function BasicGridExample() {
         columns={columns}
         rows={rows}
         summaryRows={summaryRows}
-        height={420}
+        height={500}
         headerRowHeight={54}
+        rowHeight={80}
         enableColumnReorder={true}
         getRowId={(row) => row.employeeId}
       />

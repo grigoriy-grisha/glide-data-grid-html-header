@@ -122,7 +122,7 @@ export class CanvasRoot {
 
         this.clearCanvas();
         this.applyResolutionScale(dpr);
-        this.updateRootRect(rect);
+        this.updateRootRect(rect); 
         this.layoutRoot();
         this.rootNode.paint(this.ctx);
     }

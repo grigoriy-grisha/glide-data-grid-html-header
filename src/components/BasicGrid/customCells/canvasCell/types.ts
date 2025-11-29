@@ -1,4 +1,5 @@
 import type { CustomCell } from '@glideapps/glide-data-grid'
+import type { CellCanvasRoot } from './CellCanvasRoot'
 
 export const CANVAS_CELL_KIND = 'canvas-cell'
 
@@ -14,6 +15,7 @@ export type CanvasRenderResult = {
   clickHandlers?: RenderClickHandler[]
   preferredHeight?: number
   [key: string]: any
+  canvasRoot?: CellCanvasRoot
 }
 
 export interface CanvasCellData {

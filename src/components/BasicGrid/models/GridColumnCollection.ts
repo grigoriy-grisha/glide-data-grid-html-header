@@ -71,7 +71,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
         // Колонки с renderColumnContent тоже могут не иметь accessor
         const isButton = column.dataType === 'button'
         const hasRenderColumnContent = Boolean(column.renderColumnContent)
-        const canRenderLeaf = Boolean(valueGetter) || isButton || hasRenderColumnContent
+        const hasRenderCellContent = Boolean(column.renderCellContent)
+        const canRenderLeaf = Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent
 
         if (canRenderLeaf) {
           // Для button ячеек и колонок с renderColumnContent создаем пустой valueGetter, если его нет
@@ -102,6 +103,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
               buttonOptions: column.buttonOptions,
               canvasOptions: column.canvasOptions,
               renderColumnContent: column.renderColumnContent,
+              renderCellContent: column.renderCellContent,
             })
           )
         }
