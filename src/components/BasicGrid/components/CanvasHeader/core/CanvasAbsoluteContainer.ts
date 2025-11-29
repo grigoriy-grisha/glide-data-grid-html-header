@@ -28,10 +28,12 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
     performLayout(ctx: CanvasRenderingContext2D) {
         const bounds = this.layoutChildren(ctx);
         if (!bounds) {
+            this.clearLayoutDirty();
             return;
         }
 
         this.expandToFitBounds(bounds);
+        this.clearLayoutDirty();
     }
 
     private layoutChildren(ctx: CanvasRenderingContext2D): Bounds | null {

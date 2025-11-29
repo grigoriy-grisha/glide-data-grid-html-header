@@ -1,143 +1,218 @@
-import { CanvasFlexStyle, CanvasNode, DimensionValue } from './CanvasNode';
+import { CanvasFlexStyle, CanvasNode } from './CanvasNode';
 import {
     RootFlexBox,
     FlexBox,
     FlexBoxOptions,
     FlexElement,
-    resolvePaddingBox,
+    PaddingBox,
 } from '../../../miniflex';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 
 const LAYOUT_EPSILON = 0.5;
 const MAX_LAYOUT_PASSES = 3;
 
-const numericDimension = (value: DimensionValue | undefined) =>
-    typeof value === 'number' ? value : undefined;
+// Zero padding singleton to avoid allocations
+const ZERO_PADDING: PaddingBox = { top: 0, right: 0, bottom: 0, left: 0 };
 
-const isRowDirection = (direction?: FlexBoxOptions['direction']) =>
-    direction?.startsWith('row') ?? true;
-
-const gapForDirection = (options: FlexBoxOptions, isRow: boolean) =>
-    isRow ? options.columnGap ?? 0 : options.rowGap ?? 0;
-
-const computeIntrinsicContentSize = (children: CanvasNode[], isRow: boolean, gap: number) => {
-    let contentWidth = 0;
-    let contentHeight = 0;
-
-    if (isRow) {
-        children.forEach((child, index) => {
-            contentWidth += child.rect.width;
-            contentHeight = Math.max(contentHeight, child.rect.height);
-            if (index < children.length - 1) {
-                contentWidth += gap;
-            }
-        });
-    } else {
-        children.forEach((child, index) => {
-            contentHeight += child.rect.height;
-            contentWidth = Math.max(contentWidth, child.rect.width);
-            if (index < children.length - 1) {
-                contentHeight += gap;
-            }
-        });
-    }
-
-    return { contentWidth, contentHeight };
+// Reusable style object to avoid allocations in normalizePercentStyle
+const _tempStyle: CanvasFlexStyle = {
+    flexGrow: 0,
+    flexShrink: 1,
+    flexBasis: 0,
+    alignSelf: 'auto',
+    width: undefined,
+    height: undefined,
 };
 
-const normalizePercentStyle = (style: CanvasFlexStyle, parentBox: FlexBox | RootFlexBox): CanvasFlexStyle => {
-    const normalized: CanvasFlexStyle = { ...style };
-    const parentIsRow = parentBox.direction.startsWith('row');
+// ─────────────────────────────────────────────────────────────────────────────
+// Inlined Helper Functions (avoid function call overhead in hot paths)
+// ─────────────────────────────────────────────────────────────────────────────
 
-    if (normalized.width === '100%') {
-        if (parentIsRow) {
-            normalized.width = undefined;
-            if (normalized.flexGrow === undefined || normalized.flexGrow === 0) {
-                normalized.flexGrow = 1;
-            }
-            if (normalized.flexShrink === undefined) {
-                normalized.flexShrink = 1;
-            }
-            if (normalized.flexBasis === undefined) {
-                normalized.flexBasis = 0;
-            }
-        } else {
-            normalized.width = parentBox.size.width;
-        }
-    }
-
-    if (normalized.height === '100%') {
-        if (!parentIsRow) {
-            normalized.height = undefined;
-            if (normalized.flexGrow === undefined || normalized.flexGrow === 0) {
-                normalized.flexGrow = 1;
-            }
-            if (normalized.flexShrink === undefined) {
-                normalized.flexShrink = 1;
-            }
-            if (normalized.flexBasis === undefined) {
-                normalized.flexBasis = 0;
-            }
-        } else {
-            normalized.height = parentBox.size.height;
-        }
-    }
-
-    return normalized;
+// Faster than optional chaining + nullish coalescing
+const isRowDirection = (direction: FlexBoxOptions['direction'] | undefined): boolean => {
+    // Direct comparison is faster than startsWith
+    return direction === undefined || direction === 'row' || direction === 'row-reverse';
 };
+
+// Inline resolvePaddingBox to avoid function call and object creation
+const resolvePaddingBox = (padding: FlexBoxOptions['padding'] | undefined): PaddingBox => {
+    if (padding === undefined) {
+        return ZERO_PADDING;
+    }
+    if (typeof padding === 'number') {
+        // Only create new object when needed
+        return { top: padding, right: padding, bottom: padding, left: padding };
+    }
+    return {
+        top: padding.top ?? 0,
+        right: padding.right ?? 0,
+        bottom: padding.bottom ?? 0,
+        left: padding.left ?? 0,
+    };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CanvasContainer
+// ─────────────────────────────────────────────────────────────────────────────
 
 export class CanvasContainer extends CanvasNode {
-    flexOptions: FlexBoxOptions;
+    private _flexOptions: FlexBoxOptions;
+
+    // Cached values to avoid recalculation
+    private _cachedPadding: PaddingBox = ZERO_PADDING;
+    private _cachedIsRow: boolean = true;
+    private _cachedGap: number = 0;
+    private _optionsCacheValid: boolean = false;
 
     constructor(id: string, flexOptions: FlexBoxOptions = {}) {
         super(id);
-        this.flexOptions = flexOptions;
+        this._flexOptions = flexOptions;
+        this._invalidateOptionsCache();
     }
 
-    measure(ctx: CanvasRenderingContext2D) {
-        this.children.forEach(child => child.measure(ctx));
+    get flexOptions(): FlexBoxOptions {
+        return this._flexOptions;
+    }
 
-        const isRow = isRowDirection(this.flexOptions.direction);
-        const gap = gapForDirection(this.flexOptions, isRow);
-        const padding = resolvePaddingBox(this.flexOptions.padding);
-        const { contentWidth, contentHeight } = computeIntrinsicContentSize(this.children, isRow, gap);
+    set flexOptions(value: FlexBoxOptions) {
+        this._flexOptions = value;
+        this._invalidateOptionsCache();
+        this.markLayoutDirty();
+    }
+
+    setFlexOptions(options: Partial<FlexBoxOptions>) {
+        Object.assign(this._flexOptions, options);
+        this._invalidateOptionsCache();
+        this.markLayoutDirty();
+    }
+
+    private _invalidateOptionsCache() {
+        this._optionsCacheValid = false;
+    }
+
+    private _ensureOptionsCache() {
+        if (this._optionsCacheValid) return;
+
+        const opts = this._flexOptions;
+        this._cachedIsRow = isRowDirection(opts.direction);
+        this._cachedGap = this._cachedIsRow ? (opts.columnGap ?? 0) : (opts.rowGap ?? 0);
+        this._cachedPadding = resolvePaddingBox(opts.padding);
+        this._optionsCacheValid = true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Measurement
+    // ─────────────────────────────────────────────────────────────────────────
+
+    measure(ctx: CanvasRenderingContext2D) {
+        const children = this.children;
+        const len = children.length;
+
+        // Measure all children first
+        for (let i = 0; i < len; i++) {
+            children[i].measure(ctx);
+        }
+
+        this._ensureOptionsCache();
+        const isRow = this._cachedIsRow;
+        const gap = this._cachedGap;
+        const padding = this._cachedPadding;
+
+        // Compute intrinsic content size inline
+        let contentWidth = 0;
+        let contentHeight = 0;
+
+        if (len > 0) {
+            if (isRow) {
+                for (let i = 0; i < len; i++) {
+                    const childRect = children[i].rect;
+                    contentWidth += childRect.width;
+                    if (childRect.height > contentHeight) {
+                        contentHeight = childRect.height;
+                    }
+                }
+                // Add gaps (len - 1 gaps)
+                if (len > 1) {
+                    contentWidth += gap * (len - 1);
+                }
+            } else {
+                for (let i = 0; i < len; i++) {
+                    const childRect = children[i].rect;
+                    contentHeight += childRect.height;
+                    if (childRect.width > contentWidth) {
+                        contentWidth = childRect.width;
+                    }
+                }
+                if (len > 1) {
+                    contentHeight += gap * (len - 1);
+                }
+            }
+        }
 
         const intrinsicWidth = contentWidth + padding.left + padding.right;
         const intrinsicHeight = contentHeight + padding.top + padding.bottom;
 
-        const explicitWidth = numericDimension(this.style.width);
-        const explicitHeight = numericDimension(this.style.height);
+        // Cache intrinsic size
+        this._intrinsicWidth = intrinsicWidth;
+        this._intrinsicHeight = intrinsicHeight;
 
-        this.rect.width = explicitWidth ?? intrinsicWidth;
-        this.rect.height = explicitHeight ?? intrinsicHeight;
+        // Check explicit dimensions (inline for speed)
+        const styleWidth = this.style.width;
+        const styleHeight = this.style.height;
+        const explicitWidth = typeof styleWidth === 'number' ? styleWidth : undefined;
+        const explicitHeight = typeof styleHeight === 'number' ? styleHeight : undefined;
+
+        this.rect.width = explicitWidth !== undefined ? explicitWidth : intrinsicWidth;
+        this.rect.height = explicitHeight !== undefined ? explicitHeight : intrinsicHeight;
 
         if (explicitWidth === undefined) {
-            this.clampWidthToParent();
+            this._clampWidthToParent();
         }
+
+        this.clearMeasureDirty();
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Layout
+    // ─────────────────────────────────────────────────────────────────────────
 
     performLayout(ctx: CanvasRenderingContext2D) {
         this.measure(ctx);
 
-        const root = new RootFlexBox(this.rect.width, this.rect.height, this.flexOptions);
-        this.buildFlexTree(this, root);
-
-        let pass = 0;
-        let needsAnotherPass = false;
-        do {
-            root.build();
-            needsAnotherPass = this.reconcileLayout(ctx, this, root);
-            pass += 1;
-        } while (needsAnotherPass && pass < MAX_LAYOUT_PASSES);
-    }
-
-    private clampWidthToParent() {
-        if (!this.parent || this.parent.rect.width <= 0) {
+        // Early exit if no children
+        if (this.children.length === 0) {
+            this.clearLayoutDirty();
             return;
         }
 
-        let availableWidth = this.parent.rect.width;
-        if (this.parent instanceof CanvasContainer) {
-            const padding = resolvePaddingBox(this.parent.flexOptions.padding);
+        // Create flex tree and compute layout using miniflex
+        const root = new RootFlexBox(this.rect.width, this.rect.height, this._flexOptions);
+        this._buildFlexTree(this, root);
+
+        let pass = 0;
+        let needsAnotherPass: boolean;
+        do {
+            root.build();
+            needsAnotherPass = this._reconcileLayout(ctx, this, root);
+            pass++;
+        } while (needsAnotherPass && pass < MAX_LAYOUT_PASSES);
+
+        this.clearLayoutDirty();
+    }
+
+    private _clampWidthToParent() {
+        const parent = this.parent;
+        if (parent === null || parent.rect.width <= 0) {
+            return;
+        }
+
+        let availableWidth = parent.rect.width;
+        if (parent instanceof CanvasContainer) {
+            parent._ensureOptionsCache();
+            const padding = parent._cachedPadding;
             availableWidth -= padding.left + padding.right;
         }
 
@@ -146,63 +221,126 @@ export class CanvasContainer extends CanvasNode {
         }
     }
 
-    private buildFlexTree(cNode: CanvasNode, fBox: FlexBox) {
-        const isHorizontal = fBox.direction.startsWith('row');
+    private _buildFlexTree(cNode: CanvasNode, fBox: FlexBox) {
+        const children = cNode.children;
+        const len = children.length;
+        // Direct comparison is faster than startsWith
+        const dir = fBox.direction;
+        const isHorizontal = dir === 'row' || dir === 'row-reverse';
+        const parentWidth = fBox.size.width;
+        const parentHeight = fBox.size.height;
 
-        cNode.children.forEach(child => {
-            const style = normalizePercentStyle({ ...child.style }, fBox);
+        for (let i = 0; i < len; i++) {
+            const child = children[i];
+            const childStyle = child.style;
 
-            if (style.flexBasis === 0 || style.flexBasis === undefined) {
-                const naturalWidth = child.rect.width;
-                const naturalHeight = child.rect.height;
-                const naturalMainSize = isHorizontal ? naturalWidth : naturalHeight;
-                style.flexBasis = naturalMainSize;
+            // Inline normalizePercentStyle to avoid object allocation
+            // Reuse temp style object
+            _tempStyle.flexGrow = childStyle.flexGrow ?? 0;
+            _tempStyle.flexShrink = childStyle.flexShrink ?? 1;
+            _tempStyle.flexBasis = childStyle.flexBasis ?? 0;
+            _tempStyle.alignSelf = childStyle.alignSelf ?? 'auto';
+            _tempStyle.width = typeof childStyle.width === 'number' ? childStyle.width : undefined;
+            _tempStyle.height = typeof childStyle.height === 'number' ? childStyle.height : undefined;
+
+            // Handle width: '100%'
+            if (childStyle.width === '100%') {
+                if (isHorizontal) {
+                    _tempStyle.width = undefined;
+                    if (_tempStyle.flexGrow === 0) _tempStyle.flexGrow = 1;
+                    if (_tempStyle.flexShrink === undefined) _tempStyle.flexShrink = 1;
+                    if (_tempStyle.flexBasis === 0) _tempStyle.flexBasis = 0;
+                } else {
+                    _tempStyle.width = parentWidth;
+                }
+            }
+
+            // Handle height: '100%'
+            if (childStyle.height === '100%') {
+                if (!isHorizontal) {
+                    _tempStyle.height = undefined;
+                    if (_tempStyle.flexGrow === 0) _tempStyle.flexGrow = 1;
+                    if (_tempStyle.flexShrink === undefined) _tempStyle.flexShrink = 1;
+                    if (_tempStyle.flexBasis === 0) _tempStyle.flexBasis = 0;
+                } else {
+                    _tempStyle.height = parentHeight;
+                }
+            }
+
+            // Set flexBasis from natural size if not set
+            if (_tempStyle.flexBasis === 0 || _tempStyle.flexBasis === undefined) {
+                _tempStyle.flexBasis = isHorizontal ? child.rect.width : child.rect.height;
             }
 
             if (child instanceof CanvasContainer) {
-                const childBox = new FlexBox(0, 0, child.flexOptions);
+                const childBox = new FlexBox(0, 0, child._flexOptions);
                 childBox.size.width = child.rect.width;
                 childBox.size.height = child.rect.height;
 
-                fBox.addChild(childBox, style as any);
-                this.buildFlexTree(child, childBox);
+                // Copy temp style values (faster than object spread)
+                fBox.addChild(childBox, {
+                    flexGrow: _tempStyle.flexGrow,
+                    flexShrink: _tempStyle.flexShrink,
+                    flexBasis: _tempStyle.flexBasis,
+                    alignSelf: _tempStyle.alignSelf,
+                    width: _tempStyle.width,
+                    height: _tempStyle.height,
+                } as any);
+
+                this._buildFlexTree(child, childBox);
             } else {
-                const leaf = fBox.addChild(style as any);
+                const leaf = fBox.addChild({
+                    flexGrow: _tempStyle.flexGrow,
+                    flexShrink: _tempStyle.flexShrink,
+                    flexBasis: _tempStyle.flexBasis,
+                    alignSelf: _tempStyle.alignSelf,
+                    width: _tempStyle.width,
+                    height: _tempStyle.height,
+                } as any);
                 leaf.size.width = child.rect.width;
                 leaf.size.height = child.rect.height;
             }
-        });
+        }
     }
 
-    private reconcileLayout(ctx: CanvasRenderingContext2D, cNode: CanvasNode, fNode: FlexElement | FlexBox): boolean {
+    private _reconcileLayout(ctx: CanvasRenderingContext2D, cNode: CanvasNode, fNode: FlexElement | FlexBox): boolean {
         let dirty = false;
 
-        const parentX = cNode.parent ? cNode.parent.rect.x : this.rect.x;
-        const parentY = cNode.parent ? cNode.parent.rect.y : this.rect.y;
+        const parentRect = cNode.parent ? cNode.parent.rect : this.rect;
+        const fPos = fNode.position;
+        const fSize = fNode.size;
 
         if (cNode !== this) {
-            cNode.rect.x = parentX + fNode.position.x;
-            cNode.rect.y = parentY + fNode.position.y;
-            cNode.rect.width = fNode.size.width;
-            cNode.rect.height = fNode.size.height;
+            cNode.rect.x = parentRect.x + fPos.x;
+            cNode.rect.y = parentRect.y + fPos.y;
+            cNode.rect.width = fSize.width;
+            cNode.rect.height = fSize.height;
         } else {
-            cNode.rect.width = fNode.size.width;
-            cNode.rect.height = fNode.size.height;
+            cNode.rect.width = fSize.width;
+            cNode.rect.height = fSize.height;
         }
 
         if (cNode instanceof CanvasContainer && fNode instanceof FlexBox) {
-            for (let i = 0; i < cNode.children.length; i++) {
-                dirty = this.reconcileLayout(ctx, cNode.children[i], fNode.children[i] as FlexElement | FlexBox) || dirty;
-            }
+            const cChildren = cNode.children;
+            const fChildren = fNode.children;
+            const len = cChildren.length;
 
-            const resized = this.updateSizeFromContent(cNode, fNode);
-            if (resized) {
-                if (Math.abs(fNode.size.height - cNode.rect.height) > LAYOUT_EPSILON) {
-                    fNode.size.height = cNode.rect.height;
+            for (let i = 0; i < len; i++) {
+                if (this._reconcileLayout(ctx, cChildren[i], fChildren[i] as FlexElement | FlexBox)) {
                     dirty = true;
                 }
-                if (Math.abs(fNode.size.width - cNode.rect.width) > LAYOUT_EPSILON) {
-                    fNode.size.width = cNode.rect.width;
+            }
+
+            if (this._updateSizeFromContent(cNode, fNode)) {
+                const heightDiff = fSize.height - cNode.rect.height;
+                const widthDiff = fSize.width - cNode.rect.width;
+
+                if (heightDiff > LAYOUT_EPSILON || heightDiff < -LAYOUT_EPSILON) {
+                    fSize.height = cNode.rect.height;
+                    dirty = true;
+                }
+                if (widthDiff > LAYOUT_EPSILON || widthDiff < -LAYOUT_EPSILON) {
+                    fSize.width = cNode.rect.width;
                     dirty = true;
                 }
             }
@@ -213,8 +351,9 @@ export class CanvasContainer extends CanvasNode {
             cNode.measure(ctx);
             cNode.rect.width = enforcedWidth;
 
-            if (Math.abs(cNode.rect.height - prevHeight) > LAYOUT_EPSILON) {
-                fNode.size.height = cNode.rect.height;
+            const heightDiff = cNode.rect.height - prevHeight;
+            if (heightDiff > LAYOUT_EPSILON || heightDiff < -LAYOUT_EPSILON) {
+                fSize.height = cNode.rect.height;
                 dirty = true;
             }
         }
@@ -222,29 +361,43 @@ export class CanvasContainer extends CanvasNode {
         return dirty;
     }
 
-    private updateSizeFromContent(container: CanvasContainer, box: FlexBox | RootFlexBox) {
-        const rowLayout = isRowDirection(container.flexOptions.direction);
-        const padding = resolvePaddingBox(container.flexOptions.padding);
+    private _updateSizeFromContent(container: CanvasContainer, box: FlexBox | RootFlexBox): boolean {
+        container._ensureOptionsCache();
+        const rowLayout = container._cachedIsRow;
+        const padding = container._cachedPadding;
 
+        const boxChildren = box.children;
+        const len = boxChildren.length;
         let maxExtent = 0;
-        box.children.forEach(child => {
-            const start = rowLayout ? child.position.y : child.position.x;
-            const end = start + (rowLayout ? child.size.height : child.size.width);
-            maxExtent = Math.max(maxExtent, end);
-        });
 
         if (rowLayout) {
-            const contentHeight = Math.max(0, maxExtent + padding.bottom);
-            const minHeight = numericDimension(container.style.height) ?? 0;
-            const targetHeight = Math.max(minHeight, contentHeight);
+            for (let i = 0; i < len; i++) {
+                const child = boxChildren[i];
+                const end = child.position.y + child.size.height;
+                if (end > maxExtent) maxExtent = end;
+            }
+
+            const contentHeight = maxExtent > 0 ? maxExtent + padding.bottom : 0;
+            const styleHeight = container.style.height;
+            const minHeight = typeof styleHeight === 'number' ? styleHeight : 0;
+            const targetHeight = contentHeight > minHeight ? contentHeight : minHeight;
+
             if (targetHeight > container.rect.height + LAYOUT_EPSILON) {
                 container.rect.height = targetHeight;
                 return true;
             }
         } else {
-            const contentWidth = Math.max(0, maxExtent + padding.right);
-            const minWidth = numericDimension(container.style.width) ?? 0;
-            const targetWidth = Math.max(minWidth, contentWidth);
+            for (let i = 0; i < len; i++) {
+                const child = boxChildren[i];
+                const end = child.position.x + child.size.width;
+                if (end > maxExtent) maxExtent = end;
+            }
+
+            const contentWidth = maxExtent > 0 ? maxExtent + padding.right : 0;
+            const styleWidth = container.style.width;
+            const minWidth = typeof styleWidth === 'number' ? styleWidth : 0;
+            const targetWidth = contentWidth > minWidth ? contentWidth : minWidth;
+
             if (targetWidth > container.rect.width + LAYOUT_EPSILON) {
                 container.rect.width = targetWidth;
                 return true;
@@ -254,7 +407,19 @@ export class CanvasContainer extends CanvasNode {
         return false;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Painting
+    // ─────────────────────────────────────────────────────────────────────────
+
     onPaint(ctx: CanvasRenderingContext2D) {
-        this.children.forEach(child => child.paint(ctx));
+        const children = this.children;
+        const len = children.length;
+        for (let i = 0; i < len; i++) {
+            children[i].paint(ctx);
+        }
     }
 }
+
+// Re-export for convenience
+export { resolvePaddingBox };
+export type { PaddingBox };

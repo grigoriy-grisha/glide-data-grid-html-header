@@ -31,13 +31,30 @@ export abstract class CanvasNode {
     children: CanvasNode[] = [];
     rect: Rect = {x: 0, y: 0, width: 0, height: 0};
 
+    // Cached intrinsic size from last measure
+    protected _intrinsicWidth = 0;
+    protected _intrinsicHeight = 0;
+
+    // Dirty flags for layout optimization
+    protected _layoutDirty = true;
+    protected _measureDirty = true;
+
     // Style for flex layout
-    style: CanvasFlexStyle = {
+    private _style: CanvasFlexStyle = {
         flexGrow: 0,
         flexShrink: 1,
         flexBasis: 0,
         alignSelf: 'auto',
     };
+
+    get style(): CanvasFlexStyle {
+        return this._style;
+    }
+
+    set style(value: CanvasFlexStyle) {
+        this._style = value;
+        this.markLayoutDirty();
+    }
 
     static DEBUG = false;
     backgroundColor: string = 'transparent';
@@ -48,14 +65,47 @@ export abstract class CanvasNode {
         this.id = id;
     }
 
+    // Dirty flag management
+    markLayoutDirty() {
+        if (!this._layoutDirty) {
+            this._layoutDirty = true;
+            this.parent?.markLayoutDirty();
+        }
+    }
+
+    markMeasureDirty() {
+        if (!this._measureDirty) {
+            this._measureDirty = true;
+            this.markLayoutDirty();
+        }
+    }
+
+    isLayoutDirty(): boolean {
+        return this._layoutDirty;
+    }
+
+    isMeasureDirty(): boolean {
+        return this._measureDirty;
+    }
+
+    protected clearLayoutDirty() {
+        this._layoutDirty = false;
+    }
+
+    protected clearMeasureDirty() {
+        this._measureDirty = false;
+    }
+
     addChild(child: CanvasNode) {
         child.parent = this;
         this.children.push(child);
+        this.markLayoutDirty();
     }
 
     addChildStart(child: CanvasNode) {
         child.parent = this;
         this.children.unshift(child);
+        this.markLayoutDirty();
     }
 
     removeChild(child: CanvasNode) {
@@ -63,6 +113,7 @@ export abstract class CanvasNode {
         if (index !== -1) {
             this.children.splice(index, 1);
             child.parent = null;
+            this.markLayoutDirty();
         }
     }
 
