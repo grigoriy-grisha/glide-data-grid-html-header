@@ -59,12 +59,14 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const [isHovered, setIsHovered] = React.useState(false)
+  const [isVisible, setIsVisible] = React.useState(true)
 
   // 1. Canvas Lifecycle & Ref Management
   const { canvasRef, rootRef } = useCanvasLifecycle({
     width,
     height,
-    canvasHeaderRef
+    canvasHeaderRef,
+    isActive: isVisible,
   })
 
   // 2. Drag and Drop State & Logic
@@ -77,6 +79,29 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     enableColumnReorder,
     onColumnReorder
   })
+
+  React.useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      return
+    }
+    const target = canvasRef.current
+    if (!target) {
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry?.isIntersecting ?? true)
+      },
+      {
+        root: null,
+        threshold: 0.05,
+      }
+    )
+    observer.observe(target)
+    return () => {
+      observer.disconnect()
+    }
+  }, [canvasRef])
 
   // 3. Scene Construction (Canvas Render Logic)
   useHeaderScene({
@@ -96,7 +121,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     sortColumn,
     sortDirection,
     onColumnSort,
-    debugMode
+    debugMode,
+    isVisible,
   })
 
   return (
@@ -138,7 +164,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           }}
         />
 
-        {handleResizeMouseDown && isHovered && (
+        {handleResizeMouseDown && isHovered && isVisible && (
           <ResizeHandles
             visibleIndices={visibleIndices}
             orderedColumns={orderedColumns}
@@ -151,12 +177,14 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           />
         )}
 
-        <DragOverlays
-          dragState={dragState}
-          height={height}
-          dropIndicatorRef={dropIndicatorRef}
-          ghostRef={ghostRef}
-        />
+        {isVisible && (
+          <DragOverlays
+            dragState={dragState}
+            height={height}
+            dropIndicatorRef={dropIndicatorRef}
+            ghostRef={ghostRef}
+          />
+        )}
       </div>
     </div>
   )

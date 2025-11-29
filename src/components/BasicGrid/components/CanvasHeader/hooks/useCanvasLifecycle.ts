@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { CanvasRoot } from '../core/CanvasRoot'
 import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
 
@@ -6,12 +6,29 @@ interface UseCanvasLifecycleProps {
   width: number
   height: number
   canvasHeaderRef?: React.RefObject<HTMLCanvasElement>
+  isActive?: boolean
 }
 
-export const useCanvasLifecycle = ({ width, height, canvasHeaderRef }: UseCanvasLifecycleProps) => {
+export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = true }: UseCanvasLifecycleProps) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
   const canvasRef = canvasHeaderRef || internalCanvasRef
   const rootRef = useRef<CanvasRoot | null>(null)
+  const rafRef = useRef<number | null>(null)
+
+  const stopLoop = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+  }, [])
+
+  const renderLoop = useCallback(() => {
+    if (!rootRef.current) {
+      return
+    }
+    rootRef.current.render()
+    rafRef.current = requestAnimationFrame(renderLoop)
+  }, [])
 
   // Initialize CanvasRoot and Render Loop
   useEffect(() => {
@@ -27,17 +44,26 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef }: UseCanvas
     const rootContainer = new CanvasAbsoluteContainer('root')
     const root = new CanvasRoot(canvas, rootContainer)
     rootRef.current = root
-
-    let rafId: number
-    const loop = () => {
-      root.render()
-      rafId = requestAnimationFrame(loop)
+    return () => {
+      stopLoop()
+      rootRef.current = null
     }
-    loop()
+  }, [stopLoop])
 
-    console.log({root})
-    return () => cancelAnimationFrame(rafId)
-  }, [])
+  useEffect(() => {
+    if (!rootRef.current) {
+      stopLoop()
+      return
+    }
+    stopLoop()
+    if (!isActive) {
+      return
+    }
+    renderLoop()
+    return () => {
+      stopLoop()
+    }
+  }, [isActive, renderLoop, stopLoop])
 
   // Handle size updates
   useEffect(() => {

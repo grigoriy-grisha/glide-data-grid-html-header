@@ -559,6 +559,7 @@ export function LargeGridExample() {
         rowHeight={40}
         headerRowHeight={54}
         getRowId={(row) => row.id}
+        stickyHeader={false}
         enableColumnReorder={true}
         onSortChange={(model) => {
           if (model) {

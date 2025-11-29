@@ -65,6 +65,7 @@ interface UseHeaderSceneProps {
     sortDirection?: 'asc' | 'desc'
     onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
     debugMode?: boolean
+    isVisible?: boolean
 }
 
 export const useHeaderScene = ({
@@ -82,7 +83,8 @@ export const useHeaderScene = ({
     sortColumn,
     sortDirection,
     onColumnSort,
-    debugMode = false
+    debugMode = false,
+    isVisible = true,
 }: UseHeaderSceneProps) => {
 
     // Object pool for reusing canvas nodes
@@ -174,7 +176,7 @@ export const useHeaderScene = ({
     }), [canvasRef, handleDragStart])
 
     useEffect(() => {
-        if (!rootRef.current) return
+        if (!isVisible || !rootRef.current) return
 
         const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
         const pool = nodePoolRef.current
@@ -391,5 +393,5 @@ export const useHeaderScene = ({
 
         rootRef.current.render()
 
-    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort, createGripIconHandlers])
+    }, [createGripIconHandlers, enableColumnReorder, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells, columnPositions, columnWidths, canvasRef])
 }

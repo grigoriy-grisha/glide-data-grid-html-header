@@ -109,6 +109,10 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
     summaryRows?: RowType[]
     height?: number
     headerRowHeight?: number
+    /**
+     * Enables the custom sticky header implementation.
+     */
+    stickyHeader?: boolean
     rowHeight?: number | ((row: RowType, rowIndex: number) => number)
     rowMarkerWidth?: number
     showRowMarkers?: boolean

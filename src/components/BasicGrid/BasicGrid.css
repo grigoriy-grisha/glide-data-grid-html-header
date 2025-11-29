@@ -58,6 +58,32 @@
   background: #fff;
 }
 
+.basic-grid-header-shell {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.basic-grid-header-layer {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.15s ease-out;
+}
+
+.basic-grid-header-layer--sticky {
+  will-change: transform;
+}
+
+.basic-grid-header-layer--shadow {
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.12),
+    0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
 .basic-grid-header-row-marker {
   background: #f3f6fc;
   border-right: 1px solid #e0e0e0;

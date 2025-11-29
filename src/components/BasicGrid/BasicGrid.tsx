@@ -20,7 +20,6 @@ import {
   DEFAULT_ROW_MARKER_WIDTH,
   SELECTION_COLUMN_ID,
 } from './constants'
-import { GridHeader } from './components/GridHeader'
 import { CanvasHeader } from './components/CanvasHeader'
 import { useContainerWidth } from './hooks/useContainerWidth'
 import { useNormalizedColumnsData } from './hooks/useNormalizedColumnsData'
@@ -40,6 +39,8 @@ import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
 import { getScrollbarWidth } from './utils/getScrollbarWidth'
 import { HeaderVirtualizationProvider, useHeaderVirtualization } from './context/HeaderVirtualizationContext'
+import { useStickyHeader } from './hooks/useStickyHeader'
+import { useGridBodyInteractions } from './hooks/useGridBodyInteractions'
 
 // Internal component that uses context to update visible indices
 // Defined outside to prevent recreation on each render
@@ -69,12 +70,14 @@ const DataEditorWithVirtualization = React.memo(
   })
 )
 
+
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   rows,
   summaryRows,
   height = 400,
   headerRowHeight = DEFAULT_HEADER_ROW_HEIGHT,
+  stickyHeader = true,
   rowHeight: rowHeightProp,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
   showRowMarkers = true,
@@ -110,6 +113,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     x: number
     columnIndex: number
   } | null>(null)
+  const stickyHeaderEnabled = Boolean(stickyHeader)
 
   const scrollbarReserve = useMemo(() => {
     if (scrollbarReserveProp !== undefined) {
@@ -137,8 +141,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   }, [columns, enableRowSelection, rowMarkerWidth])
 
   const markerWidth = showRowMarkers ? rowMarkerWidth : 0
-
-
 
   const { columnCollection } = useNormalizedColumnsData(columnsWithSelection)
   const { orderedColumns, headerCells, levelCount, reorderColumns } = useColumnOrdering({
@@ -208,6 +210,14 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     () => orderedColumns.some((column) => column.isCanvas()),
     [orderedColumns]
   )
+
+  const headerHeightPx = levelCount * headerRowHeight
+
+  const { headerLayerStyle, bodyStyle: stickyBodyStyle, handleVirtualScroll, updateStickyMetrics } = useStickyHeader({
+    enabled: stickyHeaderEnabled,
+    gridRef,
+    headerHeight: headerHeightPx,
+  })
 
 
 
@@ -438,17 +448,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [overlayRow, updateOverlayPosition])
 
-  const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
-    (range, tx = 0, _ty = 0, _extras) => {
-      handleVisibleRegionChanged(range, tx)
-
-      if (overlayRow && overlayContent) {
-        requestAnimationFrame(() => updateOverlayPosition())
-      }
-    },
-    [handleVisibleRegionChanged, overlayContent, overlayRow, updateOverlayPosition]
-  )
-
   useLayoutEffect(() => {
     if (!overlayRow || !overlayPosition || !gridBodyRef.current) {
       if (overlayPaddingBottom !== 0) {
@@ -559,6 +558,37 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [])
 
+  const headerShellStyle = useMemo(() => {
+    if (headerHeightPx <= 0) {
+      return undefined
+    }
+    return { height: `${headerHeightPx}px` }
+  }, [headerHeightPx])
+
+  const estimatedRowHeight = useMemo(() => {
+    if (typeof rowHeightProp === 'number' && Number.isFinite(rowHeightProp)) {
+      return rowHeightProp
+    }
+    if (typeof resolvedRowHeight === 'number' && Number.isFinite(resolvedRowHeight)) {
+      return resolvedRowHeight
+    }
+    return DEFAULT_ROW_HEIGHT
+  }, [resolvedRowHeight, rowHeightProp])
+
+  const { handleVisibleRegionChangedWithOverlay, gridBodyStyle } = useGridBodyInteractions({
+    estimatedRowHeight,
+    headerHeightPx,
+    stickyHeaderEnabled,
+    stickyBodyStyle,
+    overlayPaddingBottom,
+    overlayRow,
+    overlayContent,
+    handleVisibleRegionChanged,
+    updateOverlayPosition,
+    handleVirtualScroll,
+    updateStickyMetrics,
+  })
+
   const handleHeaderSort = useCallback((columnId: string, direction: 'asc' | 'desc' | undefined) => {
     const index = orderedColumns.findIndex((c) => c.id === columnId)
     if (index >= 0) {
@@ -587,68 +617,39 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
           )}
 
           {columnPositions.length > 0 && levelCount > 0 && (
-            <>
-              {/*<GridHeader*/}
-              {/*  columnPositions={columnPositions}*/}
-              {/*  columnWidths={columnWidths}*/}
-              {/*  headerCells={headerCells}*/}
-              {/*  orderedColumns={orderedColumns as any}*/}
-              {/*  levelCount={levelCount}*/}
-              {/*  headerRowHeight={headerRowHeight}*/}
-              {/*  markerWidth={markerWidth}*/}
-              {/*  showRowMarkers={showRowMarkers}*/}
-              {/*  dataViewportWidth={dataViewportWidth}*/}
-              {/*  dataAreaWidth={dataAreaWidth}*/}
-              {/*  viewportWidth={viewportWidth}*/}
-              {/*  scrollbarReserve={scrollbarReserve}*/}
-              {/*  headerInnerRef={headerInnerRef}*/}
-              {/*  selectRange={selectRange}*/}
-              {/*  selectedBounds={selectedBounds}*/}
-              {/*  handleColumnSort={handleColumnSort}*/}
-              {/*  sortState={sortState}*/}
-              {/*  enableColumnReorder={enableColumnReorder}*/}
-              {/*  handleHeaderDragStart={handleHeaderDragStart}*/}
-              {/*  registerHeaderCell={registerHeaderCell}*/}
-              {/*  handleResizeMouseDown={handleResizeMouseDown}*/}
-              {/*  handleResizeDoubleClick={handleResizeDoubleClick}*/}
-              {/*  isAllRowsSelected={isAllRowsSelected}*/}
-              {/*  handleSelectAllChange={handleSelectAllChange}*/}
-              {/*  selectAllCheckboxRef={selectAllCheckboxRef}*/}
-              {/*/>*/}
-              <CanvasHeader
-                width={dataViewportWidth}
-                height={levelCount * headerRowHeight}
-                headerCells={headerCells}
-                orderedColumns={orderedColumns}
-                columnPositions={columnPositions}
-                columnWidths={columnWidths}
-                levelCount={levelCount}
-                headerRowHeight={headerRowHeight}
-                markerWidth={markerWidth}
-                showRowMarkers={showRowMarkers}
-                scrollLeft={scrollLeft}
-                canvasHeaderRef={canvasHeaderRef}
-                handleResizeMouseDown={handleResizeMouseDown}
-                handleResizeDoubleClick={handleResizeDoubleClick}
-                getColumnWidth={getColumnWidth}
-                setColumnWidths={setColumnWidths}
-                onVirtualResizeChange={handleVirtualResizeChange}
-                enableColumnReorder={enableColumnReorder}
-                onColumnReorder={reorderColumns}
-                dataAreaWidth={dataAreaWidth}
-                sortColumn={sortState?.columnId}
-                sortDirection={sortState?.direction}
-                onColumnSort={handleHeaderSort}
-                // debugMode
-              />
-            </>
+            <div className="basic-grid-header-shell" style={headerShellStyle}>
+              <div className="basic-grid-header-layer" style={headerLayerStyle}>
+                <CanvasHeader
+                  width={dataViewportWidth}
+                  height={headerHeightPx}
+                  headerCells={headerCells}
+                  orderedColumns={orderedColumns}
+                  columnPositions={columnPositions}
+                  columnWidths={columnWidths}
+                  levelCount={levelCount}
+                  headerRowHeight={headerRowHeight}
+                  markerWidth={markerWidth}
+                  showRowMarkers={showRowMarkers}
+                  scrollLeft={scrollLeft}
+                  canvasHeaderRef={canvasHeaderRef}
+                  handleResizeMouseDown={handleResizeMouseDown}
+                  handleResizeDoubleClick={handleResizeDoubleClick}
+                  getColumnWidth={getColumnWidth}
+                  setColumnWidths={setColumnWidths}
+                  onVirtualResizeChange={handleVirtualResizeChange}
+                  enableColumnReorder={enableColumnReorder}
+                  onColumnReorder={reorderColumns}
+                  dataAreaWidth={dataAreaWidth}
+                  sortColumn={sortState?.columnId}
+                  sortDirection={sortState?.direction}
+                  onColumnSort={handleHeaderSort}
+                  // debugMode
+                />
+              </div>
+            </div>
           )}
 
-          <div
-            className="basic-grid-body"
-            ref={gridBodyRef}
-            style={overlayPaddingBottom > 0 ? { paddingBottom: overlayPaddingBottom } : undefined}
-          >
+          <div className="basic-grid-body" ref={gridBodyRef} style={gridBodyStyle}>
             <DataEditorWithVirtualization
               ref={dataEditorRef}
               getCellContent={getCellContent}
