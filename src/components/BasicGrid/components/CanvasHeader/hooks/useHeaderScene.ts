@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useCallback } from 'react'
 import { CanvasRoot } from '../core/CanvasRoot'
 import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
 import { CanvasContainer } from '../core/CanvasContainer'
@@ -11,6 +11,36 @@ import { GridColumn } from '../../../models/GridColumn'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
 import { DragState } from './useHeaderDragDrop'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Object Pool for Canvas Nodes
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CellNodeCache {
+    wrapper: CanvasAbsoluteContainer
+    contentContainer: CanvasContainer
+    contentContainerLeft: CanvasContainer
+    contentContainerRight: CanvasContainer
+    text?: CanvasText
+    gripIcon?: CanvasIcon
+    sortButton?: CanvasIconButton
+    customContent?: CanvasNode
+}
+
+// Precomputed hover colors cache
+const hoverColorCache = new Map<string, string>()
+function getHoverColor(c: string): string {
+    let cached = hoverColorCache.get(c)
+    if (!cached) {
+        if (c === '#e3f2fd') cached = '#bbdefb'
+        else if (c === '#f5f5f5') cached = '#e0e0e0'
+        else if (c === '#fafafa') cached = '#eeeeee'
+        else if (c === '#ffffff') cached = '#f5f5f5'
+        else cached = c
+        hoverColorCache.set(c, cached)
+    }
+    return cached
+}
 
 interface UseHeaderSceneProps {
     rootRef: React.MutableRefObject<CanvasRoot | null>
@@ -55,6 +85,11 @@ export const useHeaderScene = ({
     debugMode = false
 }: UseHeaderSceneProps) => {
 
+    // Object pool for reusing canvas nodes
+    const nodePoolRef = useRef<Map<string, CellNodeCache>>(new Map())
+    // Track which nodes are currently in use
+    const activeNodesRef = useRef<Set<string>>(new Set())
+
     // Update global debug mode
     useEffect(() => {
         CanvasNode.DEBUG = debugMode;
@@ -91,7 +126,6 @@ export const useHeaderScene = ({
             while (left <= right) {
                 const mid = (left + right) >> 1
                 const cell = levelCells[mid]
-                // Check if cell ends after the visible window starts
                 if (cell.startIndex + cell.colSpan > start) {
                     startIndex = mid
                     right = mid - 1
@@ -103,7 +137,6 @@ export const useHeaderScene = ({
             if (startIndex !== -1) {
                 for (let i = startIndex; i < levelCells.length; i++) {
                     const cell = levelCells[i]
-                    // Stop if cell starts after the visible window ends
                     if (cell.startIndex >= end) break
                     result.push(cell)
                 }
@@ -112,14 +145,51 @@ export const useHeaderScene = ({
         return result
     }, [cellsByLevel, visibleIndices, headerCells])
 
+    // Memoized grip icon factory to avoid recreating handlers
+    const createGripIconHandlers = useCallback((
+        cellColumnIndex: number,
+        cellTitle: string,
+        cellX: number,
+        cellY: number,
+        cellWidth: number,
+        cellHeight: number
+    ) => ({
+        onMouseEnter: () => {
+            if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
+        },
+        onMouseLeave: () => {
+            if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+        },
+        onMouseDown: (e: any) => {
+            e.preventDefault()
+            e.stopPropagation()
+            handleDragStart(
+                e.originalEvent,
+                cellColumnIndex,
+                cellTitle,
+                cellWidth,
+                { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
+            )
+        }
+    }), [canvasRef, handleDragStart])
+
     useEffect(() => {
         if (!rootRef.current) return
 
         const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
-        rootContainer.children = []
+        const pool = nodePoolRef.current
+        const currentActive = new Set<string>()
 
-        visibleCells.forEach(cell => {
+        // Fallback: if visibleCells is empty but headerCells exists, show all cells
+        // This ensures header renders on initial mount when virtualization hasn't updated yet
+        const cellsToRender = visibleCells.length > 0 
+            ? visibleCells 
+            : (headerCells.length > 0 ? headerCells : [])
+
+        // Process visible cells - reuse or create nodes
+        for (const cell of cellsToRender) {
             const cellId = `cell-${cell.startIndex}-${cell.level}`
+            currentActive.add(cellId)
 
             const absoluteX = columnPositions[cell.startIndex] ?? 0
             const cellX = Math.round(absoluteX - scrollLeft)
@@ -127,148 +197,131 @@ export const useHeaderScene = ({
             const cellY = Math.round(cell.level * headerRowHeight)
             const cellHeight = cell.rowSpan * headerRowHeight
 
-            const cellWrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
-            cellWrapper.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-
-            // Styles moved from bgRect to cellWrapper
-            cellWrapper.backgroundColor = getHeaderColor(cell.level)
-            cellWrapper.borderColor = '#e0e0e0'
-            cellWrapper.borderWidth = 1
-
-            const normalColor = getHeaderColor(cell.level);
-            const getHoverColor = (c: string) => {
-                if (c === '#e3f2fd') return '#bbdefb';
-                if (c === '#f5f5f5') return '#e0e0e0';
-                if (c === '#fafafa') return '#eeeeee';
-                if (c === '#ffffff') return '#f5f5f5';
-                return c;
-            };
-            const hoverColor = getHoverColor(normalColor);
-
-            cellWrapper.onMouseEnter = () => {
-                cellWrapper.backgroundColor = hoverColor;
-            };
-            cellWrapper.onMouseLeave = () => {
-                cellWrapper.backgroundColor = normalColor;
-            };
+            const normalColor = getHeaderColor(cell.level)
+            const hoverColor = getHoverColor(normalColor)
 
             const column = cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
             const renderContent = column?.getRenderColumnContent()
-            let customContent: CanvasNode | undefined
+
+            let cached = pool.get(cellId)
+
+            if (!cached) {
+                // Create new nodes only if not in pool
+                const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
+                const contentContainer = new CanvasContainer(`${cellId}-content`, {
+                    direction: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    columnGap: 6,
+                    padding: 12,
+                })
+                const contentContainerLeft = new CanvasContainer(`${cellId}-left`, {
+                    direction: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    columnGap: 6,
+                })
+                const contentContainerRight = new CanvasContainer(`${cellId}-right`, {
+                    direction: 'row-reverse',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    columnGap: 6,
+                })
+                contentContainerRight.style.width = '100%'
+
+                cached = {
+                    wrapper,
+                    contentContainer,
+                    contentContainerLeft,
+                    contentContainerRight,
+                }
+                pool.set(cellId, cached)
+            }
+
+            const { wrapper, contentContainer, contentContainerLeft, contentContainerRight } = cached
+
+            // Update wrapper properties (fast property updates)
+            wrapper.rect.x = cellX
+            wrapper.rect.y = cellY
+            wrapper.rect.width = cellWidth
+            wrapper.rect.height = cellHeight
+            wrapper.backgroundColor = normalColor
+            wrapper.borderColor = '#e0e0e0'
+            wrapper.borderWidth = 1
+
+            // Update hover handlers with current colors
+            wrapper.onMouseEnter = () => { wrapper.backgroundColor = hoverColor }
+            wrapper.onMouseLeave = () => { wrapper.backgroundColor = normalColor }
+
+            // Update content container
+            contentContainer.style.height = cellHeight
+            contentContainer.style.width = cellWidth
+            contentContainer.rect.x = cellX
+            contentContainer.rect.y = cellY
+            contentContainer.rect.width = Math.max(0, cellWidth * 2)
+            contentContainer.rect.height = cellHeight
+
+            // Clear children for rebuild (but reuse container objects)
+            contentContainerLeft.children = []
+            contentContainerRight.children = []
+            contentContainer.children = []
+            wrapper.children = []
 
             if (renderContent) {
-                customContent = renderContent(
-                    { x: cellX, y: cellY, width: cellWidth, height: cellHeight },
+                // Custom content rendering
+                const customContent = renderContent(
+                    { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
                 )
-            }
+                cached.customContent = customContent
 
-            const createGripIcon = (idSuffix: string) => {
-                const gripIcon = new CanvasIcon(`${cellId}-${idSuffix}`, GRIP_ICON_SVG, { size: 12 })
-                gripIcon.style = {
-                    flexShrink: 0,
-                    alignSelf: 'center',
+                if (customContent) {
+                    contentContainerLeft.addChild(customContent)
+
+                    if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
+                        if (!cached.gripIcon) {
+                            cached.gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
+                            cached.gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
+                        }
+                        const handlers = createGripIconHandlers(cell.columnIndex!, cell.title, cellX, cellY, cellWidth, cellHeight)
+                        cached.gripIcon.onMouseEnter = handlers.onMouseEnter
+                        cached.gripIcon.onMouseLeave = handlers.onMouseLeave
+                        cached.gripIcon.onMouseDown = handlers.onMouseDown
+                        contentContainerLeft.addChildStart(cached.gripIcon)
+                    }
                 }
-
-                gripIcon.onMouseEnter = () => {
-                    if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-                }
-                gripIcon.onMouseLeave = () => {
-                    if (canvasRef.current) canvasRef.current.style.cursor = 'default'
-                }
-                gripIcon.onMouseDown = (e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-
-                    handleDragStart(
-                        e.originalEvent,
-                        cell.columnIndex!,
-                        cell.title,
-                        cellWidth,
-                        { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-                    )
-                }
-                return gripIcon
-            }
-
-            const contentContainer = new CanvasContainer(`${cellId}-content`, {
-                direction: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                columnGap: 6,
-                padding: 12,
-            })
-
-
-
-
-            contentContainer.style = {
-                height: cellHeight,
-                width: cellWidth,
-            }
-            contentContainer.rect = {
-                x: cellX,
-                y: cellY,
-                width: Math.max(0, cellWidth * 2),
-                height: cellHeight,
-            }
-
-            // If we remove the style assignment, the CanvasContainer logic will overwrite rect.height with intrinsic.
-
-            // Let's modify the search/replace to remove the style assignment.
-
-
-
-            const contentContainerLeft = new CanvasContainer(`${cellId}-content`, {
-                direction: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                columnGap: 6,
-            })
-
-
-
-            const contentContainerRight = new CanvasContainer(`${cellId}-content`, {
-                direction: 'row-reverse',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                columnGap: 6,
-            })
-
-            contentContainerRight.debugColor = "#000"
-
-
-            contentContainerRight.style.width = '100%'
-
-            contentContainerRight.debugColor = "#000"
-            // contentContainerRight.style = {height: cellHeight}
-
-
-            if (customContent) {
-                contentContainerLeft.addChild(customContent)
-
-                if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
-                    const gripIcon = createGripIcon('grip-custom')
-                    contentContainerLeft.addChildStart(gripIcon)
-                }
-
 
                 contentContainer.addChild(contentContainerLeft)
-                cellWrapper.addChild(contentContainer)
+                wrapper.addChild(contentContainer)
             } else {
+                // Standard text content
                 if (enableColumnReorder && column) {
-                    const gripIcon = createGripIcon('grip')
-                    contentContainerLeft.addChild(gripIcon)
+                    if (!cached.gripIcon) {
+                        cached.gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
+                        cached.gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
+                    }
+                    const handlers = createGripIconHandlers(cell.columnIndex!, cell.title, cellX, cellY, cellWidth, cellHeight)
+                    cached.gripIcon.onMouseEnter = handlers.onMouseEnter
+                    cached.gripIcon.onMouseLeave = handlers.onMouseLeave
+                    cached.gripIcon.onMouseDown = handlers.onMouseDown
+                    contentContainerLeft.addChild(cached.gripIcon)
                 }
 
-                const text = new CanvasText(`${cellId}-text`, cell.title, {
-                    color: getHeaderTextColor(cell.level),
-                    font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-                })
-                text.style = { flexGrow: 1 }
+                // Reuse or create text node
+                if (!cached.text) {
+                    cached.text = new CanvasText(`${cellId}-text`, cell.title, {
+                        color: getHeaderTextColor(cell.level),
+                        font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+                    })
+                    cached.text.style = { flexGrow: 1 }
+                } else {
+                    // Update text if changed
+                    if (cached.text.text !== cell.title) {
+                        cached.text.text = cell.title
+                    }
+                }
+                contentContainerLeft.addChild(cached.text)
 
-                contentContainerLeft.addChild(text)
-
-                // Add sort icon if column is sortable
+                // Sort button
                 if (column && column.sortable) {
                     let icon = SORT_DEFAULT_ICON
                     if (sortColumn === column.id) {
@@ -276,54 +329,67 @@ export const useHeaderScene = ({
                         else if (sortDirection === 'desc') icon = SORT_DESC_ICON
                     }
 
-                    const sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
-                        size: 20,
-                        variant: 'secondary',
-                        onClick: () => {
-                            console.log(column.id, {sortDirection});
-
-                            if (onColumnSort) {
-                                let newDirection: 'asc' | 'desc' | undefined = 'asc'
-                                if (sortColumn === column.id) {
-                                    if (sortDirection === 'asc') {
-                                        sortButton.icon = SORT_ASC_ICON
-                                        newDirection = 'desc'
-                                    }
-                                    else if (sortDirection === 'desc') {
-                                        sortButton.icon = SORT_DEFAULT_ICON
-                                        newDirection = undefined
-                                    }
-                                    else if (sortDirection === undefined) {
-                                        sortButton.icon = SORT_ASC_ICON
-                                        newDirection = 'asc'
-                                    }
-                                }
-
-                                console.log({newDirection});
-
-                                onColumnSort(column.id, newDirection)
-                            }
-                        }
-                    })
-
-                    sortButton.style = {
-                        flexShrink: 0,
-                        alignSelf: 'center',
+                    if (!cached.sortButton) {
+                        cached.sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
+                            size: 20,
+                            variant: 'secondary',
+                        })
+                        cached.sortButton.style = { flexShrink: 0, alignSelf: 'center' }
+                    } else {
+                        cached.sortButton.icon = icon
                     }
 
-                    contentContainerRight.addChild(sortButton)
+                    // Update click handler with current state
+                    const currentColumn = column
+                    cached.sortButton.onClick = () => {
+                        if (onColumnSort) {
+                            let newDirection: 'asc' | 'desc' | undefined = 'asc'
+                            if (sortColumn === currentColumn.id) {
+                                if (sortDirection === 'asc') newDirection = 'desc'
+                                else if (sortDirection === 'desc') newDirection = undefined
+                            }
+                            onColumnSort(currentColumn.id, newDirection)
+                        }
+                    }
+
+                    contentContainerRight.addChild(cached.sortButton)
                 }
 
                 contentContainer.addChild(contentContainerLeft)
                 contentContainer.addChild(contentContainerRight)
-
-                cellWrapper.addChild(contentContainer)
+                wrapper.addChild(contentContainer)
             }
+        }
 
-            rootContainer.addChild(cellWrapper)
-        })
+        // Update root container children efficiently
+        // Always rebuild to ensure consistency (object pooling still saves allocations)
+        rootContainer.children = []
+        for (const cellId of currentActive) {
+            const cached = pool.get(cellId)
+            if (cached) {
+                rootContainer.addChild(cached.wrapper)
+            }
+        }
+
+        activeNodesRef.current = currentActive
+
+        // Cleanup: remove nodes that haven't been used for a while
+        // Keep pool size manageable (remove nodes not in current view)
+        const maxPoolSize = currentActive.size + 20 // Keep 20 extra for buffer
+        if (pool.size > maxPoolSize) {
+            const toRemove: string[] = []
+            for (const id of pool.keys()) {
+                if (!currentActive.has(id)) {
+                    toRemove.push(id)
+                    if (pool.size - toRemove.length <= maxPoolSize) break
+                }
+            }
+            for (const id of toRemove) {
+                pool.delete(id)
+            }
+        }
 
         rootRef.current.render()
 
-    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, handleDragStart, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort])
+    }, [visibleCells, columnPositions, columnWidths, scrollLeft, headerRowHeight, enableColumnReorder, orderedColumns, canvasRef, rootRef, sortColumn, sortDirection, onColumnSort, createGripIconHandlers])
 }

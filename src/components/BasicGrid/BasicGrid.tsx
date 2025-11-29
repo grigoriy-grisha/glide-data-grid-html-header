@@ -65,11 +65,7 @@ const DataEditorWithVirtualization = React.memo(
       [onVisibleRegionChanged, updateVisibleIndices]
     )
 
-    return <DataEditor drawHeader={(args, drawContent) => {
-      console.log({args})
-      console.log({drawContent})
-
-    }} ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
+    return <DataEditor ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
   })
 )
 
