@@ -1,9 +1,5 @@
-import {
-    ButtonIcon,
-    drawIconButton,
-    BUTTON_PADDING_Y,
-    ICON_SIZE_ADJUSTMENT,
-} from '../../../customCells/canvasCell/buttons';
+import { drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../../customCells/canvasCell/buttons';
+import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
 import { CanvasNode } from "../core/CanvasNode.ts";
 import { CanvasLeaf } from "../core/CanvasLeaf.ts";
 

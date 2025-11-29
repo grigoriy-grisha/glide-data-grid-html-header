@@ -1,77 +1,22 @@
 import { isHoveringBounds } from './helpers'
 import type { HoverState } from './types'
+import {
+  drawIcon,
+  type ButtonIcon,
+  type IconDefinition,
+  type IconSpriteOptions,
+  type IconSpriteStats,
+  preloadIconSprites,
+  registerIconDefinitions,
+  resetIconSpriteCache,
+  getIconSpriteStats,
+} from './iconSprites'
 
-export type ButtonIcon = string | HTMLImageElement | null | undefined
+export { drawIcon, preloadIconSprites, registerIconDefinitions, resetIconSpriteCache, getIconSpriteStats }
+export type { ButtonIcon, IconDefinition, IconSpriteOptions, IconSpriteStats }
 
-export const BUTTON_PADDING_Y = 4;
-export const ICON_SIZE_ADJUSTMENT = 4;
-
-const iconCache = new Map<string, HTMLImageElement>()
-
-function createSVGDataURL(svgString: string, color?: string): string {
-  let processedSVG = svgString
-
-  if (color) {
-    processedSVG = processedSVG.replace(/currentColor/g, color)
-    if (!processedSVG.includes('fill=') && !processedSVG.includes('stroke=')) {
-      processedSVG = processedSVG.replace('<svg', `<svg fill="${color}"`)
-    }
-  }
-
-  const encoded = encodeURIComponent(processedSVG)
-  return `data:image/svg+xml;charset=utf-8,${encoded}`
-}
-
-function getIconImage(icon: ButtonIcon, color?: string): HTMLImageElement | null {
-  if (!icon) return null
-
-  if (typeof icon === 'string') {
-    let dataURL: string
-
-    if (!icon.startsWith('data:') && !icon.startsWith('http')) {
-      dataURL = createSVGDataURL(icon, color)
-    } else {
-      dataURL = icon
-    }
-
-    if (iconCache.has(dataURL)) {
-      const cached = iconCache.get(dataURL)!
-      if (cached.complete && cached.naturalHeight !== 0) {
-        return cached
-      }
-    }
-
-    const img = new Image()
-    img.src = dataURL
-    iconCache.set(dataURL, img)
-
-    if (img.complete && img.naturalHeight !== 0) {
-      return img
-    }
-
-    return null
-  } else if (icon instanceof HTMLImageElement) {
-    if (icon.complete && icon.naturalHeight !== 0) {
-      return icon
-    }
-  }
-
-  return null
-}
-
-export function drawIcon(
-  ctx: CanvasRenderingContext2D,
-  icon: ButtonIcon,
-  x: number,
-  y: number,
-  size: number,
-  color?: string
-): void {
-  const img = getIconImage(icon, color)
-  if (img) {
-    ctx.drawImage(img, x, y, size, size)
-  }
-}
+export const BUTTON_PADDING_Y = 4
+export const ICON_SIZE_ADJUSTMENT = 4
 
 export function drawButton(
   ctx: CanvasRenderingContext2D,

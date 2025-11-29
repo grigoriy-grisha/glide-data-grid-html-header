@@ -1,4 +1,5 @@
-import { ButtonIcon, drawIcon } from '../../../customCells/canvasCell/buttons';
+import { drawIcon, preloadIconSprites } from '../../../customCells/canvasCell/iconSprites';
+import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
 import { CanvasLeaf } from "../core/CanvasLeaf.ts";
 
 const TRANSPARENT = 'transparent';
@@ -13,6 +14,11 @@ export class CanvasIcon extends CanvasLeaf {
         this.icon = icon;
         this.size = options?.size ?? 16;
         this.color = options?.color;
+        if (this.icon) {
+            void (preloadIconSprites(this.icon, { size: this.size, color: this.color }).catch(
+                () => undefined,
+            ));
+        }
     }
 
     measure(_ctx: CanvasRenderingContext2D) {
