@@ -16,102 +16,139 @@ export class CanvasRoot {
     }
 
     private setupEvents() {
-        const getEventCoords = (e: MouseEvent) => {
-            const rect = this.canvas.getBoundingClientRect();
-            // dpr is not needed for logical coords if rects are in logical coords
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+        const types: CanvasEvent['type'][] = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick'];
+        types.forEach(type => {
+            this.canvas.addEventListener(type, (event) => this.dispatchPointerEvent(event, type));
+        });
+    }
+
+    private dispatchPointerEvent(e: MouseEvent, type: CanvasEvent['type']) {
+        const { x, y } = this.getEventCoords(e);
+        const hits = this.rootNode.hitTest(x, y);
+        const target = hits[0];
+
+        let stopped = false;
+        const canvasEvent: CanvasEvent = {
+            type,
+            x,
+            y,
+            originalEvent: e,
+            target,
+            stopPropagation: () => { stopped = true; },
+            preventDefault: () => e.preventDefault()
         };
 
-        const dispatchEvent = (e: MouseEvent, type: CanvasEvent['type']) => {
-            const { x, y } = getEventCoords(e);
+        this.bubbleEvent(hits, canvasEvent, type, () => stopped);
+        if (type === 'mousemove') {
+            this.handleHoverTransition(target, canvasEvent);
+            this.dispatchMouseMove(hits, canvasEvent, () => stopped);
+        }
+    }
 
-            // Get all hits (leaf -> root)
-            const hits = this.rootNode.hitTest(x, y);
-            const target = hits.length > 0 ? hits[0] : undefined;
-
-            let stopped = false;
-            const canvasEvent: CanvasEvent = {
-                type,
-                x,
-                y,
-                originalEvent: e,
-                target,
-                stopPropagation: () => { stopped = true; },
-                preventDefault: () => e.preventDefault()
-            };
-
-            // Bubbling phase: target -> parent -> root
-            if (hits.length > 0) {
-                for (const node of hits) {
-                    if (stopped) break;
-                    switch (type) {
-                        case 'click': node.onClick(canvasEvent); break;
-                        case 'mousedown': node.onMouseDown(canvasEvent); break;
-                        case 'mouseup': node.onMouseUp(canvasEvent); break;
-                        case 'dblclick': node.onDoubleClick(canvasEvent); break;
-                    }
-                }
-            }
-
-            // Special handling for hover (mousemove)
-            if (type === 'mousemove') {
-                if (this.hoveredNode !== target) {
-                     if (this.hoveredNode) {
-                         const leaveEvent = { ...canvasEvent, type: 'mouseleave' as const };
-                         this.hoveredNode.onMouseLeave(leaveEvent);
-                     }
-                     
-                     if (target) {
-                         const enterEvent = { ...canvasEvent, type: 'mouseenter' as const };
-                         target.onMouseEnter(enterEvent);
-                     }
-                     
-                     this.hoveredNode = target || null;
-                }
-
-                // Dispatch mousemove
-                 for (const node of hits) {
-                    if (stopped) break;
-                    node.onMouseMove(canvasEvent);
-                }
-            }
+    private getEventCoords(e: MouseEvent) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
         };
+    }
 
-        this.canvas.addEventListener('click', (e) => dispatchEvent(e, 'click'));
-        this.canvas.addEventListener('mousedown', (e) => dispatchEvent(e, 'mousedown'));
-        this.canvas.addEventListener('mouseup', (e) => dispatchEvent(e, 'mouseup'));
-        this.canvas.addEventListener('mousemove', (e) => dispatchEvent(e, 'mousemove'));
-        this.canvas.addEventListener('dblclick', (e) => dispatchEvent(e, 'dblclick'));
+    private bubbleEvent(
+        hits: CanvasNode[],
+        event: CanvasEvent,
+        type: CanvasEvent['type'],
+        isStopped: () => boolean,
+    ) {
+        if (hits.length === 0) {
+            return;
+        }
+
+        for (const node of hits) {
+            if (isStopped()) {
+                break;
+            }
+
+            switch (type) {
+                case 'click':
+                    node.onClick(event);
+                    break;
+                case 'mousedown':
+                    node.onMouseDown(event);
+                    break;
+                case 'mouseup':
+                    node.onMouseUp(event);
+                    break;
+                case 'dblclick':
+                    node.onDoubleClick(event);
+                    break;
+            }
+        }
+    }
+
+    private dispatchMouseMove(
+        hits: CanvasNode[],
+        event: CanvasEvent,
+        isStopped: () => boolean,
+    ) {
+        for (const node of hits) {
+            if (isStopped()) {
+                break;
+            }
+            node.onMouseMove(event);
+        }
+    }
+
+    private handleHoverTransition(target: CanvasNode | undefined, baseEvent: CanvasEvent) {
+        if (this.hoveredNode === target) {
+            return;
+        }
+
+        if (this.hoveredNode) {
+            const leaveEvent = { ...baseEvent, type: 'mouseleave' as const };
+            this.hoveredNode.onMouseLeave(leaveEvent);
+        }
+
+        if (target) {
+            const enterEvent = { ...baseEvent, type: 'mouseenter' as const };
+            target.onMouseEnter(enterEvent);
+        }
+
+        this.hoveredNode = target ?? null;
     }
 
     render() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
 
-        // Clear
+        this.clearCanvas();
+        this.applyResolutionScale(dpr);
+        this.updateRootRect(rect);
+        this.layoutRoot();
+        this.rootNode.paint(this.ctx);
+    }
+
+    private clearCanvas() {
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 
-        // Setup scaling
+    private applyResolutionScale(dpr: number) {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.scale(dpr, dpr);
+    }
 
-        // Update root size
+    private updateRootRect(rect: DOMRect) {
         this.rootNode.rect.width = rect.width;
         this.rootNode.rect.height = rect.height;
         this.rootNode.rect.x = 0;
         this.rootNode.rect.y = 0;
+    }
 
-        // Layout & Paint
+    private layoutRoot() {
         if (this.rootNode instanceof CanvasContainer) {
             this.rootNode.performLayout(this.ctx);
         } else {
-             this.rootNode.measure(this.ctx);
+            this.rootNode.measure(this.ctx);
         }
-        
-        this.rootNode.paint(this.ctx);
     }
 }

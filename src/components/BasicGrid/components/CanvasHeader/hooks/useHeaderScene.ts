@@ -3,7 +3,6 @@ import { CanvasRoot } from '../core/CanvasRoot'
 import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
 import { CanvasContainer } from '../core/CanvasContainer'
 import { CanvasNode } from '../core/CanvasNode'
-import { CanvasRect } from '../primitives/CanvasRect'
 import { CanvasText } from '../primitives/CanvasText'
 import { CanvasIcon } from '../primitives/CanvasIcon'
 import { CanvasIconButton } from '../primitives/CanvasIconButton'
@@ -130,12 +129,12 @@ export const useHeaderScene = ({
 
             const cellWrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
             cellWrapper.rect = { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-            
+
             // Styles moved from bgRect to cellWrapper
             cellWrapper.backgroundColor = getHeaderColor(cell.level)
             cellWrapper.borderColor = '#e0e0e0'
             cellWrapper.borderWidth = 1
-            
+
             const normalColor = getHeaderColor(cell.level);
             const getHoverColor = (c: string) => {
                 if (c === '#e3f2fd') return '#bbdefb';
@@ -197,12 +196,14 @@ export const useHeaderScene = ({
                 justifyContent: 'space-between',
                 columnGap: 6,
                 padding: 12,
-                wrap: 'wrap'
             })
+
+
 
 
             contentContainer.style = {
                 height: cellHeight,
+                width: cellWidth,
             }
             contentContainer.rect = {
                 x: cellX,
@@ -227,11 +228,16 @@ export const useHeaderScene = ({
 
 
             const contentContainerRight = new CanvasContainer(`${cellId}-content`, {
-                direction: 'row',
+                direction: 'row-reverse',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'space-between',
                 columnGap: 6,
             })
+
+            contentContainerRight.debugColor = "#000"
+
+
+            contentContainerRight.style.width = '100%'
 
             contentContainerRight.debugColor = "#000"
             // contentContainerRight.style = {height: cellHeight}
@@ -274,12 +280,27 @@ export const useHeaderScene = ({
                         size: 20,
                         variant: 'secondary',
                         onClick: () => {
+                            console.log(column.id, {sortDirection});
+
                             if (onColumnSort) {
                                 let newDirection: 'asc' | 'desc' | undefined = 'asc'
                                 if (sortColumn === column.id) {
-                                    if (sortDirection === 'asc') newDirection = 'desc'
-                                    else if (sortDirection === 'desc') newDirection = undefined
+                                    if (sortDirection === 'asc') {
+                                        sortButton.icon = SORT_ASC_ICON
+                                        newDirection = 'desc'
+                                    }
+                                    else if (sortDirection === 'desc') {
+                                        sortButton.icon = SORT_DEFAULT_ICON
+                                        newDirection = undefined
+                                    }
+                                    else if (sortDirection === undefined) {
+                                        sortButton.icon = SORT_ASC_ICON
+                                        newDirection = 'asc'
+                                    }
                                 }
+
+                                console.log({newDirection});
+
                                 onColumnSort(column.id, newDirection)
                             }
                         }

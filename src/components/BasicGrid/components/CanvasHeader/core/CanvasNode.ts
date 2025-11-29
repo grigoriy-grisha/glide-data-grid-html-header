@@ -1,5 +1,12 @@
 import {FlexStyle} from '../../../miniflex/types';
 
+export type DimensionValue = number | '100%';
+
+export type CanvasFlexStyle = Omit<Partial<FlexStyle>, 'width' | 'height'> & {
+    width?: DimensionValue;
+    height?: DimensionValue;
+};
+
 export interface Rect {
     x: number;
     y: number;
@@ -25,7 +32,7 @@ export abstract class CanvasNode {
     rect: Rect = {x: 0, y: 0, width: 0, height: 0};
 
     // Style for flex layout
-    style: Partial<FlexStyle> = {
+    style: CanvasFlexStyle = {
         flexGrow: 0,
         flexShrink: 1,
         flexBasis: 0,
@@ -107,24 +114,24 @@ export abstract class CanvasNode {
 
 
     // Event handlers
-    onClick(event: CanvasEvent) {
+    onClick(_event: CanvasEvent) {
     }
 
-    onMouseDown(event: CanvasEvent) {
+    onMouseDown(_event: CanvasEvent) {
     }
 
-    onMouseUp(event: CanvasEvent) {
+    onMouseUp(_event: CanvasEvent) {
     }
 
-    onMouseEnter(event: CanvasEvent) {
+    onMouseEnter(_event: CanvasEvent) {
     }
 
-    onMouseLeave(event: CanvasEvent) {
+    onMouseLeave(_event: CanvasEvent) {
     }
 
-    onMouseMove(event: CanvasEvent) {
+    onMouseMove(_event: CanvasEvent) {
     }
 
-    onDoubleClick(event: CanvasEvent) {
+    onDoubleClick(_event: CanvasEvent) {
     }
 }

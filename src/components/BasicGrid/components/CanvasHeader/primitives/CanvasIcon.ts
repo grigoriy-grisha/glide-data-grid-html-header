@@ -1,5 +1,7 @@
-import {ButtonIcon, drawIcon} from '../../../customCells/canvasCell/buttons';
-import {CanvasLeaf} from "../core/CanvasLeaf.ts";
+import { ButtonIcon, drawIcon } from '../../../customCells/canvasCell/buttons';
+import { CanvasLeaf } from "../core/CanvasLeaf.ts";
+
+const TRANSPARENT = 'transparent';
 
 export class CanvasIcon extends CanvasLeaf {
     icon: ButtonIcon;
@@ -19,12 +21,23 @@ export class CanvasIcon extends CanvasLeaf {
     }
 
     onPaint(ctx: CanvasRenderingContext2D) {
-        // Draw background if set
-        if (this.backgroundColor && this.backgroundColor !== 'transparent') {
-            ctx.fillStyle = this.backgroundColor;
-            ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
-        }
-
+        drawBackgroundIfNeeded(ctx, this.backgroundColor, this.rect.x, this.rect.y, this.rect.width, this.rect.height);
         drawIcon(ctx, this.icon, this.rect.x, this.rect.y, this.size, this.color);
     }
 }
+
+const drawBackgroundIfNeeded = (
+    ctx: CanvasRenderingContext2D,
+    color: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+) => {
+    if (!color || color === TRANSPARENT) {
+        return;
+    }
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+};
+

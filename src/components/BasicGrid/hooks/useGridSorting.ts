@@ -88,7 +88,7 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
   }, [disabled, sortState, onSortChange])
 
   const handleColumnSort = useCallback(
-    (columnIndex: number) => {
+    (columnIndex: number, direction?: SortDirection | null) => {
       if (disabled) {
         return
       }
@@ -99,7 +99,24 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
       }
 
       const isSameColumn = sortState?.columnId === column.id
-      const nextDirection: SortDirection = isSameColumn && sortState?.direction === 'asc' ? 'desc' : 'asc'
+
+      let nextDirection: SortDirection | undefined
+      if (direction !== undefined) {
+        nextDirection = direction ?? undefined
+      } else {
+        // Default toggle behaviour (asc -> desc -> asc)
+        nextDirection = isSameColumn && sortState?.direction === 'asc' ? 'desc' : 'asc'
+      }
+
+      if (nextDirection === undefined) {
+        if (onSortChange) {
+          onSortChange(null)
+        } else {
+          setInternalSortState(null)
+        }
+        return
+      }
+
       const nextSortModel: GridSortModel = { columnId: column.id ?? '', direction: nextDirection }
 
       if (onSortChange) {

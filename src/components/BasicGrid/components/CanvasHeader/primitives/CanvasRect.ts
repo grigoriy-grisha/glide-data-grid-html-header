@@ -1,36 +1,72 @@
 import { CanvasLeaf } from '../core/CanvasLeaf';
 
+const TRANSPARENT = "transparent";
+
 export class CanvasRect extends CanvasLeaf {
-    color: string = "transparent";
-    borderColor: string = "transparent";
+    color: string = TRANSPARENT;
+    borderColor: string = TRANSPARENT;
     borderWidth: number = 0;
 
-    constructor(id: string, color: string = "transparent") {
+    constructor(id: string, color: string = TRANSPARENT) {
         super(id);
         this.color = color;
     }
 
-    measure(ctx: CanvasRenderingContext2D) {
-        // Rect doesn't have intrinsic size
+    measure(_ctx: CanvasRenderingContext2D) {
+        // Rect has no intrinsic size; layout drives dimensions.
     }
 
     onPaint(ctx: CanvasRenderingContext2D) {
-        if (this.color !== "transparent") {
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+        if (hasVisibleFill(this.color)) {
+            drawFill(ctx, this.rect.x, this.rect.y, this.rect.width, this.rect.height, this.color);
         }
 
-        if (this.borderWidth > 0 && this.borderColor !== "transparent") {
-            ctx.strokeStyle = this.borderColor;
-            ctx.lineWidth = this.borderWidth;
-            // Draw border inside? or center?
-            // Standard is center usually, but let's do inside for easier layout
-            ctx.strokeRect(
-                this.rect.x + this.borderWidth / 2,
-                this.rect.y + this.borderWidth / 2,
-                this.rect.width - this.borderWidth,
-                this.rect.height - this.borderWidth
+        if (hasVisibleBorder(this.borderWidth, this.borderColor)) {
+            drawBorder(
+                ctx,
+                this.rect.x,
+                this.rect.y,
+                this.rect.width,
+                this.rect.height,
+                this.borderWidth,
+                this.borderColor,
             );
         }
     }
 }
+
+const hasVisibleFill = (color: string) => color !== TRANSPARENT;
+
+const hasVisibleBorder = (width: number, color: string) =>
+    width > 0 && color !== TRANSPARENT;
+
+const drawFill = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string,
+) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+};
+
+const drawBorder = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    borderWidth: number,
+    color: string,
+) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = borderWidth;
+    ctx.strokeRect(
+        x + borderWidth / 2,
+        y + borderWidth / 2,
+        width - borderWidth,
+        height - borderWidth,
+    );
+};

@@ -1,6 +1,29 @@
-import { ButtonIcon, drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../../customCells/canvasCell/buttons';
+import {
+    ButtonIcon,
+    drawIconButton,
+    BUTTON_PADDING_Y,
+    ICON_SIZE_ADJUSTMENT,
+} from '../../../customCells/canvasCell/buttons';
 import { CanvasNode } from "../core/CanvasNode.ts";
 import { CanvasLeaf } from "../core/CanvasLeaf.ts";
+
+const DEFAULT_HEIGHT = 28;
+
+const BUTTON_THEME = {
+    accentColor: '#1e88e5',
+    accentLight: 'rgba(30, 136, 229, 0.16)',
+    bgCell: '#ffffff',
+    borderColor: '#e0e0e0',
+    textLight: '#9e9e9e',
+};
+
+interface ButtonMetrics {
+    height: number;
+    width: number;
+    paddingX: number;
+    paddingY: number;
+    iconSize: number;
+}
 
 export class CanvasIconButton extends CanvasLeaf {
     icon: ButtonIcon;
@@ -9,12 +32,16 @@ export class CanvasIconButton extends CanvasLeaf {
     disabled: boolean;
     isHovered: boolean = false;
 
-    constructor(id: string, icon: ButtonIcon, options?: {
-        size?: number | 'auto',
-        variant?: 'primary' | 'secondary' | 'danger',
-        disabled?: boolean,
-        onClick?: () => void
-    }) {
+    constructor(
+        id: string,
+        icon: ButtonIcon,
+        options?: {
+            size?: number | 'auto',
+            variant?: 'primary' | 'secondary' | 'danger',
+            disabled?: boolean,
+            onClick?: () => void
+        },
+    ) {
         super(id);
         this.icon = icon;
         this.size = options?.size ?? 'auto';
@@ -25,20 +52,10 @@ export class CanvasIconButton extends CanvasLeaf {
         }
     }
 
-    measure(ctx: CanvasRenderingContext2D) {
-        // Base height/size
-        const height = typeof this.size === 'number' ? this.size : 28;
-        this.rect.height = height;
-
-        if (this.size === 'auto') {
-            const paddingX = 0;
-            const paddingY = BUTTON_PADDING_Y;
-            // Match logic in drawIconButton
-            const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
-            this.rect.width = iconSize + paddingX * 2;
-        } else {
-            this.rect.width = this.size;
-        }
+    measure(_ctx: CanvasRenderingContext2D) {
+        const metrics = resolveButtonMetrics(this.size);
+        this.rect.height = metrics.height;
+        this.rect.width = metrics.width;
     }
 
     onPaint(ctx: CanvasRenderingContext2D) {
@@ -46,19 +63,13 @@ export class CanvasIconButton extends CanvasLeaf {
             ctx,
             this.rect.x,
             this.rect.y,
-            this.size,
+            this.rect.width,
             this.rect.height,
             this.icon,
-            {
-                accentColor: '#1e88e5',
-                accentLight: 'rgba(30, 136, 229, 0.16)',
-                bgCell: '#ffffff',
-                borderColor: '#e0e0e0',
-                textLight: '#9e9e9e'
-            },
+            BUTTON_THEME,
             this.variant,
             this.disabled,
-            this.isHovered
+            this.isHovered,
         );
     }
 
@@ -71,27 +82,41 @@ export class CanvasIconButton extends CanvasLeaf {
     }
 
     hitTest(x: number, y: number): CanvasNode[] {
-        const paddingX = 0;
-        const paddingY = BUTTON_PADDING_Y;
-        const iconSize = Math.min(this.rect.height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
+        const metrics = resolveButtonMetrics(this.size, this.rect.height);
+        const bounds = getInteractiveBounds(this.rect.x, this.rect.y, metrics);
 
-        let actualSize: number;
-        if (this.size === 'auto') {
-            actualSize = iconSize + paddingX * 2;
-        } else {
-            actualSize = this.size;
-        }
-
-        const buttonX = this.rect.x + paddingX;
-        const buttonY = this.rect.y + paddingY;
-        const buttonWidth = actualSize - paddingX * 2;
-        const buttonHeight = this.rect.height - paddingY * 2;
-
-        if (x >= buttonX && x <= buttonX + buttonWidth &&
-            y >= buttonY && y <= buttonY + buttonHeight) {
+        if (
+            x >= bounds.x &&
+            x <= bounds.x + bounds.width &&
+            y >= bounds.y &&
+            y <= bounds.y + bounds.height
+        ) {
             return [this];
         }
 
         return [];
     }
 }
+
+const resolveButtonMetrics = (size: number | 'auto', currentHeight?: number): ButtonMetrics => {
+    const height = typeof size === 'number' ? size : currentHeight ?? DEFAULT_HEIGHT;
+    const paddingX = 0;
+    const paddingY = BUTTON_PADDING_Y;
+    const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
+    const width = typeof size === 'number' ? size : iconSize + paddingX * 2;
+
+    return { height, width, paddingX, paddingY, iconSize };
+};
+
+const getInteractiveBounds = (
+    x: number,
+    y: number,
+    metrics: ButtonMetrics,
+) => {
+    const buttonX = x + metrics.paddingX;
+    const buttonY = y + metrics.paddingY;
+    const buttonWidth = metrics.width - metrics.paddingX * 2;
+    const buttonHeight = metrics.height - metrics.paddingY * 2;
+
+    return { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
+};

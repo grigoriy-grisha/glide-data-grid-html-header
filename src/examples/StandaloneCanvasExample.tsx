@@ -84,6 +84,43 @@ export function StandaloneCanvasExample() {
 
     mainContainer.addChild(row3)
 
+    const row4 = new CanvasContainer('row4', {
+      direction: 'row',
+      alignItems: 'center',
+      columnGap: 10,
+    })
+    row4.style.alignSelf = 'stretch'
+
+    const row4IconGroup = new CanvasContainer('row4-icon-group', {
+      direction: 'row',
+      alignItems: 'flex-start',
+    })
+    row4IconGroup.style.flexShrink = 0
+
+    row4IconGroup.addChild(
+      new CanvasIconButton('iconBtn2', iconSvg, {
+        variant: 'secondary',
+        onClick: () => console.log('Secondary icon click'),
+      })
+    )
+
+    const row4Content = new CanvasContainer('row4-content', {
+      direction: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      columnGap: 12,
+    })
+    
+    row4Content.style.width = '100%'
+
+    row4Content.addChild(new CanvasText('text6', 'Row 4 label text'))
+    row4Content.addChild(new CanvasButton('btn3', 'Confirm', { variant: 'primary' }))
+
+    row4.addChild(row4IconGroup)
+    row4.addChild(row4Content)
+
+    mainContainer.addChild(row4)
+
 
     // Initialize Root
     const root = new CanvasRoot(canvas, mainContainer)

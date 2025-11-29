@@ -336,7 +336,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     },
   })
 
-  const { handleHeaderDragStart, registerHeaderCell } = useColumnReorderDrag({
+  const { handleHeaderDragStart } = useColumnReorderDrag({
     enableColumnReorder,
     orderedColumns,
     columnPositions,
@@ -566,9 +566,16 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const handleHeaderSort = useCallback((columnId: string, direction: 'asc' | 'desc' | undefined) => {
     const index = orderedColumns.findIndex((c) => c.id === columnId)
     if (index >= 0) {
-      handleColumnSort(index)
+      handleColumnSort(index, direction ?? null)
     }
   }, [orderedColumns, handleColumnSort])
+
+  const handleDataEditorHeaderClick = useCallback<NonNullable<DataEditorProps['onHeaderClicked']>>(
+    (columnIndex, _event) => {
+      handleColumnSort(columnIndex)
+    },
+    [handleColumnSort]
+  )
 
   return (
     <HeaderVirtualizationProvider>
@@ -657,7 +664,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               theme={gridTheme}
               customRenderers={customRenderers}
               onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
-              onHeaderClicked={handleColumnSort}
+              onHeaderClicked={handleDataEditorHeaderClick}
               onCellClicked={handleCellClicked}
               onCellEdited={editable ? handleCellEdited : undefined}
               highlightRegions={highlightRegions}
