@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useMemo, useCallback } from 'react'
 import { CanvasRoot } from '../core/CanvasRoot'
 import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
 import { CanvasContainer } from '../core/CanvasContainer'
@@ -11,21 +11,6 @@ import { GridColumn } from '../../../models/GridColumn'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
 import { DragState } from './useHeaderDragDrop'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Object Pool for Canvas Nodes
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface CellNodeCache {
-    wrapper: CanvasAbsoluteContainer
-    contentContainer: CanvasContainer
-    contentContainerLeft: CanvasContainer
-    contentContainerRight: CanvasContainer
-    text?: CanvasText
-    gripIcon?: CanvasIcon
-    sortButton?: CanvasIconButton
-    customContent?: CanvasNode
-}
 
 // Precomputed hover colors cache
 const hoverColorCache = new Map<string, string>()
@@ -86,11 +71,6 @@ export const useHeaderScene = ({
     debugMode = false,
     isVisible = true,
 }: UseHeaderSceneProps) => {
-
-    // Object pool for reusing canvas nodes
-    const nodePoolRef = useRef<Map<string, CellNodeCache>>(new Map())
-    // Track which nodes are currently in use
-    const activeNodesRef = useRef<Set<string>>(new Set())
 
     // Update global debug mode
     useEffect(() => {
@@ -179,19 +159,17 @@ export const useHeaderScene = ({
         if (!isVisible || !rootRef.current) return
 
         const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
-        const pool = nodePoolRef.current
-        const currentActive = new Set<string>()
 
         // Fallback: if visibleCells is empty but headerCells exists, show all cells
         // This ensures header renders on initial mount when virtualization hasn't updated yet
-        const cellsToRender = visibleCells.length > 0 
-            ? visibleCells 
+        const cellsToRender = visibleCells.length > 0
+            ? visibleCells
             : (headerCells.length > 0 ? headerCells : [])
 
-        // Process visible cells - reuse or create nodes
+        const wrappers: CanvasAbsoluteContainer[] = []
+
         for (const cell of cellsToRender) {
             const cellId = `cell-${cell.startIndex}-${cell.level}`
-            currentActive.add(cellId)
 
             const absoluteX = columnPositions[cell.startIndex] ?? 0
             const cellX = Math.round(absoluteX - scrollLeft)
@@ -205,44 +183,7 @@ export const useHeaderScene = ({
             const column = cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
             const renderContent = column?.getRenderColumnContent()
 
-            let cached = pool.get(cellId)
-
-            if (!cached) {
-                // Create new nodes only if not in pool
-                const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
-                const contentContainer = new CanvasContainer(`${cellId}-content`, {
-                    direction: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    columnGap: 6,
-                    padding: 12,
-                })
-                const contentContainerLeft = new CanvasContainer(`${cellId}-left`, {
-                    direction: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    columnGap: 6,
-                })
-                const contentContainerRight = new CanvasContainer(`${cellId}-right`, {
-                    direction: 'row-reverse',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    columnGap: 6,
-                })
-                contentContainerRight.style.width = '100%'
-
-                cached = {
-                    wrapper,
-                    contentContainer,
-                    contentContainerLeft,
-                    contentContainerRight,
-                }
-                pool.set(cellId, cached)
-            }
-
-            const { wrapper, contentContainer, contentContainerLeft, contentContainerRight } = cached
-
-            // Update wrapper properties (fast property updates)
+            const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
             wrapper.rect.x = cellX
             wrapper.rect.y = cellY
             wrapper.rect.width = cellWidth
@@ -250,12 +191,16 @@ export const useHeaderScene = ({
             wrapper.backgroundColor = normalColor
             wrapper.borderColor = '#e0e0e0'
             wrapper.borderWidth = 1
-
-            // Update hover handlers with current colors
             wrapper.onMouseEnter = () => { wrapper.backgroundColor = hoverColor }
             wrapper.onMouseLeave = () => { wrapper.backgroundColor = normalColor }
 
-            // Update content container
+            const contentContainer = new CanvasContainer(`${cellId}-content`, {
+                direction: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                columnGap: 6,
+                padding: 12,
+            })
             contentContainer.style.height = cellHeight
             contentContainer.style.width = cellWidth
             contentContainer.rect.x = cellX
@@ -263,67 +208,62 @@ export const useHeaderScene = ({
             contentContainer.rect.width = Math.max(0, cellWidth * 2)
             contentContainer.rect.height = cellHeight
 
-            // Clear children for rebuild (but reuse container objects)
-            contentContainerLeft.children = []
-            contentContainerRight.children = []
-            contentContainer.children = []
-            wrapper.children = []
+            const contentContainerLeft = new CanvasContainer(`${cellId}-left`, {
+                direction: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                columnGap: 6,
+            })
+            const contentContainerRight = new CanvasContainer(`${cellId}-right`, {
+                direction: 'row-reverse',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                columnGap: 6,
+            })
+            contentContainerRight.style.width = '100%'
+
+            const insertGripIcon = (target: CanvasContainer, atStart = false) => {
+                if (!enableColumnReorder || !column || cell.columnIndex === undefined) return
+                const gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
+                gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
+                const handlers = createGripIconHandlers(cell.columnIndex, cell.title, cellX, cellY, cellWidth, cellHeight)
+                gripIcon.onMouseEnter = handlers.onMouseEnter
+                gripIcon.onMouseLeave = handlers.onMouseLeave
+                gripIcon.onMouseDown = handlers.onMouseDown
+                if (atStart && typeof target.addChildStart === 'function') {
+                    target.addChildStart(gripIcon)
+                } else {
+                    target.addChild(gripIcon)
+                }
+            }
 
             if (renderContent) {
-                // Custom content rendering
                 const customContent = renderContent(
                     { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
                 )
-                cached.customContent = customContent
 
                 if (customContent) {
                     contentContainerLeft.addChild(customContent)
 
                     if (enableColumnReorder && column && customContent instanceof CanvasContainer) {
-                        if (!cached.gripIcon) {
-                            cached.gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
-                            cached.gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
-                        }
-                        const handlers = createGripIconHandlers(cell.columnIndex!, cell.title, cellX, cellY, cellWidth, cellHeight)
-                        cached.gripIcon.onMouseEnter = handlers.onMouseEnter
-                        cached.gripIcon.onMouseLeave = handlers.onMouseLeave
-                        cached.gripIcon.onMouseDown = handlers.onMouseDown
-                        contentContainerLeft.addChildStart(cached.gripIcon)
+                        insertGripIcon(contentContainerLeft, true)
                     }
                 }
 
                 contentContainer.addChild(contentContainerLeft)
                 wrapper.addChild(contentContainer)
             } else {
-                // Standard text content
                 if (enableColumnReorder && column) {
-                    if (!cached.gripIcon) {
-                        cached.gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
-                        cached.gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
-                    }
-                    const handlers = createGripIconHandlers(cell.columnIndex!, cell.title, cellX, cellY, cellWidth, cellHeight)
-                    cached.gripIcon.onMouseEnter = handlers.onMouseEnter
-                    cached.gripIcon.onMouseLeave = handlers.onMouseLeave
-                    cached.gripIcon.onMouseDown = handlers.onMouseDown
-                    contentContainerLeft.addChild(cached.gripIcon)
+                    insertGripIcon(contentContainerLeft)
                 }
 
-                // Reuse or create text node
-                if (!cached.text) {
-                    cached.text = new CanvasText(`${cellId}-text`, cell.title, {
-                        color: getHeaderTextColor(cell.level),
-                        font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-                    })
-                    cached.text.style = { flexGrow: 1 }
-                } else {
-                    // Update text if changed
-                    if (cached.text.text !== cell.title) {
-                        cached.text.text = cell.title
-                    }
-                }
-                contentContainerLeft.addChild(cached.text)
+                const textNode = new CanvasText(`${cellId}-text`, cell.title, {
+                    color: getHeaderTextColor(cell.level),
+                    font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+                })
+                textNode.style = { flexGrow: 1 }
+                contentContainerLeft.addChild(textNode)
 
-                // Sort button
                 if (column && column.sortable) {
                     let icon = SORT_DEFAULT_ICON
                     if (sortColumn === column.id) {
@@ -331,20 +271,15 @@ export const useHeaderScene = ({
                         else if (sortDirection === 'desc') icon = SORT_DESC_ICON
                     }
 
-                    if (!cached.sortButton) {
-                        cached.sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
-                            size: 20,
-                            variant: 'secondary',
-                        })
-                        cached.sortButton.style = { flexShrink: 0, alignSelf: 'center' }
-                    } else {
-                        cached.sortButton.icon = icon
-                    }
+                    const sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
+                        size: 20,
+                        variant: 'secondary',
+                    })
+                    sortButton.style = { flexShrink: 0, alignSelf: 'center' }
 
-                    // Update click handler with current state
                     const currentColumn = column
-                    cached.sortButton.onClick = () => {
-                        if (onColumnSort) {
+                    sortButton.onClick = () => {
+                        if (onColumnSort && currentColumn) {
                             let newDirection: 'asc' | 'desc' | undefined = 'asc'
                             if (sortColumn === currentColumn.id) {
                                 if (sortDirection === 'asc') newDirection = 'desc'
@@ -354,44 +289,19 @@ export const useHeaderScene = ({
                         }
                     }
 
-                    contentContainerRight.addChild(cached.sortButton)
+                    contentContainerRight.addChild(sortButton)
                 }
 
                 contentContainer.addChild(contentContainerLeft)
                 contentContainer.addChild(contentContainerRight)
                 wrapper.addChild(contentContainer)
             }
+
+            wrappers.push(wrapper)
         }
 
-        // Update root container children efficiently
-        // Always rebuild to ensure consistency (object pooling still saves allocations)
-        rootContainer.children = []
-        for (const cellId of currentActive) {
-            const cached = pool.get(cellId)
-            if (cached) {
-                rootContainer.addChild(cached.wrapper)
-            }
-        }
-
-        activeNodesRef.current = currentActive
-
-        // Cleanup: remove nodes that haven't been used for a while
-        // Keep pool size manageable (remove nodes not in current view)
-        const maxPoolSize = currentActive.size + 20 // Keep 20 extra for buffer
-        if (pool.size > maxPoolSize) {
-            const toRemove: string[] = []
-            for (const id of pool.keys()) {
-                if (!currentActive.has(id)) {
-                    toRemove.push(id)
-                    if (pool.size - toRemove.length <= maxPoolSize) break
-                }
-            }
-            for (const id of toRemove) {
-                pool.delete(id)
-            }
-        }
-
+        rootContainer.children = wrappers
         rootRef.current.render()
 
-    }, [createGripIconHandlers, enableColumnReorder, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells, columnPositions, columnWidths, canvasRef])
+    }, [canvasRef, columnPositions, columnWidths, createGripIconHandlers, enableColumnReorder, headerCells, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells])
 }
