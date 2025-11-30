@@ -645,7 +645,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                   sortColumn={sortState?.columnId}
                   sortDirection={sortState?.direction}
                   onColumnSort={handleHeaderSort}
-                  debugMode
+                  // debugMode
                 />
               </div>
             </div>
