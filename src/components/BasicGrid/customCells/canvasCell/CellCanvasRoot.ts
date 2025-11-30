@@ -4,7 +4,7 @@ import { CanvasContainer } from '../../components/CanvasHeader/core/CanvasContai
 type PointerEventType = CanvasEvent['type']
 
 export class CellCanvasRoot {
-  private rootNode: CanvasNode
+  public rootNode: CanvasNode
   private bounds: Rect | null = null
   private hoveredNode: CanvasNode | null = null
 

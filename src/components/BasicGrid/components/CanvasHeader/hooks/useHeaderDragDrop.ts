@@ -123,7 +123,7 @@ export const useHeaderDragDrop = ({
             }
         }
 
-        const handleMouseUp = (e: MouseEvent) => {
+        const handleMouseUp = () => {
             if (dropIndicatorRef.current) {
                 const targetIndexStr = dropIndicatorRef.current.dataset.targetIndex
                 if (targetIndexStr) {

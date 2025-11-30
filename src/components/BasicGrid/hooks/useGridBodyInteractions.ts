@@ -18,7 +18,6 @@ interface UseGridBodyInteractionsOptions {
 
 export function useGridBodyInteractions({
   estimatedRowHeight,
-  headerHeightPx,
   stickyHeaderEnabled,
   stickyBodyStyle,
   overlayPaddingBottom,
@@ -31,7 +30,7 @@ export function useGridBodyInteractions({
 }: UseGridBodyInteractionsOptions) {
   const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
     (range, tx = 0, ty = 0, _extras) => {
-      handleVisibleRegionChanged(range, tx)
+      handleVisibleRegionChanged(range, tx, ty, _extras)
 
       if (overlayRow && overlayContent) {
         requestAnimationFrame(() => updateOverlayPosition())

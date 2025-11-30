@@ -34,10 +34,8 @@ import { selectCellRenderer } from './customCells/selectCell'
 import { buttonCellRenderer } from './customCells/buttonCell'
 import { canvasCellRenderer } from './customCells/canvasCell/index'
 import { useRowSelectionState } from './hooks/useRowSelectionState'
-import { useColumnReorderDrag } from './hooks/useColumnReorderDrag'
 import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
-import { getScrollbarWidth } from './utils/getScrollbarWidth'
 import { HeaderVirtualizationProvider, useHeaderVirtualization } from './context/HeaderVirtualizationContext'
 import { useStickyHeader } from './hooks/useStickyHeader'
 import { useGridBodyInteractions } from './hooks/useGridBodyInteractions'
@@ -81,7 +79,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   rowHeight: rowHeightProp,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
   showRowMarkers = true,
-  scrollbarReserve: scrollbarReserveProp,
   className,
   enableColumnReorder = false,
   columnOrder,
@@ -114,13 +111,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     columnIndex: number
   } | null>(null)
   const stickyHeaderEnabled = Boolean(stickyHeader)
-
-  const scrollbarReserve = useMemo(() => {
-    if (scrollbarReserveProp !== undefined) {
-      return scrollbarReserveProp
-    }
-    return getScrollbarWidth()
-  }, [scrollbarReserveProp])
 
   const containerWidth = useContainerWidth(gridRef)
   const columnsWithSelection = useMemo(() => {
@@ -180,7 +170,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     onSortChange,
   })
   const rowSelectionEnabled = Boolean(enableRowSelection)
-  const { getSelectionStateForRow, toggleRowSelection, handleSelectAllChange, isAllRowsSelected, hasPartialRowSelection } =
+  const { getSelectionStateForRow, toggleRowSelection, hasPartialRowSelection } =
     useRowSelectionState({
       gridRows,
       rowSelectionEnabled,
@@ -245,7 +235,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     gridRows.length,
     orderedColumns.length
   )
-  const { selectRange, selectedBounds, highlightRegions, clearSelection } = columnSelection
+  const { highlightRegions, clearSelection } = columnSelection
   const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth, scrollLeft } = useHorizontalScroll({
     dataAreaWidth,
     rowMarkerWidth: markerWidth,

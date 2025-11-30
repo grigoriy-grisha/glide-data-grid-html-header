@@ -1,5 +1,5 @@
 import React from 'react'
-import { GridColumn } from '../../../../models/GridColumn'
+import { GridColumn } from '../../../models/GridColumn'
 import { SELECTION_COLUMN_ID } from '../../../constants'
 
 interface ResizeHandlesProps {
@@ -68,4 +68,3 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
   }
   return <>{handles}</>
 })
-
