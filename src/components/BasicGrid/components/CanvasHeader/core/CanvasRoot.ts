@@ -1,6 +1,5 @@
 import { CanvasNode, CanvasEvent } from './CanvasNode';
 import { CanvasContainer } from './CanvasContainer';
-import {log} from "handsontable/helpers";
 
 export class CanvasRoot {
     canvas: HTMLCanvasElement;

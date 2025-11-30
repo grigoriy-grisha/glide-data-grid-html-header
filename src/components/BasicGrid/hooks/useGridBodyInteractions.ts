@@ -4,7 +4,6 @@ import type { DataEditorProps } from '@glideapps/glide-data-grid'
 
 interface UseGridBodyInteractionsOptions {
   estimatedRowHeight: number
-  headerHeightPx: number
   stickyHeaderEnabled: boolean
   stickyBodyStyle?: React.CSSProperties
   overlayPaddingBottom: number
@@ -18,7 +17,6 @@ interface UseGridBodyInteractionsOptions {
 
 export function useGridBodyInteractions({
   estimatedRowHeight,
-  headerHeightPx,
   stickyHeaderEnabled,
   stickyBodyStyle,
   overlayPaddingBottom,
@@ -30,8 +28,8 @@ export function useGridBodyInteractions({
   updateStickyMetrics,
 }: UseGridBodyInteractionsOptions) {
   const handleVisibleRegionChangedWithOverlay = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
-    (range, tx = 0, ty = 0, _extras) => {
-      handleVisibleRegionChanged(range, tx)
+    (range, tx = 0, ty = 0, extras) => {
+      handleVisibleRegionChanged(range, tx, ty, extras)
 
       if (overlayRow && overlayContent) {
         requestAnimationFrame(() => updateOverlayPosition())

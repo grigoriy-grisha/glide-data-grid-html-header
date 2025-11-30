@@ -135,11 +135,6 @@ const columns: BasicGridColumn<DataRow>[] = [
               })
               statusStrip.style = { width: 4, alignSelf: 'stretch', flexShrink: 0 }
 
-              // Color based on role
-              let stripColor = '#e0e0e0'
-              if (row.role === 'Developer') stripColor = '#4caf50' // Green
-              if (row.role === 'Manager') stripColor = '#2196f3' // Blue
-              if (row.role === 'Designer') stripColor = '#e91e63' // Pink
 
               const avatarArea = new CanvasContainer(`avatar-area-${rowIndex}`, {
                 direction: 'column',

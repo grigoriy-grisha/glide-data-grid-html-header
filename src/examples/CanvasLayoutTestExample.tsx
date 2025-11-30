@@ -12,7 +12,7 @@ import {
 } from '../components/BasicGrid'
 import {HeaderCard} from './components/HeaderCard'
 
-interface LayoutTestRow {
+interface LayoutTestRow extends Record<string, unknown> {
   id: string
   description: string
 }
@@ -40,7 +40,7 @@ export function CanvasLayoutTestExample() {
         createColumn<LayoutTestRow>('description', 'canvas', 'Layout Visualization', {
           width: 800,
           canvasOptions: {
-            render: (ctx, rect, theme, hoverX, hoverY, row) => {
+            render: (ctx, rect, theme, hoverX, hoverY, _row) => {
               // Create a comprehensive layout test structure
               const testLayout = layout(
                 [
