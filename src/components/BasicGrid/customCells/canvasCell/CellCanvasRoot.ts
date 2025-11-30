@@ -11,9 +11,6 @@ export class CellCanvasRoot {
   
   /** Draw batcher for optimized rendering */
   private batcher: DrawBatcher = new DrawBatcher()
-  
-  /** Whether to use batched rendering (true) or legacy direct rendering (false) */
-  useBatchedRendering: boolean = true
 
   constructor(node: CanvasNode) {
     this.rootNode = node
@@ -37,15 +34,10 @@ export class CellCanvasRoot {
       this.handleMouseLeave()
     }
 
-    if (this.useBatchedRendering) {
-      // Batched rendering: collect commands, then flush
-      this.batcher.clear()
-      this.rootNode.enqueuePaint(this.batcher, ctx)
-      this.batcher.flush(ctx)
-    } else {
-      // Legacy direct rendering
-      this.rootNode.paint(ctx)
-    }
+    // Batched rendering: collect commands, then flush
+    this.batcher.clear()
+    this.rootNode.paint(this.batcher, ctx)
+    this.batcher.flush(ctx)
 
     ctx.restore()
   }
@@ -167,4 +159,3 @@ export class CellCanvasRoot {
     this.hoveredNode = target ?? null
   }
 }
-

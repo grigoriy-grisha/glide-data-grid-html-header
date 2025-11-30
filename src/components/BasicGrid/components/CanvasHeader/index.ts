@@ -9,3 +9,14 @@ export { CanvasContainer } from './core/CanvasContainer'
 export { CanvasAbsoluteContainer } from './core/CanvasAbsoluteContainer'
 export { CanvasNode } from './core/CanvasNode'
 export { CanvasLeaf } from './core/CanvasLeaf'
+
+// JSX Components
+export { Canvas, buildCanvasTree } from './CanvasComponents'
+export type {
+  CanvasContainerProps,
+  CanvasTextProps,
+  CanvasIconProps,
+  CanvasButtonProps,
+  CanvasIconButtonProps,
+  CanvasRectProps,
+} from './CanvasComponents'

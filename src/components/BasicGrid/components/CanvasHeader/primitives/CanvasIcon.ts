@@ -1,7 +1,7 @@
 import { drawIcon, preloadIconSprites } from '../../../customCells/canvasCell/buttons';
 import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
-import { CanvasLeaf } from "../core/CanvasLeaf.ts";
-import { DrawBatcher } from "../core/DrawBatcher.ts";
+import { CanvasLeaf } from "../core/CanvasLeaf";
+import { DrawBatcher } from "../core/DrawBatcher";
 
 const TRANSPARENT = 'transparent';
 
@@ -27,12 +27,7 @@ export class CanvasIcon extends CanvasLeaf {
         this.rect.height = this.size;
     }
 
-    onPaint(ctx: CanvasRenderingContext2D) {
-        drawBackgroundIfNeeded(ctx, this.backgroundColor, this.rect.x, this.rect.y, this.rect.width, this.rect.height);
-        drawIcon(ctx, this.icon, this.rect.x, this.rect.y, this.size, this.color);
-    }
-
-    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+    onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
         const { x, y, width, height } = this.rect;
         
         // Background
@@ -40,23 +35,7 @@ export class CanvasIcon extends CanvasLeaf {
             batcher.fillRect(x, y, width, height, this.backgroundColor);
         }
         
-        // Icon - now works directly with batcher
+        // Icon
         drawIcon(batcher, this.icon, x, y, this.size, this.color);
     }
 }
-
-const drawBackgroundIfNeeded = (
-    ctx: CanvasRenderingContext2D,
-    color: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-) => {
-    if (!color || color === TRANSPARENT) {
-        return;
-    }
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-};
-

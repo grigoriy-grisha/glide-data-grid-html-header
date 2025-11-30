@@ -413,17 +413,10 @@ export class CanvasContainer extends CanvasNode {
     // Painting
     // ─────────────────────────────────────────────────────────────────────────
 
-    onPaint(ctx: CanvasRenderingContext2D) {
-        // Inline loop without intermediate variable for micro-optimization
+    onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
+        // Paint all children
         for (let i = 0, children = this.children, len = children.length; i < len; i++) {
-            children[i].paint(ctx);
-        }
-    }
-
-    onEnqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
-        // Enqueue all children's paint commands
-        for (let i = 0, children = this.children, len = children.length; i < len; i++) {
-            children[i].enqueuePaint(batcher, ctx);
+            children[i].paint(batcher, ctx);
         }
     }
 }

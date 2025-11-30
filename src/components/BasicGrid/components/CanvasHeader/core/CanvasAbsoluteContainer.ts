@@ -66,27 +66,7 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
         }
     }
 
-    onPaint(ctx: CanvasRenderingContext2D) {
-        if (this.backgroundColor && this.backgroundColor !== 'transparent') {
-            ctx.fillStyle = this.backgroundColor;
-            ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
-        }
-
-        if (this.borderWidth > 0 && this.borderColor && this.borderColor !== 'transparent') {
-            ctx.strokeStyle = this.borderColor;
-            ctx.lineWidth = this.borderWidth;
-            ctx.strokeRect(
-                this.rect.x + this.borderWidth / 2,
-                this.rect.y + this.borderWidth / 2,
-                this.rect.width - this.borderWidth,
-                this.rect.height - this.borderWidth
-            );
-        }
-
-        super.onPaint(ctx);
-    }
-
-    onEnqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
+    onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
         // Draw background
         if (this.backgroundColor && this.backgroundColor !== 'transparent') {
             batcher.fillRect(
@@ -110,7 +90,7 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
             );
         }
 
-        // Enqueue children
-        super.onEnqueuePaint(batcher, ctx);
+        // Paint children
+        super.onPaint(batcher, ctx);
     }
 }

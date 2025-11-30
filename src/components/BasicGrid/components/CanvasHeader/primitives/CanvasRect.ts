@@ -17,26 +17,8 @@ export class CanvasRect extends CanvasLeaf {
         // Rect has no intrinsic size; layout drives dimensions.
     }
 
-    onPaint(ctx: CanvasRenderingContext2D) {
-        if (hasVisibleFill(this.color)) {
-            drawFill(ctx, this.rect.x, this.rect.y, this.rect.width, this.rect.height, this.color);
-        }
-
-        if (hasVisibleBorder(this.borderWidth, this.borderColor)) {
-            drawBorder(
-                ctx,
-                this.rect.x,
-                this.rect.y,
-                this.rect.width,
-                this.rect.height,
-                this.borderWidth,
-                this.borderColor,
-            );
-        }
-    }
-
-    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
-        if (hasVisibleFill(this.color)) {
+    onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        if (this.color !== TRANSPARENT) {
             batcher.fillRect(
                 this.rect.x,
                 this.rect.y,
@@ -46,7 +28,7 @@ export class CanvasRect extends CanvasLeaf {
             );
         }
 
-        if (hasVisibleBorder(this.borderWidth, this.borderColor)) {
+        if (this.borderWidth > 0 && this.borderColor !== TRANSPARENT) {
             batcher.strokeRect(
                 this.rect.x + this.borderWidth / 2,
                 this.rect.y + this.borderWidth / 2,
@@ -58,39 +40,3 @@ export class CanvasRect extends CanvasLeaf {
         }
     }
 }
-
-const hasVisibleFill = (color: string) => color !== TRANSPARENT;
-
-const hasVisibleBorder = (width: number, color: string) =>
-    width > 0 && color !== TRANSPARENT;
-
-const drawFill = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    color: string,
-) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-};
-
-const drawBorder = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    borderWidth: number,
-    color: string,
-) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = borderWidth;
-    ctx.strokeRect(
-        x + borderWidth / 2,
-        y + borderWidth / 2,
-        width - borderWidth,
-        height - borderWidth,
-    );
-};

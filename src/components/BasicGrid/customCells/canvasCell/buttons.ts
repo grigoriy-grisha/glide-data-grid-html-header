@@ -1,7 +1,6 @@
 import { isHoveringBounds } from './helpers'
 import type { HoverState } from './types'
 import {
-  drawIconDirect,
   getIconSprite,
   getIconImageDirect,
   type ButtonIcon,
@@ -22,16 +21,6 @@ export const BUTTON_PADDING_Y = 4
 export const ICON_SIZE_ADJUSTMENT = 4
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DrawTarget - unified interface for ctx or batcher
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type DrawTarget = CanvasRenderingContext2D | DrawBatcher
-
-function isBatcher(target: DrawTarget): target is DrawBatcher {
-  return target instanceof DrawBatcher
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Caches
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -41,42 +30,9 @@ const lightenColorCache = new Map<string, string>()
 // Cache for text measurements: key = "font|text"
 const textMeasureCache = new Map<string, number>()
 
-// Check if native roundRect is available
-const hasNativeRoundRect = typeof CanvasRenderingContext2D.prototype.roundRect === 'function'
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper functions
 // ─────────────────────────────────────────────────────────────────────────────
-
-function drawRoundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-): void {
-  if (hasNativeRoundRect) {
-    ctx.beginPath()
-    ctx.roundRect(x, y, width, height, radius)
-    ctx.closePath()
-  } else {
-    const r = radius
-    const right = x + width
-    const bottom = y + height
-    ctx.beginPath()
-    ctx.moveTo(x + r, y)
-    ctx.lineTo(right - r, y)
-    ctx.quadraticCurveTo(right, y, right, y + r)
-    ctx.lineTo(right, bottom - r)
-    ctx.quadraticCurveTo(right, bottom, right - r, bottom)
-    ctx.lineTo(x + r, bottom)
-    ctx.quadraticCurveTo(x, bottom, x, bottom - r)
-    ctx.lineTo(x, y + r)
-    ctx.quadraticCurveTo(x, y, x + r, y)
-    ctx.closePath()
-  }
-}
 
 function getCachedTextWidth(ctx: CanvasRenderingContext2D, text: string, font: string): number {
   const key = font + '|' + text
@@ -115,15 +71,14 @@ const DANGER_COLOR = '#d32f2f'
 const DANGER_COLOR_HOVER = lightenColorImpl(DANGER_COLOR, 15)
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Universal drawIcon - works with both ctx and batcher
+// Draw functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Draw an icon to either a canvas context or a DrawBatcher.
- * When using batcher, the icon will be drawn via drawImage command.
+ * Draw an icon using the batcher.
  */
 export function drawIcon(
-  target: DrawTarget,
+  batcher: DrawBatcher,
   icon: ButtonIcon,
   x: number,
   y: number,
@@ -134,29 +89,23 @@ export function drawIcon(
     return
   }
 
-  if (isBatcher(target)) {
-    // Get sprite or image for batched rendering
-    const sprite = getIconSprite(icon, size, color)
-    if (sprite) {
-      target.drawImage(sprite, x, y, size, size)
-      return
-    }
-    const img = getIconImageDirect(icon, color)
-    if (img) {
-      target.drawImage(img, x, y, size, size)
-    }
-  } else {
-    // Direct rendering
-    drawIconDirect(target, icon, x, y, size, color)
+  // Get sprite or image for batched rendering
+  const sprite = getIconSprite(icon, size, color)
+  if (sprite) {
+    batcher.drawImage(sprite, x, y, size, size)
+    return
+  }
+  const img = getIconImageDirect(icon, color)
+  if (img) {
+    batcher.drawImage(img, x, y, size, size)
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Universal draw functions - work with both ctx and batcher
-// ─────────────────────────────────────────────────────────────────────────────
-
+/**
+ * Draw a button using the batcher.
+ */
 export function drawButton(
-  target: DrawTarget,
+  batcher: DrawBatcher,
   x: number,
   y: number,
   width: number | 'auto',
@@ -168,7 +117,7 @@ export function drawButton(
   hovered: HoverState = false,
   leftIcon?: ButtonIcon,
   rightIcon?: ButtonIcon,
-  /** Required for text measurement when width='auto' and using batcher */
+  /** Required for text measurement when width='auto' */
   measureCtx?: CanvasRenderingContext2D
 ): { x: number; y: number; width: number; height: number; actualWidth: number } {
   const paddingY = 4
@@ -177,13 +126,10 @@ export function drawButton(
   const iconSpacing = 6
   const font = theme.baseFontFull
 
-  // Get ctx for measurement (use target if it's ctx, otherwise use measureCtx)
-  const ctx = isBatcher(target) ? measureCtx : target
-
   // Calculate width
   let textWidth = 0
-  if (ctx) {
-    textWidth = getCachedTextWidth(ctx, label, font)
+  if (measureCtx) {
+    textWidth = getCachedTextWidth(measureCtx, label, font)
   }
   
   let actualWidth: number
@@ -212,67 +158,38 @@ export function drawButton(
 
   let currentX = centerX - contentWidth * 0.5
 
-  if (isBatcher(target)) {
-    // Batched rendering
-    target.roundedRect(x, buttonY, actualWidth, buttonHeight, 4, {
-      fillStyle: colors.bgColor,
-      strokeStyle: colors.borderColor,
-      lineWidth: 1,
-    })
+  // Draw button background
+  batcher.roundedRect(x, buttonY, actualWidth, buttonHeight, 4, {
+    fillStyle: colors.bgColor,
+    strokeStyle: colors.borderColor,
+    lineWidth: 1,
+  })
 
-    // Left icon
-    if (leftIcon) {
-      const iconY = centerY - iconSize * 0.5
-      drawIcon(target, leftIcon, currentX, iconY, iconSize, colors.textColor)
-      currentX += iconSize + iconSpacing
-    }
+  // Left icon
+  if (leftIcon) {
+    const iconY = centerY - iconSize * 0.5
+    drawIcon(batcher, leftIcon, currentX, iconY, iconSize, colors.textColor)
+    currentX += iconSize + iconSpacing
+  }
 
-    // Text
-    target.fillText(label, currentX, centerY, font, colors.textColor, 'middle', 'left')
+  // Text
+  batcher.fillText(label, currentX, centerY, font, colors.textColor, 'middle', 'left')
 
-    // Right icon
-    if (rightIcon) {
-      const rightIconX = currentX + textWidth + iconSpacing
-      const iconY = centerY - iconSize * 0.5
-      drawIcon(target, rightIcon, rightIconX, iconY, iconSize, colors.textColor)
-    }
-  } else {
-    // Direct rendering
-    target.fillStyle = colors.bgColor
-    target.strokeStyle = colors.borderColor
-    target.lineWidth = 1
-
-    drawRoundedRect(target, x, buttonY, actualWidth, buttonHeight, 4)
-    target.fill()
-    target.stroke()
-
-    // Left icon
-    if (leftIcon) {
-      const iconY = centerY - iconSize * 0.5
-      drawIcon(target, leftIcon, currentX, iconY, iconSize, colors.textColor)
-      currentX += iconSize + iconSpacing
-    }
-
-    // Text
-    target.font = font
-    target.textBaseline = 'middle'
-    target.textAlign = 'left'
-    target.fillStyle = colors.textColor
-    target.fillText(label, currentX, centerY)
-
-    // Right icon
-    if (rightIcon) {
-      currentX += textWidth + iconSpacing
-      const iconY = centerY - iconSize * 0.5
-      drawIcon(target, rightIcon, currentX, iconY, iconSize, colors.textColor)
-    }
+  // Right icon
+  if (rightIcon) {
+    const rightIconX = currentX + textWidth + iconSpacing
+    const iconY = centerY - iconSize * 0.5
+    drawIcon(batcher, rightIcon, rightIconX, iconY, iconSize, colors.textColor)
   }
 
   return { x, y: buttonY, width: actualWidth, height: buttonHeight, actualWidth }
 }
 
+/**
+ * Draw an icon button using the batcher.
+ */
 export function drawIconButton(
-  target: DrawTarget,
+  batcher: DrawBatcher,
   x: number,
   y: number,
   size: number | 'auto',
@@ -301,32 +218,24 @@ export function drawIconButton(
   const iconX = centerX - iconSize * 0.5
   const iconY = centerY - iconSize * 0.5
 
-  if (isBatcher(target)) {
-    // Batched rendering
-    target.roundedRect(x, buttonY, actualSize, buttonHeight, 4, {
-      fillStyle: colors.bgColor,
-      strokeStyle: colors.borderColor,
-      lineWidth: 1,
-    })
-    drawIcon(target, icon, iconX, iconY, iconSize, colors.iconColor)
-  } else {
-    // Direct rendering
-    target.fillStyle = colors.bgColor
-    target.strokeStyle = colors.borderColor
-    target.lineWidth = 1
+  // Draw button background
+  batcher.roundedRect(x, buttonY, actualSize, buttonHeight, 4, {
+    fillStyle: colors.bgColor,
+    strokeStyle: colors.borderColor,
+    lineWidth: 1,
+  })
 
-    drawRoundedRect(target, x, buttonY, actualSize, buttonHeight, 4)
-    target.fill()
-    target.stroke()
-
-    drawIcon(target, icon, iconX, iconY, iconSize, colors.iconColor)
-  }
+  // Draw icon
+  drawIcon(batcher, icon, iconX, iconY, iconSize, colors.iconColor)
 
   return { x, y: buttonY, width: actualSize, height: buttonHeight }
 }
 
+/**
+ * Draw a tag using the batcher.
+ */
 export function drawTag(
-  target: DrawTarget,
+  batcher: DrawBatcher,
   x: number,
   centerY: number,
   maxHeight: number,
@@ -334,7 +243,7 @@ export function drawTag(
   theme: any,
   textColor?: string,
   backgroundColor?: string,
-  /** Required for text measurement when using batcher */
+  /** Required for text measurement */
   measureCtx?: CanvasRenderingContext2D
 ): { x: number; y: number; width: number; height: number } {
   const paddingX = 10
@@ -342,15 +251,12 @@ export function drawTag(
   const minHeight = 18
   const font = theme.baseFontFull
 
-  // Get ctx for measurement
-  const ctx = isBatcher(target) ? measureCtx : target
-
   let textWidth = 0
   let textHeight = 14
-  if (ctx) {
-    textWidth = getCachedTextWidth(ctx, label, font)
-    ctx.font = font
-    const metrics = ctx.measureText(label)
+  if (measureCtx) {
+    textWidth = getCachedTextWidth(measureCtx, label, font)
+    measureCtx.font = font
+    const metrics = measureCtx.measureText(label)
     textHeight = (metrics.actualBoundingBoxAscent ?? 10) + (metrics.actualBoundingBoxDescent ?? 4)
   }
 
@@ -365,30 +271,15 @@ export function drawTag(
   const strokeColor = theme.borderColor ?? fillColor
   const labelColor = textColor ?? theme.textDark ?? '#1f1f1f'
 
-  if (isBatcher(target)) {
-    // Batched rendering
-    target.roundedRect(x, tagTop, tagWidth, tagHeight, radius, {
-      fillStyle: fillColor,
-      strokeStyle: strokeColor,
-      lineWidth: 1,
-    })
-    target.fillText(label, x + paddingX, centerY, font, labelColor, 'middle', 'left')
-  } else {
-    // Direct rendering
-    target.fillStyle = fillColor
-    target.strokeStyle = strokeColor
-    target.lineWidth = 1
+  // Draw tag background
+  batcher.roundedRect(x, tagTop, tagWidth, tagHeight, radius, {
+    fillStyle: fillColor,
+    strokeStyle: strokeColor,
+    lineWidth: 1,
+  })
 
-    drawRoundedRect(target, x, tagTop, tagWidth, tagHeight, radius)
-    target.fill()
-    target.stroke()
-
-    target.font = font
-    target.textBaseline = 'middle'
-    target.textAlign = 'left'
-    target.fillStyle = labelColor
-    target.fillText(label, x + paddingX, centerY)
-  }
+  // Draw text
+  batcher.fillText(label, x + paddingX, centerY, font, labelColor, 'middle', 'left')
 
   return { x, y: tagTop, width: tagWidth, height: tagHeight }
 }
@@ -443,4 +334,3 @@ function resolveButtonColors(
 
   return { bgColor, borderColor, textColor, iconColor: textColor }
 }
-

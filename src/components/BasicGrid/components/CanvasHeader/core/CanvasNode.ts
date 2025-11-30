@@ -124,31 +124,16 @@ export abstract class CanvasNode {
     abstract measure(ctx: CanvasRenderingContext2D): void;
 
     /**
-     * Paint using direct context (legacy mode).
-     * @deprecated Use enqueuePaint with DrawBatcher for optimized rendering.
-     */
-    paint(ctx: CanvasRenderingContext2D) {
-        this.onPaint(ctx);
-        if (CanvasNode.DEBUG) {
-            ctx.save();
-            ctx.strokeStyle = this.debugColor;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
-            ctx.restore();
-        }
-    }
-
-    /**
-     * Enqueue draw commands to the batcher for optimized rendering.
+     * Paint node using the batcher.
      * @param batcher - The draw batcher to enqueue commands to
-     * @param ctx - Canvas context for text measurement (required for proper layout)
+     * @param ctx - Canvas context for text measurement
      */
-    enqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void {
+    paint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void {
         // Set z-index for this node's commands
         const prevZ = batcher.getZIndex();
         batcher.setZIndex(prevZ + this.zIndex);
         
-        this.onEnqueuePaint(batcher, ctx);
+        this.onPaint(batcher, ctx);
         
         if (CanvasNode.DEBUG) {
             batcher.strokeRect(
@@ -166,17 +151,11 @@ export abstract class CanvasNode {
     }
 
     /**
-     * Override this to enqueue draw commands.
-     * Default implementation falls back to custom command with onPaint.
+     * Override this to draw the node.
      * @param batcher - The draw batcher to enqueue commands to
      * @param ctx - Canvas context for text measurement
      */
-    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D): void {
-        // Fallback: wrap legacy onPaint in a custom command
-        batcher.custom((ctx) => this.onPaint(ctx));
-    }
-
-    abstract onPaint(ctx: CanvasRenderingContext2D): void;
+    abstract onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void;
 
     hitTest(x: number, y: number): CanvasNode[] {
         const hits: CanvasNode[] = [];

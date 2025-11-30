@@ -5,14 +5,11 @@ import { DrawBatcher } from './DrawBatcher';
 export class CanvasRoot {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
-    rootNode: CanvasNode; // Changed from CanvasContainer to CanvasNode to support generic roots
+    rootNode: CanvasNode;
     hoveredNode: CanvasNode | null = null;
 
     /** Draw batcher for optimized rendering */
     private batcher: DrawBatcher = new DrawBatcher();
-
-    /** Whether to use batched rendering (true) or legacy direct rendering (false) */
-    useBatchedRendering: boolean = true;
 
     constructor(canvas: HTMLCanvasElement, rootNode: CanvasNode) {
         this.canvas = canvas;
@@ -132,15 +129,10 @@ export class CanvasRoot {
         this.updateRootRect(rect);
         this.layoutRoot();
 
-        if (this.useBatchedRendering) {
-            // Batched rendering: collect commands, then flush
-            this.batcher.clear();
-            this.rootNode.enqueuePaint(this.batcher, this.ctx);
-            this.batcher.flush(this.ctx);
-        } else {
-            // Legacy direct rendering
-            this.rootNode.paint(this.ctx);
-        }
+        // Batched rendering: collect commands, then flush
+        this.batcher.clear();
+        this.rootNode.paint(this.batcher, this.ctx);
+        this.batcher.flush(this.ctx);
     }
 
     private clearCanvas() {

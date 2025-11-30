@@ -1,11 +1,7 @@
 import { useMemo } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, Canvas, buildCanvasTree } from '../components/BasicGrid'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
-import { CanvasContainer } from '../components/BasicGrid/components/CanvasHeader/core/CanvasContainer'
-import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
-import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIcon'
-import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
 
 const svgIcon = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -31,79 +27,61 @@ const columns: BasicGridColumn<DataRow>[] = [
         dataType: "string",
         title: 'ID',
         width: 150,
-        renderColumnContent: ( rect) => {
-          const root = new CanvasContainer('root', {
-            direction: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            columnGap: 6,
-            wrap: 'wrap',
-            alignContent: 'center',
-          })
-
-          root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-
-          const text = new CanvasText('text-label', 'Текст:')
-          text.color = '#666'
-          root.addChild(text)
-
-          const icon = new CanvasIcon('icon-svg', svgIcon, { size: 20, color: '#1565c0' })
-          icon.style = {
-            width: 20,
-            height: 20,
-          }
-          icon.onClick = () => {
-            console.log('SVG Icon clicked via CanvasNode!')
-          }
-          icon.onMouseEnter = () => {
-            icon.color = '#9065c0'
-          }
-          icon.onMouseLeave = () => {
-            icon.color = '#1565c0'
-          }
-
-          root.addChild(icon)
-
-          return root
+        renderColumnContent: () => {
+          return buildCanvasTree(
+            <Canvas.Container
+              direction="row"
+              alignItems="center"
+              justifyContent="center"
+              columnGap={6}
+              wrap="wrap"
+              alignContent="center"
+            >
+              <Canvas.Text color="#666">Текст:</Canvas.Text>
+              <Canvas.Icon
+                icon={svgIcon}
+                size={20}
+                color="#1565c0"
+                style={{ width: 20, height: 20 }}
+                onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
+              />
+            </Canvas.Container>,
+            'header-id'
+          )
         },
-        renderCellContent: (row, rowIndex, rect) => {
-          const root = new CanvasContainer(`cell-root-${row.employeeId ?? rowIndex}`, {
-            direction: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            columnGap: 8,
-            padding: 8,
-            wrap: 'wrap'
-          })
-          root.rect = { x: 0, y: 0, width: rect.width, height: rect.height }
-
-          const left = new CanvasContainer(`cell-left-${row.employeeId ?? rowIndex}`, {
-            direction: 'column',
-            rowGap: 2,
-          })
-          left.style.width = '100%'
-
-          const title = new CanvasText(`cell-title-${row.employeeId ?? rowIndex}`, row.employeeId ?? '—')
-          title.color = '#0d47a1'
-          title.style = { flexGrow: 1 }
-          left.addChild(title)
-
-          const subtitle = new CanvasText(`cell-sub-${row.employeeId ?? rowIndex}`, row.role ?? '—')
-          subtitle.color = '#607d8b'
-          subtitle.style = { flexGrow: 1 }
-          left.addChild(subtitle)
-
-          const actionButton = new CanvasButton(`cell-btn-${row.employeeId ?? rowIndex}`, 'Подробнее', {
-            variant: 'secondary',
-          })
-          actionButton.onClick = () => {
-            console.log('Подробнее по сотруднику', row.employeeId)
-          }
-
-          root.addChild(left)
-          root.addChild(actionButton)
-
-          return root
+        renderCellContent: (row, rowIndex) => {
+          return buildCanvasTree(
+            <Canvas.Container
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              columnGap={8}
+              padding={8}
+              wrap="wrap"
+              id={`cell-root-${row.employeeId ?? rowIndex}`}
+            >
+              <Canvas.Container
+                direction="column"
+                rowGap={2}
+                style={{ width: '100%' }}
+                id={`cell-left-${row.employeeId ?? rowIndex}`}
+              >
+                <Canvas.Text color="#0d47a1" style={{ flexGrow: 1 }}>
+                  {row.employeeId ?? '—'}
+                </Canvas.Text>
+                <Canvas.Text color="#607d8b" style={{ flexGrow: 1 }}>
+                  {row.role ?? '—'}
+                </Canvas.Text>
+              </Canvas.Container>
+              <Canvas.Button
+                variant="secondary"
+                onClick={() => console.log('Подробнее по сотруднику', row.employeeId)}
+              >
+                Подробнее
+              </Canvas.Button>
+            </Canvas.Container>,
+            `cell-${rowIndex}`
+          )
         },
       },
       {
@@ -119,149 +97,64 @@ const columns: BasicGridColumn<DataRow>[] = [
           createColumn<DataRow>('role', 'string', 'Роль', {
             width: 320,
             renderCellContent: (row, rowIndex) => {
-              // Root: Row layout
-              const root = new CanvasContainer(`role-root-${rowIndex}`, {
-                direction: 'row',
-                justifyContent: 'space-between',
-                padding: 4,
-                columnGap: 8,
-              })
+              const iconChar = row.role === 'Developer' ? '💻' 
+                : row.role === 'Manager' ? '💼' 
+                : row.role === 'Designer' ? '🎨' 
+                : '👤'
 
+              const desc = row.role === 'Developer' ? 'Full-stack разработка, React/Node.js'
+                : row.role === 'Manager' ? 'Управление проектами, Agile/Scrum'
+                : row.role === 'Designer' ? 'UI/UX дизайн, Figma, прототипирование'
+                : 'Сотрудник'
 
-              const statusStrip = new CanvasContainer(`status-strip-${rowIndex}`, {
-                direction: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-              })
-              statusStrip.style = { width: 4, alignSelf: 'stretch', flexShrink: 0 }
+              return buildCanvasTree(
+                <Canvas.Container direction="row" justifyContent="space-between" padding={4} columnGap={8}>
+                  <Canvas.Container
+                    direction="column"
+                    justifyContent="center"
+                    alignItems="center"
+                    rowGap={2}
+                    style={{ width: 40, flexShrink: 0 }}
+                  >
+                    <Canvas.Text font="24px sans-serif">{iconChar}</Canvas.Text>
+                    <Canvas.Text font="9px sans-serif" color="#999">{`#${rowIndex + 1}`}</Canvas.Text>
+                  </Canvas.Container>
+                  <Canvas.Container direction="column" justifyContent="flex-start" padding={{ left: 4, right: 4 }}>
+                    <Canvas.Container direction="row" justifyContent="space-between" alignItems="center">
+                      <Canvas.Text font="bold 12px sans-serif" color="#333">{row.role as string}</Canvas.Text>
+                      <Canvas.Text font="10px sans-serif" color="#4caf50">{row.status?.name || 'Active'}</Canvas.Text>
+                    </Canvas.Container>
+                    <Canvas.Container direction="row" alignItems="flex-start" padding={{ top: 2, bottom: 2 }}>
+                      <Canvas.Text font="10px sans-serif" color="#666" wordWrap lineHeight={1.2}>
+                        {desc}
+                      </Canvas.Text>
+                    </Canvas.Container>
+                    <Canvas.Container direction="row" justifyContent="flex-start" alignItems="center" columnGap={4}>
+                      <Canvas.Button variant="secondary">FullTime</Canvas.Button>
+                      <Canvas.Button variant="secondary">Office</Canvas.Button>
+                    </Canvas.Container>
+                  </Canvas.Container>
 
-
-              const avatarArea = new CanvasContainer(`avatar-area-${rowIndex}`, {
-                direction: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                rowGap: 2,
-              })
-              avatarArea.style = { width: 40, flexShrink: 0 }
-
-              let iconChar = '👤'
-              if (row.role === 'Developer') iconChar = '💻'
-              if (row.role === 'Manager') iconChar = '💼'
-              if (row.role === 'Designer') iconChar = '🎨'
-
-              const icon = new CanvasText(`icon-${rowIndex}`, iconChar, { font: '24px sans-serif' })
-              avatarArea.addChild(icon)
-
-              // Small ID text below icon
-              const idText = new CanvasText(`id-${rowIndex}`, `#${rowIndex + 1}`, { font: '9px sans-serif', color: '#999' })
-              avatarArea.addChild(idText)
-
-              root.addChild(avatarArea)
-
-              // SECTION 2: Main Content (Column, Flex Grow)
-              const contentArea = new CanvasContainer(`content-area-${rowIndex}`, {
-                direction: 'column',
-                justifyContent: 'flex-start', // Push header to top, tags to bottom
-                padding: { left: 4, right: 4 },
-              })
-
-              // 2.1 Header Row (Row: Title + Badge)
-              const headerRow = new CanvasContainer(`header-row-${rowIndex}`, {
-                direction: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              })
-
-              const titleText = new CanvasText(`title-${rowIndex}`, row.role as string, {
-                font: 'bold 12px sans-serif',
-                color: '#333'
-              })
-              headerRow.addChild(titleText)
-
-              // Status badge (Auto width)
-              const statusText = new CanvasText(`status-${rowIndex}`, row.status?.name || 'Active', {
-                  font: '10px sans-serif',
-                  color: '#4caf50'
-              })
-              headerRow.addChild(statusText)
-
-              contentArea.addChild(headerRow)
-
-              // 2.2 Description Row (Row with wrapping text)
-              const descRow = new CanvasContainer(`desc-row-${rowIndex}`, {
-                  direction: 'row',
-                  alignItems: 'flex-start',
-                  padding: { top: 2, bottom: 2 }
-              })
-
-              let desc = 'Сотрудник'
-              if (row.role === 'Developer') desc = 'Full-stack разработка, React/Node.js'
-              if (row.role === 'Manager') desc = 'Управление проектами, Agile/Scrum'
-              if (row.role === 'Designer') desc = 'UI/UX дизайн, Figma, прототипирование'
-
-              const descText = new CanvasText(`desc-text-${rowIndex}`, desc, {
-                  font: '10px sans-serif',
-                  color: '#666',
-                  wordWrap: true,
-                  lineHeight: 1.2
-              })
-              descRow.addChild(descText)
-              contentArea.addChild(descRow)
-
-              // 2.3 Tags Row (Row: Flex-start with gap)
-              const tagsRow = new CanvasContainer(`tags-row-${rowIndex}`, {
-                  direction: 'row',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
-                  columnGap: 4
-              })
-
-              // Mock tags
-              const tags = ['FullTime', 'Office']
-              tags.forEach((tag, i) => {
-                  const tagBtn = new CanvasButton(`tag-${rowIndex}-${i}`, tag, { variant: 'secondary' })
-                  // Hack to make button smaller
-                  // tagBtn.style = { height: 16, fontSize: 9 } // hypothetical style support
-                  tagsRow.addChild(tagBtn)
-              })
-              contentArea.addChild(tagsRow)
-
-              root.addChild(contentArea)
-
-              // SECTION 3: Actions Area (Column: Space Around)
-              const actionsArea = new CanvasContainer(`actions-area-${rowIndex}`, {
-                  direction: 'column',
-                  justifyContent: 'space-around',
-                  alignItems: 'flex-end',
-                  padding: { left: 4 }
-              })
-              actionsArea.style = { width: 80, flexShrink: 0 }
-
-              // Top Action
-              const msgBtn = new CanvasButton(`msg-btn-${rowIndex}`, 'Chat', { variant: 'primary' })
-              msgBtn.onClick = () => console.log('Chat', row.employeeId)
-              actionsArea.addChild(msgBtn)
-
-              // Bottom Info (Right aligned text column)
-              const metaInfo = new CanvasContainer(`meta-${rowIndex}`, {
-                  direction: 'column',
-                  alignItems: 'flex-end',
-                  rowGap: 2
-              })
-              const dateText = new CanvasText(`date-${rowIndex}`, '2 ч. назад', { font: '9px sans-serif', color: '#aaa' })
-              metaInfo.addChild(dateText)
-
-              const deptText = new CanvasText(`dept-${rowIndex}`, (row.department as string).substring(0, 8) + '...', {
-                  font: '9px sans-serif',
-                  color: '#999'
-              })
-              metaInfo.addChild(deptText)
-
-              actionsArea.addChild(metaInfo)
-
-              root.addChild(actionsArea)
-
-              return root
+                  <Canvas.Container
+                    direction="column"
+                    justifyContent="space-around"
+                    alignItems="flex-end"
+                    padding={{ left: 4 }}
+                    style={{ width: 80, flexShrink: 0 }}
+                  >
+                    <Canvas.Button variant="primary" onClick={() => console.log('Chat', row.employeeId)}>
+                      Chat
+                    </Canvas.Button>
+                    <Canvas.Container direction="column" alignItems="flex-end" rowGap={2}>
+                      <Canvas.Text font="9px sans-serif" color="#aaa">2 ч. назад</Canvas.Text>
+                      <Canvas.Text font="9px sans-serif" color="#999">
+                        {`${(row.department as string).substring(0, 8)}...`}
+                      </Canvas.Text>
+                    </Canvas.Container>
+                  </Canvas.Container>
+                </Canvas.Container>,
+                `role-${rowIndex}`
+              )
             },
           }),
           createColumn<DataRow>('department', 'string', 'Отдел', { width: 180 }),
@@ -293,54 +186,33 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'Действие',
         dataType: 'string',
         width: 150,
-        renderColumnContent: ( ) => {
-          const root = new CanvasContainer('root', {
-            direction: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            columnGap: 6,
-            wrap: 'wrap',
-            alignContent: 'center',
-          })
-
-
-          // Текст
-          const text = new CanvasText('text-label', 'Текст:')
-          text.color = '#666'
-          root.addChild(text)
-
-          // Иконка SVG
-          const icon = new CanvasIcon('icon-svg', svgIcon, { size: 20, color: '#1565c0' })
-          icon.style = {
-            width: 20,
-            height: 20,
-          }
-          icon.onClick = () => {
-            console.log('SVG Icon clicked via CanvasNode!')
-          }
-          icon.onMouseEnter = () => {
-            icon.color = '#9065c0'
-          }
-          icon.onMouseLeave = () => {
-            icon.color = '#1565c0'
-          }
-
-          root.addChild(icon)
-
-          // Кнопка
-          const button = new CanvasButton('btn-test', 'Button', { variant: 'secondary' })
-          button.onClick = () => {
-            console.log('Button clicked!')
-          }
-          root.addChild(button)
-          const button1 = new CanvasButton('btn-test', 'Button', { variant: 'secondary' })
-          button1.onClick = () => {
-            console.log('Button clicked!')
-          }
-          root.addChild(button1)
-
-          // Возвращаем root ноду для интеграции
-          return root
+        renderColumnContent: () => {
+          return buildCanvasTree(
+            <Canvas.Container
+              direction="row"
+              alignItems="center"
+              justifyContent="center"
+              columnGap={6}
+              wrap="wrap"
+              alignContent="center"
+            >
+              <Canvas.Text color="#666">Текст:</Canvas.Text>
+              <Canvas.Icon
+                icon={svgIcon}
+                size={20}
+                color="#1565c0"
+                style={{ width: 20, height: 20 }}
+                onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
+              />
+              <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+                Button
+              </Canvas.Button>
+              <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+                Button
+              </Canvas.Button>
+            </Canvas.Container>,
+            'action-header'
+          )
         },
       },
     ],
@@ -417,5 +289,3 @@ export function BasicGridExample() {
     </div>
   )
 }
-
-

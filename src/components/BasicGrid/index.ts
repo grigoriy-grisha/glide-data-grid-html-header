@@ -14,29 +14,19 @@ export type {
 } from './types'
 export { drawButton, drawIconButton, drawTag } from './customCells/canvasCell/index'
 export {
-  button,
-  buttonIcon,
-  text,
-  tag,
-  container,
-  layout,
-  layoutRow,
-  renderComponents,
-  type ButtonProps,
-  type ButtonIconProps,
-  type TextProps,
-  type TagProps,
-  type ContainerProps,
-  type LayoutMetadata,
-  type LayoutProps,
-  type LayoutRowDefinition,
-  type CanvasComponent,
-  type ButtonIcon,
-} from './customCells/canvasComponents'
-export {
   animateNumericValue,
   easeInOutCubic,
   easeOutCubic,
 } from './utils/cellAnimations'
 export type { NumericAnimationOptions, AnimationEasing } from './utils/cellAnimations'
 
+// Canvas JSX Components
+export { Canvas, buildCanvasTree } from './components/CanvasHeader'
+export type {
+  CanvasContainerProps,
+  CanvasTextProps,
+  CanvasIconProps,
+  CanvasButtonProps,
+  CanvasIconButtonProps,
+  CanvasRectProps,
+} from './components/CanvasHeader'

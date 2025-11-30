@@ -1,6 +1,6 @@
 import { split } from "canvas-hypertxt";
-import { CanvasNode } from "../core/CanvasNode.ts";
-import { DrawBatcher } from "../core/DrawBatcher.ts";
+import { CanvasNode } from "../core/CanvasNode";
+import { DrawBatcher } from "../core/DrawBatcher";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global caches
@@ -11,7 +11,6 @@ const fontMetricsCache = new Map<string, { fontSize: number; lineHeightPx: numbe
 
 // Cache for text width measurements: key = "font|text"
 const textWidthCache = new Map<string, number>();
-
 
 // Precompiled regex for font size extraction
 const FONT_SIZE_REGEX = /(\d+)px/;
@@ -123,34 +122,7 @@ export class CanvasText extends CanvasNode {
         }
     }
 
-    onPaint(ctx: CanvasRenderingContext2D) {
-        const font = this.font;
-        const text = this.text;
-        const rect = this.rect;
-
-        ctx.font = font;
-        ctx.fillStyle = this.color;
-
-        const lines = this._cachedLines;
-        if (lines !== null && lines.length > 0) {
-            // Multiline rendering
-            const { lineHeightPx } = getCachedFontMetrics(font, this.lineHeight);
-            ctx.textBaseline = "top";
-            const contentHeight = lines.length * lineHeightPx;
-            let y = rect.y + Math.max(0, (rect.height - contentHeight) * 0.5);
-            
-            for (let i = 0, len = lines.length; i < len; i++) {
-                ctx.fillText(lines[i], rect.x, y);
-                y += lineHeightPx;
-            }
-        } else {
-            // Single line rendering
-            ctx.textBaseline = "middle";
-            ctx.fillText(text, rect.x, rect.y + rect.height * 0.5);
-        }
-    }
-
-    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+    onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
         const font = this.font;
         const text = this.text;
         const rect = this.rect;
