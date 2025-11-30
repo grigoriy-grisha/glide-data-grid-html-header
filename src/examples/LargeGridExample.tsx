@@ -1,5 +1,5 @@
 import React from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 
 // Тип для строки данных с большим количеством колонок
 interface LargeDataRow extends Record<string, unknown> {
@@ -228,7 +228,9 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
                       </Canvas.Container>
                       <Canvas.Container direction="row" justifyContent="flex-start" alignItems="center" gap={12}>
                         <Canvas.Button variant="primary">Hello Area!</Canvas.Button>
-                        <Canvas.Button>Hello Area 2!</Canvas.Button>
+                        <Canvas.Button onClick={e => {
+                          console.log('!!!!', e)
+                        }}>Hello Area 2!</Canvas.Button>
                       </Canvas.Container>
                     </Canvas.Container>
                   )

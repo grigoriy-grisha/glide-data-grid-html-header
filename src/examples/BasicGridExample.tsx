@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
@@ -85,9 +85,9 @@ const columns: BasicGridColumn<DataRow>[] = [
           createColumn<DataRow>('role', 'string', 'Роль', {
             width: 320,
             renderCellContent: (row, rowIndex) => {
-              const iconChar = row.role === 'Developer' ? '💻' 
-                : row.role === 'Manager' ? '💼' 
-                : row.role === 'Designer' ? '🎨' 
+              const iconChar = row.role === 'Developer' ? '💻'
+                : row.role === 'Manager' ? '💼'
+                : row.role === 'Designer' ? '🎨'
                 : '👤'
 
               const desc = row.role === 'Developer' ? 'Full-stack разработка, React/Node.js'

@@ -1,4 +1,4 @@
-import type { BasicGridSelectOption } from '../../components/BasicGrid'
+import type { BasicGridSelectOption } from '../../components'
 
 export interface Product extends Record<string, unknown> {
   id: string

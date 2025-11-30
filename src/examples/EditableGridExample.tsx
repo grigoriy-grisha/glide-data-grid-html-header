@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridCellChange, type BasicGridSelectOption } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridCellChange, type BasicGridSelectOption } from '../components'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 

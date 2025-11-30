@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { GridColumn } from '../../../models/GridColumn'
 
 export interface DragState {
     sourceIndex: number
@@ -7,12 +6,12 @@ export interface DragState {
     columnWidth: number
     startX: number
     initialLeft: number
-    snapshot?: string
+    snapshot?: ImageBitmap | string
 }
 
 interface UseHeaderDragDropProps {
     canvasRef: React.RefObject<HTMLCanvasElement>
-    orderedColumns: GridColumn<any>[]
+    columnCount: number
     columnPositions: number[]
     columnWidths: number[]
     scrollLeft: number
@@ -20,9 +19,40 @@ interface UseHeaderDragDropProps {
     onColumnReorder?: (sourceIndex: number, targetIndex: number) => void
 }
 
+/**
+ * Binary search to find target column index based on X position.
+ * Returns the index where the column should be inserted.
+ */
+function findTargetIndex(
+    relativeX: number,
+    columnPositions: number[],
+    columnWidths: number[],
+    columnCount: number
+): number {
+    if (columnCount === 0) return 0
+    
+    let left = 0
+    let right = columnCount - 1
+    
+    while (left <= right) {
+        const mid = (left + right) >>> 1
+        const pos = columnPositions[mid]
+        const width = columnWidths[mid]
+        const center = pos + width * 0.5
+        
+        if (relativeX < center) {
+            right = mid - 1
+        } else {
+            left = mid + 1
+        }
+    }
+    
+    return left
+}
+
 export const useHeaderDragDrop = ({
     canvasRef,
-    orderedColumns,
+    columnCount,
     columnPositions,
     columnWidths,
     scrollLeft,
@@ -33,8 +63,22 @@ export const useHeaderDragDrop = ({
     
     const ghostRef = useRef<HTMLDivElement>(null)
     const dropIndicatorRef = useRef<HTMLDivElement>(null)
+    
+    // Cache refs to avoid closure issues
+    const scrollLeftRef = useRef(scrollLeft)
+    const columnPositionsRef = useRef(columnPositions)
+    const columnWidthsRef = useRef(columnWidths)
+    const columnCountRef = useRef(columnCount)
+    const onColumnReorderRef = useRef(onColumnReorder)
+    
+    // Update refs when props change
+    scrollLeftRef.current = scrollLeft
+    columnPositionsRef.current = columnPositions
+    columnWidthsRef.current = columnWidths
+    columnCountRef.current = columnCount
+    onColumnReorderRef.current = onColumnReorder
 
-    // Handler to start dragging (passed to the Scene builder)
+    // Handler to start dragging
     const handleDragStart = useCallback((
         e: MouseEvent | React.MouseEvent, 
         columnIndex: number, 
@@ -44,29 +88,30 @@ export const useHeaderDragDrop = ({
     ) => {
         if (!enableColumnReorder) return
         
-        // If it's a synthetic event, access native
         const nativeEvent = (e as React.MouseEvent).nativeEvent || e
-        
-        // Only left click
         if ('button' in nativeEvent && nativeEvent.button !== 0) return
         
-        const initialLeft = (columnPositions[columnIndex] ?? 0) - scrollLeft
+        const currentScrollLeft = scrollLeftRef.current
+        const positions = columnPositionsRef.current
+        const initialLeft = (positions[columnIndex] ?? 0) - currentScrollLeft
 
-        let snapshot: string | undefined
-        if (canvasRef.current) {
-            // Capture snapshot of the cell area
+        // Capture snapshot asynchronously using ImageBitmap (faster than toDataURL)
+        let snapshot: ImageBitmap | string | undefined
+        const canvas = canvasRef.current
+        if (canvas) {
             const dpr = window.devicePixelRatio || 1
-            const tempCanvas = document.createElement('canvas')
-            tempCanvas.width = rect.width * dpr
-            tempCanvas.height = rect.height * dpr
-            const tempCtx = tempCanvas.getContext('2d')
-            if (tempCtx) {
-                tempCtx.drawImage(
-                    canvasRef.current,
-                    rect.x * dpr, rect.y * dpr, rect.width * dpr, rect.height * dpr,
-                    0, 0, rect.width * dpr, rect.height * dpr
-                )
-                snapshot = tempCanvas.toDataURL()
+            const sx = rect.x * dpr
+            const sy = rect.y * dpr
+            const sw = rect.width * dpr
+            const sh = rect.height * dpr
+            
+            // Try ImageBitmap first (faster, no encoding)
+            if (typeof createImageBitmap === 'function') {
+                createImageBitmap(canvas, sx, sy, sw, sh).then(bitmap => {
+                    setDragState(prev => prev ? { ...prev, snapshot: bitmap } : null)
+                }).catch(() => {
+                    // Fallback to canvas copy
+                })
             }
         }
 
@@ -78,64 +123,81 @@ export const useHeaderDragDrop = ({
             initialLeft,
             snapshot
         })
-    }, [enableColumnReorder, columnPositions, scrollLeft, canvasRef])
+    }, [enableColumnReorder, canvasRef])
 
     // Global Drag Events
     useEffect(() => {
         if (!dragState) return
+        
+        const ghost = ghostRef.current
+        const dropIndicator = dropIndicatorRef.current
+        const canvas = canvasRef.current
+        
+        // Cache header rect to avoid repeated getBoundingClientRect calls
+        let headerRect: DOMRect | null = null
+        let lastTargetIndex = -1
 
         const handleMouseMove = (e: MouseEvent) => {
-            if (!ghostRef.current) return
+            if (!ghost) return
 
             const deltaX = e.clientX - dragState.startX
-            ghostRef.current.style.transform = `translateX(${dragState.initialLeft + deltaX}px)`
+            ghost.style.transform = `translateX(${dragState.initialLeft + deltaX}px)`
 
-            // Calculate Drop Position
-            const headerRect = canvasRef.current?.getBoundingClientRect()
+            // Lazy init header rect
+            if (!headerRect && canvas) {
+                headerRect = canvas.getBoundingClientRect()
+            }
             if (!headerRect) return
 
-            const relativeX = e.clientX - headerRect.left + scrollLeft
+            const currentScrollLeft = scrollLeftRef.current
+            const positions = columnPositionsRef.current
+            const widths = columnWidthsRef.current
+            const count = columnCountRef.current
             
-            // Find target index
-            let targetIndex = orderedColumns.length
-            for(let i = 0; i < orderedColumns.length; i++) {
-                const pos = columnPositions[i] ?? 0
-                const width = columnWidths[i] ?? 0
-                const center = pos + width / 2
-                if (relativeX < center) {
-                    targetIndex = i
-                    break
-                }
-            }
+            const relativeX = e.clientX - headerRect.left + currentScrollLeft
+            
+            // Binary search for target index
+            const targetIndex = findTargetIndex(relativeX, positions, widths, count)
 
-            // Update Drop Indicator
-            if (dropIndicatorRef.current) {
-                 let indicatorX = 0
-                 if (targetIndex < orderedColumns.length) {
-                     indicatorX = (columnPositions[targetIndex] ?? 0) - scrollLeft
-                 } else {
-                     const lastIndex = orderedColumns.length - 1
-                     indicatorX = (columnPositions[lastIndex] ?? 0) + (columnWidths[lastIndex] ?? 0) - scrollLeft
-                 }
-                 
-                 dropIndicatorRef.current.style.transform = `translateX(${indicatorX}px)`
-                 dropIndicatorRef.current.dataset.targetIndex = String(targetIndex)
+            // Only update DOM if target changed
+            if (dropIndicator && targetIndex !== lastTargetIndex) {
+                lastTargetIndex = targetIndex
+                
+                let indicatorX: number
+                if (targetIndex < count) {
+                    indicatorX = (positions[targetIndex] ?? 0) - currentScrollLeft
+                } else {
+                    const lastIndex = count - 1
+                    indicatorX = (positions[lastIndex] ?? 0) + (widths[lastIndex] ?? 0) - currentScrollLeft
+                }
+                
+                dropIndicator.style.transform = `translateX(${indicatorX}px)`
+                dropIndicator.dataset.targetIndex = String(targetIndex)
             }
         }
 
-        const handleMouseUp = (_e: MouseEvent) => {
-            if (dropIndicatorRef.current) {
-                const targetIndexStr = dropIndicatorRef.current.dataset.targetIndex
+        const handleMouseUp = () => {
+            if (dropIndicator) {
+                const targetIndexStr = dropIndicator.dataset.targetIndex
                 if (targetIndexStr) {
                     const targetIndex = parseInt(targetIndexStr, 10)
-                    if (!isNaN(targetIndex) && targetIndex !== dragState.sourceIndex && targetIndex !== dragState.sourceIndex + 1) {
-                         onColumnReorder?.(dragState.sourceIndex, targetIndex)
+                    const sourceIndex = dragState.sourceIndex
+                    
+                    // Only reorder if position actually changed
+                    if (!isNaN(targetIndex) && targetIndex !== sourceIndex && targetIndex !== sourceIndex + 1) {
+                        // Use ref to get latest callback
+                        onColumnReorderRef.current?.(sourceIndex, targetIndex)
                     }
                 }
             }
 
+            // Cleanup snapshot if it's an ImageBitmap
+            if (dragState.snapshot && typeof dragState.snapshot !== 'string') {
+                dragState.snapshot.close()
+            }
+
             setDragState(null)
-            if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+            if (canvas) canvas.style.cursor = 'default'
         }
 
         document.addEventListener('mousemove', handleMouseMove)
@@ -145,7 +207,7 @@ export const useHeaderDragDrop = ({
             document.removeEventListener('mousemove', handleMouseMove)
             document.removeEventListener('mouseup', handleMouseUp)
         }
-    }, [dragState, columnPositions, columnWidths, scrollLeft, orderedColumns, onColumnReorder, canvasRef])
+    }, [dragState, canvasRef])
 
     return {
         dragState,
@@ -154,4 +216,3 @@ export const useHeaderDragDrop = ({
         dropIndicatorRef
     }
 }
-

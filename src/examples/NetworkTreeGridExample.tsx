@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridRowSelectionChange } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridRowSelectionChange } from '../components'
 import { networkData, type NetworkNode } from './data'
 
 const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'

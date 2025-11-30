@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { DragState } from '../hooks/useHeaderDragDrop'
 
 interface DragOverlaysProps {
@@ -8,6 +8,53 @@ interface DragOverlaysProps {
     ghostRef: React.RefObject<HTMLDivElement>
 }
 
+// Component to render ImageBitmap or string snapshot
+const SnapshotImage: React.FC<{ snapshot: ImageBitmap | string; width: number; height: number }> = ({ 
+    snapshot, 
+    width, 
+    height 
+}) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    
+    useEffect(() => {
+        if (typeof snapshot !== 'string' && canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d')
+            if (ctx) {
+                ctx.drawImage(snapshot, 0, 0, width, height)
+            }
+        }
+    }, [snapshot, width, height])
+    
+    if (typeof snapshot === 'string') {
+        return (
+            <img 
+                src={snapshot} 
+                alt="" 
+                style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain',
+                    opacity: 0.9
+                }} 
+            />
+        )
+    }
+    
+    return (
+        <canvas 
+            ref={canvasRef}
+            width={width}
+            height={height}
+            style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'contain',
+                opacity: 0.9
+            }} 
+        />
+    )
+}
+
 export const DragOverlays: React.FC<DragOverlaysProps> = ({
     dragState,
     height,
@@ -15,6 +62,8 @@ export const DragOverlays: React.FC<DragOverlaysProps> = ({
     ghostRef
 }) => {
     if (!dragState) return null
+
+    const ghostHeight = height - 8
 
     return (
         <>
@@ -39,9 +88,9 @@ export const DragOverlays: React.FC<DragOverlaysProps> = ({
                 style={{
                     position: 'absolute',
                     top: 4,
-                    left: 0, // controlled by transform
+                    left: 0,
                     width: dragState.columnWidth,
-                    height: height - 8,
+                    height: ghostHeight,
                     backgroundColor: 'rgba(255, 255, 255, 0.9)',
                     border: '1px solid #1e88e5',
                     boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -61,15 +110,10 @@ export const DragOverlays: React.FC<DragOverlaysProps> = ({
                 }}
             >
                 {dragState.snapshot ? (
-                    <img 
-                        src={dragState.snapshot} 
-                        alt="" 
-                        style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'contain',
-                            opacity: 0.9
-                        }} 
+                    <SnapshotImage 
+                        snapshot={dragState.snapshot} 
+                        width={dragState.columnWidth} 
+                        height={ghostHeight} 
                     />
                 ) : (
                     dragState.columnTitle

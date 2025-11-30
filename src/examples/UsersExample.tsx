@@ -1,4 +1,4 @@
-import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
 import { HeaderCard } from './components/HeaderCard'
 import { userData, type User } from './data/users'
 

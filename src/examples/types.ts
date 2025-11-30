@@ -1,5 +1,5 @@
 import type React from 'react'
-import type { BasicGridSelectOption } from '../components/BasicGrid'
+import type { BasicGridSelectOption } from '../components'
 
 export interface DataRow extends Record<string, unknown> {
   employeeId: string

@@ -1,5 +1,5 @@
 import type { DataRow, NetworkNode } from './types'
-import type { BasicGridSelectOption } from '../components/BasicGrid'
+import type { BasicGridSelectOption } from '../components'
 
 export type { DataRow, NetworkNode }
 

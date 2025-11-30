@@ -72,7 +72,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   // 2. Drag and Drop State & Logic
   const { dragState, handleDragStart, ghostRef, dropIndicatorRef } = useHeaderDragDrop({
     canvasRef,
-    orderedColumns,
+    columnCount: orderedColumns.length,
     columnPositions,
     columnWidths,
     scrollLeft,
