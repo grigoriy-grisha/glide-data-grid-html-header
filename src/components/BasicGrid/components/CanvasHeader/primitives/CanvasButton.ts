@@ -2,12 +2,30 @@ import {drawButton} from '../../../customCells/canvasCell/buttons';
 import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 import {CanvasEvent} from "../core/CanvasNode.ts";
 
+// Cached constants
+const BUTTON_FONT = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+const BUTTON_HEIGHT = 24;
+const BUTTON_PADDING = 32; // paddingX * 2 + 8
+
+// Shared theme object to avoid allocation on each paint
+const BUTTON_THEME = {
+    accentColor: '#1e88e5',
+    accentLight: 'rgba(30, 136, 229, 0.16)',
+    accentFg: '#ffffff',
+    bgCell: '#ffffff',
+    borderColor: '#e0e0e0',
+    textLight: '#9e9e9e',
+    baseFontFull: BUTTON_FONT
+};
+
+// Global text width cache shared across all button instances
+const textWidthCache = new Map<string, number>();
+
 export class CanvasButton extends CanvasLeaf {
-    type= "button"
     text: string;
     variant: 'primary' | 'secondary' | 'danger' = 'primary';
-    disabled: boolean = false;
-    isHovered: boolean = false;
+    disabled = false;
+    isHovered = false;
 
     constructor(id: string, text: string, options?: {
         variant?: 'primary' | 'secondary' | 'danger';
@@ -16,48 +34,37 @@ export class CanvasButton extends CanvasLeaf {
     }) {
         super(id);
         this.text = text;
-        this.variant = options?.variant ?? this.variant;
-        this.disabled = options?.disabled ?? this.disabled;
-        if (options?.onClick) {
-            this.onClick = (event) => options.onClick!(event);
+        if (options) {
+            if (options.variant !== undefined) this.variant = options.variant;
+            if (options.disabled !== undefined) this.disabled = options.disabled;
+            if (options.onClick) this.onClick = options.onClick;
         }
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        // We need to measure the button size using the drawButton helper
-        // Since drawButton does drawing, we can use a "dry run" or just rely on its internal logic if extracted
-        // For now, let's use a simplified estimation or call drawButton with a dummy context if needed,
-        // but drawButton takes x/y which we don't know yet.
-        // Ideally drawButton logic should be split into measure and paint.
-        // For this implementation, we'll use a temporary estimation similar to drawButton.
+        const text = this.text;
+        let width = textWidthCache.get(text);
+        
+        if (width === undefined) {
+            ctx.font = BUTTON_FONT;
+            width = ctx.measureText(text).width;
+            textWidthCache.set(text, width);
+        }
 
-        // Simple estimation based on drawButton logic
-        ctx.font = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"; // Approximate theme font
-        const textMetrics = ctx.measureText(this.text);
-        const paddingX = 12; // 6px * 2 roughly
-
-        this.rect.width = textMetrics.width + paddingX * 2 + 8;
-        this.rect.height = 24; // Standard height
+        this.rect.width = width + BUTTON_PADDING;
+        this.rect.height = BUTTON_HEIGHT;
     }
 
     onPaint(ctx: CanvasRenderingContext2D) {
+        const rect = this.rect;
         drawButton(
             ctx,
-            this.rect.x,
-            this.rect.y,
-            this.rect.width,
-            this.rect.height,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
             this.text,
-            {
-                // Mock theme
-                accentColor: '#1e88e5',
-                accentLight: 'rgba(30, 136, 229, 0.16)',
-                accentFg: '#ffffff',
-                bgCell: '#ffffff',
-                borderColor: '#e0e0e0',
-                textLight: '#9e9e9e',
-                baseFontFull: "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-            },
+            BUTTON_THEME,
             this.variant,
             this.disabled,
             this.isHovered

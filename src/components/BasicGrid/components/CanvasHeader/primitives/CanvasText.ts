@@ -1,9 +1,60 @@
 import { split } from "canvas-hypertxt";
-import { CanvasNode, Rect } from "../core/CanvasNode.ts";
+import { CanvasNode } from "../core/CanvasNode.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Global caches
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Cache for font metrics: key = "font|lineHeight"
+const fontMetricsCache = new Map<string, { fontSize: number; lineHeightPx: number }>();
+
+// Cache for text width measurements: key = "font|text"
+const textWidthCache = new Map<string, number>();
+
+
+// Precompiled regex for font size extraction
+const FONT_SIZE_REGEX = /(\d+)px/;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getCachedFontMetrics(font: string, lineHeight: number): { fontSize: number; lineHeightPx: number } {
+    const key = font + '|' + lineHeight;
+    let metrics = fontMetricsCache.get(key);
+    if (metrics === undefined) {
+        const match = FONT_SIZE_REGEX.exec(font);
+        const fontSize = match ? parseInt(match[1], 10) : 14;
+        metrics = { fontSize, lineHeightPx: fontSize * lineHeight };
+        fontMetricsCache.set(key, metrics);
+    }
+    return metrics;
+}
+
+function getCachedTextWidth(ctx: CanvasRenderingContext2D, text: string, font: string): number {
+    const key = font + '|' + text;
+    let width = textWidthCache.get(key);
+    if (width === undefined) {
+        ctx.font = font;
+        width = ctx.measureText(text).width;
+        textWidthCache.set(key, width);
+    }
+    return width;
+}
+
+function getSplitLines(ctx: CanvasRenderingContext2D, text: string, font: string, wrapWidth: number, wordWrap: boolean): string[] {
+    ctx.font = font;
+    return normalizeSplitResult(split(ctx, text, font, wrapWidth || 1, wordWrap));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CanvasText
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface CanvasTextOptions {
     font?: string;
     color?: string;
+    /** Allow text to wrap to multiple lines when width is constrained */
     wordWrap?: boolean;
     lineHeight?: number;
 }
@@ -12,32 +63,15 @@ export class CanvasText extends CanvasNode {
     text: string;
     font: string = "14px sans-serif";
     color: string = "black";
+    /** Allow text to wrap to multiple lines when width is constrained */
     wordWrap: boolean = false;
     lineHeight: number = 1;
-    private fontMetricsCache?: {
-        font: string;
-        lineHeight: number;
-        fontSize: number;
-        lineHeightPx: number;
-    };
-    private cachedWrapWidth: number = 0;
-    private measurementSnapshot?: {
-        text: string;
-        font: string;
-        lineHeight: number;
-        wordWrap: boolean;
-        wrapWidth: number;
-        rectWidth: number;
-        rectHeight: number;
-    };
-    private splitCache?: {
-        text: string;
-        font: string;
-        lineHeight: number;
-        wordWrap: boolean;
-        wrapWidth: number;
-        lines: string[];
-    };
+    
+    // Lightweight cache for measurement invalidation (only for non-wordWrap)
+    private _lastMeasureKey: string = '';
+    // Cache split lines per instance for wordWrap mode
+    private _cachedLines: string[] | null = null;
+    private _cachedLinesKey: string = '';
 
     constructor(id: string, text: string, options?: CanvasTextOptions) {
         super(id);
@@ -45,158 +79,91 @@ export class CanvasText extends CanvasNode {
         if (options) {
             if (options.font) this.font = options.font;
             if (options.color) this.color = options.color;
-            if (options.wordWrap) this.wordWrap = options.wordWrap;
+            if (options.wordWrap !== undefined) this.wordWrap = options.wordWrap;
             if (options.lineHeight) this.lineHeight = options.lineHeight;
         }
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        ctx.font = this.font;
-        const { lineHeightPx } = this.getFontMetricsCached();
-        const wrapWidth = resolveWrapWidth(this.style.width, this.rect.width);
-        this.cachedWrapWidth = wrapWidth;
+        const font = this.font;
+        const text = this.text;
+        const wordWrap = this.wordWrap;
+        const lineHeight = this.lineHeight;
+        
+        const { lineHeightPx } = getCachedFontMetrics(font, lineHeight);
+        const rect = this.rect;
 
-        if (
-            this.measurementSnapshot &&
-            this.measurementSnapshot.text === this.text &&
-            this.measurementSnapshot.font === this.font &&
-            this.measurementSnapshot.lineHeight === this.lineHeight &&
-            this.measurementSnapshot.wordWrap === this.wordWrap &&
-            (!this.wordWrap || this.measurementSnapshot.wrapWidth === wrapWidth)
-        ) {
-            this.rect.width = this.measurementSnapshot.rectWidth;
-            this.rect.height = this.measurementSnapshot.rectHeight;
-            return;
+        if (wordWrap) {
+            // For wordWrap: use instance-level cache (not global)
+            const wrapWidth = resolveWrapWidth(this.style.width, rect.width);
+            
+            if (wrapWidth > 0) {
+                const linesKey = font + '|' + text + '|' + wrapWidth;
+                if (linesKey !== this._cachedLinesKey || this._cachedLines === null) {
+                    this._cachedLines = getSplitLines(ctx, text, font, wrapWidth, wordWrap);
+                    this._cachedLinesKey = linesKey;
+                }
+                rect.width = wrapWidth;
+                rect.height = this._cachedLines.length * lineHeightPx;
+            } else {
+                rect.width = getCachedTextWidth(ctx, text, font);
+                rect.height = lineHeightPx;
+                this._cachedLines = null;
+            }
+        } else {
+            // For single-line: use global cache
+            const measureKey = font + '|' + text + '|' + lineHeight;
+            if (measureKey !== this._lastMeasureKey) {
+                this._lastMeasureKey = measureKey;
+                rect.width = getCachedTextWidth(ctx, text, font);
+                rect.height = lineHeightPx;
+            }
+            this._cachedLines = null;
         }
-
-        if (this.wordWrap && wrapWidth > 0) {
-            const lines = this.getOrCreateSplitLines(ctx, wrapWidth);
-            this.rect.width = wrapWidth;
-            this.rect.height = lines.length * lineHeightPx;
-            this.updateMeasurementSnapshot(this.rect.width, this.rect.height);
-            return;
-        }
-
-        const metrics = ctx.measureText(this.text);
-        this.rect.width = metrics.width;
-        this.rect.height = lineHeightPx;
-        this.splitCache = undefined;
-        this.updateMeasurementSnapshot(this.rect.width, this.rect.height);
     }
 
     onPaint(ctx: CanvasRenderingContext2D) {
-        ctx.save();
+        const font = this.font;
+        const text = this.text;
+        const rect = this.rect;
 
-        ctx.font = this.font;
+        ctx.font = font;
         ctx.fillStyle = this.color;
-        ctx.textBaseline = "top";
 
-        const { lineHeightPx } = this.getFontMetricsCached();
-        const wrapWidth = this.cachedWrapWidth || Math.max(this.rect.width, 0);
-
-        const lines = this.wordWrap
-            ? this.getOrCreateSplitLines(ctx, wrapWidth || 1)
-            : [this.text];
-
-        if (this.wordWrap) {
-            let y = alignWrappedTextY(this.rect, lines.length * lineHeightPx);
-            for (const line of lines) {
-                ctx.fillText(line, this.rect.x, y);
+        const lines = this._cachedLines;
+        if (lines !== null && lines.length > 0) {
+            // Multiline rendering
+            const { lineHeightPx } = getCachedFontMetrics(font, this.lineHeight);
+            ctx.textBaseline = "top";
+            const contentHeight = lines.length * lineHeightPx;
+            let y = rect.y + Math.max(0, (rect.height - contentHeight) * 0.5);
+            
+            for (let i = 0, len = lines.length; i < len; i++) {
+                ctx.fillText(lines[i], rect.x, y);
                 y += lineHeightPx;
             }
         } else {
+            // Single line rendering
             ctx.textBaseline = "middle";
-            const y = this.rect.y + this.rect.height / 2;
-            ctx.fillText(this.text, this.rect.x, y);
+            ctx.fillText(text, rect.x, rect.y + rect.height * 0.5);
         }
-
-        ctx.restore();
-    }
-
-    private getFontMetricsCached() {
-        if (
-            !this.fontMetricsCache ||
-            this.fontMetricsCache.font !== this.font ||
-            this.fontMetricsCache.lineHeight !== this.lineHeight
-        ) {
-            const metrics = getFontMetrics(this.font, this.lineHeight);
-            this.fontMetricsCache = {
-                ...metrics,
-                font: this.font,
-                lineHeight: this.lineHeight,
-            };
-        }
-        return this.fontMetricsCache;
-    }
-
-    private getOrCreateSplitLines(ctx: CanvasRenderingContext2D, wrapWidth: number) {
-        if (
-            this.splitCache &&
-            this.splitCache.text === this.text &&
-            this.splitCache.font === this.font &&
-            this.splitCache.lineHeight === this.lineHeight &&
-            this.splitCache.wordWrap === this.wordWrap &&
-            this.splitCache.wrapWidth === wrapWidth
-        ) {
-            return this.splitCache.lines;
-        }
-
-        const lines = normalizeSplitResult(split(ctx, this.text, this.font, wrapWidth || 1, this.wordWrap));
-        if (this.wordWrap) {
-            this.splitCache = {
-                text: this.text,
-                font: this.font,
-                lineHeight: this.lineHeight,
-                wordWrap: this.wordWrap,
-                wrapWidth,
-                lines,
-            };
-        }
-        return lines;
-    }
-
-    private updateMeasurementSnapshot(rectWidth: number, rectHeight: number) {
-        this.measurementSnapshot = {
-            text: this.text,
-            font: this.font,
-            lineHeight: this.lineHeight,
-            wordWrap: this.wordWrap,
-            wrapWidth: this.cachedWrapWidth,
-            rectWidth,
-            rectHeight,
-        };
     }
 }
 
-function getFontMetrics(font: string, lineHeight: number) {
-    const fontSizeMatch = font.match(/(\d+)px/);
-    const fontSize = fontSizeMatch ? parseInt(fontSizeMatch[1], 10) : 14;
-    return {
-        fontSize,
-        lineHeightPx: fontSize * lineHeight,
-    };
-}
-
-function resolveWrapWidth(styleWidth: number | string | undefined, rectWidth: number) {
+function resolveWrapWidth(styleWidth: number | string | undefined, rectWidth: number): number {
     if (typeof styleWidth === "number" && styleWidth > 0) {
         return styleWidth;
     }
-    if (rectWidth > 0) {
-        return rectWidth;
-    }
-    return 0;
+    return rectWidth > 0 ? rectWidth : 0;
 }
 
 function normalizeSplitResult(result: ReturnType<typeof split>): string[] {
     if (Array.isArray(result)) {
         return result;
     }
-    if ((result as any).lines && Array.isArray((result as any).lines)) {
-        return (result as any).lines;
+    const asAny = result as any;
+    if (asAny.lines && Array.isArray(asAny.lines)) {
+        return asAny.lines;
     }
     return [];
-}
-
-function alignWrappedTextY(rect: Rect, contentHeight: number) {
-    return rect.y + Math.max(0, (rect.height - contentHeight) / 2);
 }

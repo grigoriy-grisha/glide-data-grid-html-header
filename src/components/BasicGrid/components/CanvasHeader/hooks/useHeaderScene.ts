@@ -301,7 +301,5 @@ export const useHeaderScene = ({
         }
 
         rootContainer.children = wrappers
-        rootRef.current.render()
-
     }, [canvasRef, columnPositions, columnWidths, createGripIconHandlers, enableColumnReorder, headerCells, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells])
 }

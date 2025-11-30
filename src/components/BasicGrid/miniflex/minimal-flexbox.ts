@@ -55,13 +55,13 @@ abstract class FlexNode {
   /** Incoming flex style (grow / shrink / basis / alignSelf) */
   public style: FlexStyle
 
-  constructor(style: Partial<FlexStyle> = {}) {
+  constructor(style: Partial<FlexStyle> = defaultStyle) {
     // Inline object creation instead of spread
     this.style = {
-      flexGrow: style.flexGrow ?? defaultStyle.flexGrow,
-      flexShrink: style.flexShrink ?? defaultStyle.flexShrink,
-      flexBasis: style.flexBasis ?? defaultStyle.flexBasis,
-      alignSelf: style.alignSelf ?? defaultStyle.alignSelf,
+      flexGrow: style.flexGrow ?? 0,
+      flexShrink: style.flexShrink ?? 1,
+      flexBasis: style.flexBasis ?? 0,
+      alignSelf: style.alignSelf ?? "auto",
       width: style.width,
       height: style.height,
       id: style.id,
@@ -123,13 +123,14 @@ export class FlexBox extends FlexNode {
     if (arg1 instanceof FlexBox) {
       const box = arg1 as FlexBox
       if (arg2) {
-        // Inline style merge
-        box.style.flexGrow = arg2.flexGrow ?? defaultStyle.flexGrow
-        box.style.flexShrink = arg2.flexShrink ?? defaultStyle.flexShrink
-        box.style.flexBasis = arg2.flexBasis ?? defaultStyle.flexBasis
-        box.style.alignSelf = arg2.alignSelf ?? defaultStyle.alignSelf
-        box.style.width = arg2.width
-        box.style.height = arg2.height
+        // Inline style merge with literal defaults
+        const boxStyle = box.style
+        boxStyle.flexGrow = arg2.flexGrow ?? 0
+        boxStyle.flexShrink = arg2.flexShrink ?? 1
+        boxStyle.flexBasis = arg2.flexBasis ?? 0
+        boxStyle.alignSelf = arg2.alignSelf ?? "auto"
+        boxStyle.width = arg2.width
+        boxStyle.height = arg2.height
       }
       this.children.push(box)
       return box
@@ -151,22 +152,31 @@ export class FlexBox extends FlexNode {
     // Inline axis resolution
     const dir = this.direction
     const horizontal = dir === "row" || dir === "row-reverse"
-    const mainProp: keyof Size = horizontal ? "width" : "height"
-    const crossProp: keyof Size = horizontal ? "height" : "width"
-    const mainGap = horizontal ? this.columnGap : this.rowGap
-    const crossGap = horizontal ? this.rowGap : this.columnGap
 
     // Get inner container size
     const padding = this.padding
-    const paddingMain = horizontal
-      ? padding.left + padding.right
-      : padding.top + padding.bottom
-    const paddingCross = horizontal
-      ? padding.top + padding.bottom
-      : padding.left + padding.right
+    const pLeft = padding.left
+    const pRight = padding.right
+    const pTop = padding.top
+    const pBottom = padding.bottom
+    
+    const size = this.size
+    let containerMain: number
+    let containerCross: number
+    let mainGap: number
+    let crossGap: number
 
-    const containerMain = this.size[mainProp] - paddingMain
-    const containerCross = this.size[crossProp] - paddingCross
+    if (horizontal) {
+      containerMain = size.width - pLeft - pRight
+      containerCross = size.height - pTop - pBottom
+      mainGap = this.columnGap
+      crossGap = this.rowGap
+    } else {
+      containerMain = size.height - pTop - pBottom
+      containerCross = size.width - pLeft - pRight
+      mainGap = this.rowGap
+      crossGap = this.columnGap
+    }
 
     // Build flex lines
     const wrap = this.wrap
@@ -220,8 +230,10 @@ export class FlexBox extends FlexNode {
 
       for (let ci = 0; ci < lineLen; ci++) {
         const child = line[ci]
-        const explicit = horizontal ? child.style.height : child.style.width
-        const cross = explicit !== undefined ? explicit : child.size[crossProp]
+        const childStyle = child.style
+        const childSize = child.size
+        const explicit = horizontal ? childStyle.height : childStyle.width
+        const cross = explicit !== undefined ? explicit : (horizontal ? childSize.height : childSize.width)
         if (cross > maxCross) maxCross = cross
       }
 
@@ -269,8 +281,8 @@ export class FlexBox extends FlexNode {
       }
     }
 
-    const offsetX = padding.left
-    const offsetY = padding.top
+    const offsetX = pLeft
+    const offsetY = pTop
     let currentCrossPos = crossStart
     const isReverse = dir === "row-reverse" || dir === "column-reverse"
     const alignItems = this.alignItems
@@ -288,28 +300,34 @@ export class FlexBox extends FlexNode {
 
       for (let ci = 0; ci < lineLen; ci++) {
         const style = line[ci].style
-        totalBasis += style.flexBasis
+        const basis = style.flexBasis
+        totalBasis += basis
         totalGrow += style.flexGrow
-        totalWeightedShrink += style.flexShrink * style.flexBasis
+        totalWeightedShrink += style.flexShrink * basis
       }
 
-      const lineGapSum = mainGap * (lineLen > 1 ? lineLen - 1 : 0)
+      const lineGapSum = lineLen > 1 ? mainGap * (lineLen - 1) : 0
       const lineFreeSpace = containerMain - totalBasis - lineGapSum
       let lineMainUsed = 0
 
       for (let ci = 0; ci < lineLen; ci++) {
         const child = line[ci]
         const style = child.style
+        const childSize = child.size
         let main = style.flexBasis
 
         if (lineFreeSpace > 0 && totalGrow > 0) {
           main += (lineFreeSpace * style.flexGrow) / totalGrow
         } else if (lineFreeSpace < 0 && totalWeightedShrink > 0) {
-          main += (lineFreeSpace * style.flexShrink * style.flexBasis) / totalWeightedShrink
+          main += (lineFreeSpace * style.flexShrink * main) / totalWeightedShrink
         }
 
         if (main < 0) main = 0
-        child.size[mainProp] = main
+        if (horizontal) {
+          childSize.width = main
+        } else {
+          childSize.height = main
+        }
         lineMainUsed += main
       }
 
@@ -347,8 +365,10 @@ export class FlexBox extends FlexNode {
       if (wrap === "nowrap") {
         for (let ci = 0; ci < lineLen; ci++) {
           const child = line[ci]
-          const explicit = horizontal ? child.style.height : child.style.width
-          const cross = explicit !== undefined ? explicit : child.size[crossProp]
+          const childStyle = child.style
+          const childSize = child.size
+          const explicit = horizontal ? childStyle.height : childStyle.width
+          const cross = explicit !== undefined ? explicit : (horizontal ? childSize.height : childSize.width)
           if (cross > finalLineHeight) finalLineHeight = cross
         }
       }
@@ -361,49 +381,61 @@ export class FlexBox extends FlexNode {
 
       for (let ci = startIdx; ci !== endIdx; ci += step) {
         const child = line[ci]
+        const childStyle = child.style
+        const childSize = child.size
+        const childPos = child.position
 
         // Main axis position
         if (horizontal) {
           const x = dir === "row"
             ? mainCursor
-            : containerMain - mainCursor - child.size.width
-          child.position.x = offsetX + x
+            : containerMain - mainCursor - childSize.width
+          childPos.x = offsetX + x
         } else {
           const y = dir === "column"
             ? mainCursor
-            : containerMain - mainCursor - child.size.height
-          child.position.y = offsetY + y
+            : containerMain - mainCursor - childSize.height
+          childPos.y = offsetY + y
         }
 
         // Cross axis alignment
-        const alignSelf = child.style.alignSelf !== "auto"
-          ? (child.style.alignSelf as Align)
-          : alignItems
+        const selfAlign = childStyle.alignSelf
+        const alignSelf = selfAlign !== "auto" ? (selfAlign as Align) : alignItems
 
-        const explicitCross = horizontal ? child.style.height : child.style.width
+        const explicitCross = horizontal ? childStyle.height : childStyle.width
+        let crossSize: number
         if (explicitCross !== undefined) {
-          child.size[crossProp] = explicitCross
+          crossSize = explicitCross
+          if (horizontal) {
+            childSize.height = crossSize
+          } else {
+            childSize.width = crossSize
+          }
         } else if (alignSelf === "stretch") {
-          child.size[crossProp] = finalLineHeight
+          crossSize = finalLineHeight
+          if (horizontal) {
+            childSize.height = crossSize
+          } else {
+            childSize.width = crossSize
+          }
+        } else {
+          crossSize = horizontal ? childSize.height : childSize.width
         }
 
         let crossOffset = 0
-        switch (alignSelf) {
-          case "flex-end":
-            crossOffset = finalLineHeight - child.size[crossProp]
-            break
-          case "center":
-            crossOffset = (finalLineHeight - child.size[crossProp]) / 2
-            break
+        if (alignSelf === "flex-end") {
+          crossOffset = finalLineHeight - crossSize
+        } else if (alignSelf === "center") {
+          crossOffset = (finalLineHeight - crossSize) * 0.5
         }
 
         if (horizontal) {
-          child.position.y = offsetY + currentCrossPos + crossOffset
+          childPos.y = offsetY + currentCrossPos + crossOffset
+          mainCursor += childSize.width + between
         } else {
-          child.position.x = offsetX + currentCrossPos + crossOffset
+          childPos.x = offsetX + currentCrossPos + crossOffset
+          mainCursor += childSize.height + between
         }
-
-        mainCursor += child.size[mainProp] + between
       }
 
       currentCrossPos += finalLineHeight + crossBetween
@@ -412,8 +444,9 @@ export class FlexBox extends FlexNode {
     // Recursively build nested containers
     for (let i = 0; i < childCount; i++) {
       const child = children[i]
-      if (child instanceof FlexBox) {
-        child.build()
+      // Check for children array presence instead of instanceof
+      if ((child as FlexBox).children !== undefined) {
+        (child as FlexBox).build()
       }
     }
   }

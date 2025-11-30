@@ -24,9 +24,6 @@ export class CanvasRoot {
     }
 
     private dispatchPointerEvent(e: MouseEvent, type: CanvasEvent['type']) {
-        if (type === "click") {
-            console.log({e})
-        }
         const { x, y } = this.getEventCoords(e);
         const hits = this.rootNode.hitTest(x, y);
         const target = hits[0];
