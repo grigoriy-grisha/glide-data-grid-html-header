@@ -2,53 +2,76 @@ import type { CellIndices, HoverState, Point, RectBounds } from './types'
 
 export const RELATIVE_COORD_TOLERANCE = 1
 
+// Reusable objects to avoid allocations in hot paths
+const _tempIndices: CellIndices = { colIndex: -1, rowIndex: -1 }
+const _tempPoint: Point = { x: 0, y: 0 }
+
 export function getCellIndices(argsAny: Record<string, any>): CellIndices {
-  if (Array.isArray(argsAny.location) && argsAny.location.length >= 2) {
-    return {
-      colIndex: argsAny.location[0] ?? -1,
-      rowIndex: argsAny.location[1] ?? -1,
-    }
+  const location = argsAny.location
+  if (Array.isArray(location) && location.length >= 2) {
+    _tempIndices.colIndex = location[0] ?? -1
+    _tempIndices.rowIndex = location[1] ?? -1
+    return _tempIndices
   }
 
-  if (typeof argsAny.col === 'number' && typeof argsAny.row === 'number') {
-    return { colIndex: argsAny.col, rowIndex: argsAny.row }
+  const col = argsAny.col
+  const row = argsAny.row
+  if (typeof col === 'number' && typeof row === 'number') {
+    _tempIndices.colIndex = col
+    _tempIndices.rowIndex = row
+    return _tempIndices
   }
 
-  if (typeof argsAny.colIndex === 'number' && typeof argsAny.rowIndex === 'number') {
-    return { colIndex: argsAny.colIndex, rowIndex: argsAny.rowIndex }
+  const colIndex = argsAny.colIndex
+  const rowIndex = argsAny.rowIndex
+  if (typeof colIndex === 'number' && typeof rowIndex === 'number') {
+    _tempIndices.colIndex = colIndex
+    _tempIndices.rowIndex = rowIndex
+    return _tempIndices
   }
 
-  return { colIndex: -1, rowIndex: -1 }
+  _tempIndices.colIndex = -1
+  _tempIndices.rowIndex = -1
+  return _tempIndices
 }
 
 export function buildCellId(indices: CellIndices, rect: RectBounds): string {
-  if (indices.colIndex >= 0 && indices.rowIndex >= 0) {
-    return `${indices.colIndex}-${indices.rowIndex}`
+  const col = indices.colIndex
+  const row = indices.rowIndex
+  if (col >= 0 && row >= 0) {
+    return col + '-' + row
   }
-
-  return `${rect.x}-${rect.y}-${rect.width}-${rect.height}`
+  return rect.x + '-' + rect.y + '-' + rect.width + '-' + rect.height
 }
 
 export function resolveClickPoint(argsAny: Record<string, any>): Point | null {
-  const candidates: Array<Point | null> = [
-    typeof argsAny.posX === 'number' && typeof argsAny.posY === 'number'
-      ? { x: argsAny.posX, y: argsAny.posY }
-      : null,
-    typeof argsAny.x === 'number' && typeof argsAny.y === 'number'
-      ? { x: argsAny.x, y: argsAny.y }
-      : null,
-  ]
-
-  for (const candidate of candidates) {
-    if (candidate && !Number.isNaN(candidate.x) && !Number.isNaN(candidate.y)) {
-      return candidate
-    }
+  // Check posX/posY first (most common)
+  const posX = argsAny.posX
+  const posY = argsAny.posY
+  if (typeof posX === 'number' && typeof posY === 'number' && posX === posX && posY === posY) {
+    _tempPoint.x = posX
+    _tempPoint.y = posY
+    return _tempPoint
   }
 
-  if (Array.isArray(argsAny.location) && argsAny.location.length >= 2) {
-    const [locX, locY] = argsAny.location
+  // Check x/y
+  const x = argsAny.x
+  const y = argsAny.y
+  if (typeof x === 'number' && typeof y === 'number' && x === x && y === y) {
+    _tempPoint.x = x
+    _tempPoint.y = y
+    return _tempPoint
+  }
+
+  // Check location array
+  const location = argsAny.location
+  if (Array.isArray(location) && location.length >= 2) {
+    const locX = location[0]
+    const locY = location[1]
     if (typeof locX === 'number' && typeof locY === 'number') {
-      return { x: locX, y: locY }
+      _tempPoint.x = locX
+      _tempPoint.y = locY
+      return _tempPoint
     }
   }
 
@@ -56,11 +79,16 @@ export function resolveClickPoint(argsAny: Record<string, any>): Point | null {
 }
 
 export function toRelativePoint(point: Point, rect: RectBounds): Point {
-  if (isPointInArea(point.x, point.y, rect)) {
-    return {
-      x: point.x - rect.x,
-      y: point.y - rect.y,
-    }
+  const px = point.x
+  const py = point.y
+  const rx = rect.x
+  const ry = rect.y
+  
+  // Inline isPointInArea check
+  if (px >= rx && px <= rx + rect.width && py >= ry && py <= ry + rect.height) {
+    _tempPoint.x = px - rx
+    _tempPoint.y = py - ry
+    return _tempPoint
   }
 
   return point
@@ -75,24 +103,23 @@ export function normalizeHoverPoint(
     return undefined
   }
 
-  const isRelativeCoords =
-    hoverX >= -RELATIVE_COORD_TOLERANCE &&
-    hoverX <= rect.width + RELATIVE_COORD_TOLERANCE &&
-    hoverY >= -RELATIVE_COORD_TOLERANCE &&
-    hoverY <= rect.height + RELATIVE_COORD_TOLERANCE
+  const w = rect.width
+  const h = rect.height
+  const rx = rect.x
+  const ry = rect.y
 
-  const isAbsoluteCoords =
-    hoverX >= rect.x - RELATIVE_COORD_TOLERANCE &&
-    hoverX <= rect.x + rect.width + RELATIVE_COORD_TOLERANCE &&
-    hoverY >= rect.y - RELATIVE_COORD_TOLERANCE &&
-    hoverY <= rect.y + rect.height + RELATIVE_COORD_TOLERANCE
-
-  if (isRelativeCoords) {
-    return { x: hoverX, y: hoverY }
+  // Check relative coords first (more common case)
+  if (hoverX >= -1 && hoverX <= w + 1 && hoverY >= -1 && hoverY <= h + 1) {
+    _tempPoint.x = hoverX
+    _tempPoint.y = hoverY
+    return _tempPoint
   }
 
-  if (isAbsoluteCoords) {
-    return { x: hoverX - rect.x, y: hoverY - rect.y }
+  // Check absolute coords
+  if (hoverX >= rx - 1 && hoverX <= rx + w + 1 && hoverY >= ry - 1 && hoverY <= ry + h + 1) {
+    _tempPoint.x = hoverX - rx
+    _tempPoint.y = hoverY - ry
+    return _tempPoint
   }
 
   return undefined
@@ -103,30 +130,29 @@ export function isPointInArea(
   y: number,
   area: { x: number; y: number; width: number; height: number }
 ): boolean {
-  return (
-    x >= area.x &&
-    x <= area.x + area.width &&
-    y >= area.y &&
-    y <= area.y + area.height
-  )
+  const ax = area.x
+  const ay = area.y
+  return x >= ax && x <= ax + area.width && y >= ay && y <= ay + area.height
 }
 
 export function isHoveringBounds(hovered: HoverState, bounds: RectBounds): boolean {
   if (typeof hovered === 'object' && hovered) {
-    const { hoverX, hoverY, rectX, rectY } = hovered
+    const hoverX = hovered.hoverX
+    const hoverY = hovered.hoverY
+    const rectX = hovered.rectX
+    const rectY = hovered.rectY
+    
     if (
       typeof hoverX === 'number' &&
       typeof hoverY === 'number' &&
       typeof rectX === 'number' &&
       typeof rectY === 'number'
     ) {
-      const relativeRect = {
-        x: bounds.x - rectX,
-        y: bounds.y - rectY,
-        width: bounds.width,
-        height: bounds.height,
-      }
-      return isPointInArea(hoverX, hoverY, relativeRect)
+      // Inline point-in-area check to avoid object allocation
+      const relX = bounds.x - rectX
+      const relY = bounds.y - rectY
+      return hoverX >= relX && hoverX <= relX + bounds.width && 
+             hoverY >= relY && hoverY <= relY + bounds.height
     }
   }
 

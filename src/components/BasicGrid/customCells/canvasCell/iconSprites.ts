@@ -13,7 +13,10 @@ export type IconDefinition = {
 
 type IconDefinitionInput = IconDefinition[] | Record<string, string>
 
-type CanvasSprite = CanvasImageSource & { width: number; height: number }
+type CanvasSprite = (CanvasImageSource | ImageBitmap) & { width: number; height: number }
+
+// Check if ImageBitmap is supported
+const hasImageBitmap = typeof createImageBitmap === 'function'
 
 type IconImageRecord = {
   image: HTMLImageElement
@@ -208,11 +211,14 @@ class IconSpriteManager {
     this.stats.misses += 1
 
     if (record.image.complete && record.image.naturalHeight !== 0) {
-      const sprite = this.rasterize(record.image, options)
-      if (sprite) {
-        this.sprites.set(variantKey, sprite)
-        this.stats.cacheSize = this.sprites.size
-        return sprite
+      // Start async rasterization to ImageBitmap
+      this.scheduleWarm(record.image, variantKey, options)
+      
+      // Return canvas sprite synchronously for first render
+      const canvasSprite = this.rasterizeToCanvas(record.image, options)
+      if (canvasSprite) {
+        // Don't cache canvas - we want the ImageBitmap version
+        return canvasSprite
       }
     }
 
@@ -236,6 +242,12 @@ class IconSpriteManager {
   }
 
   clear() {
+    // Close ImageBitmaps to free GPU memory
+    this.sprites.forEach((sprite) => {
+      if (sprite instanceof ImageBitmap) {
+        sprite.close()
+      }
+    })
     this.sprites.clear()
     this.pending.clear()
     this.stats.cacheSize = 0
@@ -255,14 +267,16 @@ class IconSpriteManager {
     variantKey: string,
     options: IconSpriteOptions
   ): Promise<void> {
-    if (this.pending.has(variantKey)) {
-      return this.pending.get(variantKey)!.then(() => undefined)
+    // Already cached or pending
+    if (this.sprites.has(variantKey) || this.pending.has(variantKey)) {
+      const pendingPromise = this.pending.get(variantKey)
+      return pendingPromise ? pendingPromise.then(() => undefined) : Promise.resolve()
     }
 
     const promise = this.waitForImage(image)
-      .then((loaded) => {
+      .then(async (loaded) => {
         if (!loaded) return null
-        const sprite = this.rasterize(loaded, options)
+        const sprite = await this.rasterize(loaded, options)
         if (sprite) {
           this.sprites.set(variantKey, sprite)
           this.stats.warmed += 1
@@ -303,7 +317,8 @@ class IconSpriteManager {
     })
   }
 
-  private rasterize(source: CanvasImageSource, options: IconSpriteOptions): CanvasSprite | null {
+  // Synchronous canvas rasterization for immediate use
+  private rasterizeToCanvas(source: CanvasImageSource, options: IconSpriteOptions): CanvasSprite | null {
     if (!hasDOM) {
       return source as CanvasSprite
     }
@@ -315,9 +330,40 @@ class IconSpriteManager {
     if (!ctx) {
       return source as CanvasSprite
     }
-    ctx.clearRect(0, 0, options.size, options.size)
     ctx.imageSmoothingEnabled = options.smoothing !== false
     ctx.drawImage(source, 0, 0, options.size, options.size)
+    return canvas
+  }
+
+  // Async rasterization to ImageBitmap (faster for repeated draws)
+  private async rasterize(source: CanvasImageSource, options: IconSpriteOptions): Promise<CanvasSprite | null> {
+    if (!hasDOM) {
+      return source as CanvasSprite
+    }
+
+    // First render to canvas
+    const canvas = createMemoryCanvas(options.size)
+    if (!canvas) {
+      return source as CanvasSprite
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      return source as CanvasSprite
+    }
+    ctx.imageSmoothingEnabled = options.smoothing !== false
+    ctx.drawImage(source, 0, 0, options.size, options.size)
+
+    // Convert to ImageBitmap if available (faster for repeated draws)
+    if (hasImageBitmap) {
+      try {
+        const bitmap = await createImageBitmap(canvas)
+        return bitmap as CanvasSprite
+      } catch {
+        // Fallback to canvas if ImageBitmap creation fails
+        return canvas
+      }
+    }
+
     return canvas
   }
 }
