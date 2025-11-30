@@ -1,5 +1,6 @@
 import { CanvasNode, CanvasEvent } from './CanvasNode';
 import { CanvasContainer } from './CanvasContainer';
+import {log} from "handsontable/helpers";
 
 export class CanvasRoot {
     canvas: HTMLCanvasElement;
@@ -23,6 +24,9 @@ export class CanvasRoot {
     }
 
     private dispatchPointerEvent(e: MouseEvent, type: CanvasEvent['type']) {
+        if (type === "click") {
+            console.log({e})
+        }
         const { x, y } = this.getEventCoords(e);
         const hits = this.rootNode.hitTest(x, y);
         const target = hits[0];
@@ -122,7 +126,7 @@ export class CanvasRoot {
 
         this.clearCanvas();
         this.applyResolutionScale(dpr);
-        this.updateRootRect(rect); 
+        this.updateRootRect(rect);
         this.layoutRoot();
         this.rootNode.paint(this.ctx);
     }

@@ -1,4 +1,5 @@
 import type React from 'react'
+import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode'
 
 import type { BasicGridColumn } from '../types'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMN_WIDTH } from '../constants'
@@ -14,6 +15,9 @@ interface HeaderCellDescriptor {
   columnIndex?: number
   isLeaf: boolean
   content?: React.ReactNode
+  renderColumnContent?: (
+    rect: { x: number; y: number; width: number; height: number },
+  ) => CanvasNode
 }
 
 export class GridColumnCollection<RowType extends Record<string, unknown>> {
@@ -59,6 +63,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
         const selfSegment: GridHeaderSegment = {
           title: fallbackTitle,
           content: column.headerContent,
+          renderColumnContent: column.renderColumnContent,
         }
 
         const valueGetter =
@@ -72,7 +77,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
         const isButton = column.dataType === 'button'
         const hasRenderColumnContent = Boolean(column.renderColumnContent)
         const hasRenderCellContent = Boolean(column.renderCellContent)
-        const canRenderLeaf = Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent
+        // Groups should not be considered leaves, even if they have renderColumnContent (which is for header)
+        const canRenderLeaf = (Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent) && !hasChildren
 
         if (canRenderLeaf) {
           // Для button ячеек и колонок с renderColumnContent создаем пустой valueGetter, если его нет
@@ -161,6 +167,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
         matrix[level][columnIndex] = {
           title: segment.title,
           content: segment.content,
+          renderColumnContent: segment.renderColumnContent,
           level,
           rowSpan: isLeaf ? Math.max(1, remainingLevels + 1) : 1,
           colSpan: 1,
@@ -224,7 +231,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
       descriptor.startIndex,
       descriptor.columnIndex,
       descriptor.isLeaf,
-      descriptor.content
+      descriptor.content,
+      descriptor.renderColumnContent
     )
   }
 }
@@ -241,4 +249,3 @@ const resolveAccessorValue = (row: Record<string, unknown>, accessor: string | n
 
   return (row as Record<string, unknown>)[accessor as keyof typeof row]
 }
-

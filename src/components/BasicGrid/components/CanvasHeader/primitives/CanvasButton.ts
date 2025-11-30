@@ -1,5 +1,6 @@
 import {drawButton} from '../../../customCells/canvasCell/buttons';
 import {CanvasLeaf} from "../core/CanvasLeaf.ts";
+import {CanvasEvent} from "../core/CanvasNode.ts";
 
 export class CanvasButton extends CanvasLeaf {
     type= "button"
@@ -11,14 +12,14 @@ export class CanvasButton extends CanvasLeaf {
     constructor(id: string, text: string, options?: {
         variant?: 'primary' | 'secondary' | 'danger';
         disabled?: boolean;
-        onClick?: () => void;
+        onClick?: (event: CanvasEvent) => void;
     }) {
         super(id);
         this.text = text;
         this.variant = options?.variant ?? this.variant;
         this.disabled = options?.disabled ?? this.disabled;
         if (options?.onClick) {
-            this.onClick = () => options.onClick!();
+            this.onClick = (event) => options.onClick!(event);
         }
     }
 

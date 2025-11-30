@@ -1,6 +1,6 @@
 import { drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../../customCells/canvasCell/buttons';
 import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
-import { CanvasNode } from "../core/CanvasNode.ts";
+import { CanvasNode, CanvasEvent } from "../core/CanvasNode.ts";
 import { CanvasLeaf } from "../core/CanvasLeaf.ts";
 
 const DEFAULT_HEIGHT = 28;
@@ -35,7 +35,7 @@ export class CanvasIconButton extends CanvasLeaf {
             size?: number | 'auto',
             variant?: 'primary' | 'secondary' | 'danger',
             disabled?: boolean,
-            onClick?: () => void
+            onClick?: (event: CanvasEvent) => void
         },
     ) {
         super(id);
@@ -44,7 +44,7 @@ export class CanvasIconButton extends CanvasLeaf {
         this.variant = options?.variant ?? 'primary';
         this.disabled = options?.disabled ?? false;
         if (options?.onClick) {
-            this.onClick = () => options.onClick!();
+            this.onClick = (event) => options.onClick!(event);
         }
     }
 

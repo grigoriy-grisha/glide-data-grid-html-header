@@ -168,7 +168,9 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       }
 
       const renderCellContent = column.getRenderCellContent()
+
       if (renderCellContent) {
+
         let cellCanvasRoot: CellCanvasRoot | null = null
         const render = (
           ctx: CanvasRenderingContext2D,
@@ -192,7 +194,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           cellCanvasRoot.rootNode.style = { width: rect.width }
 
           cellCanvasRoot.render(ctx, rect, hoverPos)
- 
+
           return {
             canvasRoot: cellCanvasRoot,
           }
@@ -201,44 +203,6 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         return createCanvasCell(render)
       }
 
-      if (column.isCanvas()) {
-        const canvasOptions = column.getCanvasOptions()
-        if (canvasOptions) {
-          const render = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; width: number; height: number }, theme: any, hoverX: number | undefined, hoverY: number | undefined) => {
-            return canvasOptions.render(ctx, rect, theme, hoverX, hoverY, dataRow, row)
-          }
-
-          const onClick = canvasOptions.onClick
-            ? getCachedHandler(dataRow, `canvas-click-${col}`, () =>
-              (x: number, y: number, rect: { x: number; y: number; width: number; height: number }, renderData?: any) => {
-                return canvasOptions.onClick?.(x, y, rect, dataRow, row, renderData) ?? false
-              }
-            )
-            : undefined
-
-          const onMouseEnter = canvasOptions.onMouseEnter
-            ? getCachedHandler(dataRow, `canvas-mouseenter-${col}`, () =>
-              () => canvasOptions.onMouseEnter?.(dataRow, row)
-            )
-            : undefined
-
-          const onMouseLeave = canvasOptions.onMouseLeave
-            ? getCachedHandler(dataRow, `canvas-mouseleave-${col}`, () =>
-              () => canvasOptions.onMouseLeave?.(dataRow, row)
-            )
-            : undefined
-
-          const copyData = typeof canvasOptions.copyData === 'function'
-            ? canvasOptions.copyData(dataRow)
-            : canvasOptions.copyData
-
-          const canvasCell = createCanvasCell(render, onClick, copyData)
-          if (onMouseEnter) canvasCell.data.onMouseEnter = onMouseEnter
-          if (onMouseLeave) canvasCell.data.onMouseLeave = onMouseLeave
-
-          return canvasCell
-        }
-      }
 
       const decoratedCell = decorateCell(baseCell, column.id, row)
       const canEdit =

@@ -148,6 +148,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     columnOrder,
     onColumnOrderChange,
   })
+
+
+
   const [columnWidthOverrides, setColumnWidthOverrides] = useState<Record<string, number>>({})
   const { columnWidths, columnPositions, dataAreaWidth } = useColumnMetrics(
     orderedColumns,
@@ -342,15 +345,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     },
   })
 
-  const { handleHeaderDragStart } = useColumnReorderDrag({
-    enableColumnReorder,
-    orderedColumns,
-    columnPositions,
-    columnWidths,
-    headerInnerRef,
-    dataAreaWidth,
-    reorderColumns,
-  })
   const getCellContent = useGridCellContent({
     orderedColumns,
     gridRows,
@@ -603,6 +597,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [handleColumnSort]
   )
 
+  console.log(scrollLeft)
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>

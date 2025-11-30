@@ -7,6 +7,9 @@ import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode';
 export interface GridHeaderSegment {
   title: string
   content?: React.ReactNode
+  renderColumnContent?: (
+    rect: { x: number; y: number; width: number; height: number },
+  ) => CanvasNode
 }
 
 interface GridColumnOptions<RowType extends Record<string, unknown>> {

@@ -118,7 +118,6 @@ const columns: BasicGridColumn<DataRow>[] = [
         children: [
           createColumn<DataRow>('role', 'string', 'Роль', {
             width: 320,
-            grow: 1,
             renderCellContent: (row, rowIndex) => {
               // Root: Row layout
               const root = new CanvasContainer(`role-root-${rowIndex}`, {
@@ -157,7 +156,7 @@ const columns: BasicGridColumn<DataRow>[] = [
 
               const icon = new CanvasText(`icon-${rowIndex}`, iconChar, { font: '24px sans-serif' })
               avatarArea.addChild(icon)
-              
+
               // Small ID text below icon
               const idText = new CanvasText(`id-${rowIndex}`, `#${rowIndex + 1}`, { font: '9px sans-serif', color: '#999' })
               avatarArea.addChild(idText)
@@ -177,10 +176,10 @@ const columns: BasicGridColumn<DataRow>[] = [
                 justifyContent: 'space-between',
                 alignItems: 'center',
               })
-              
-              const titleText = new CanvasText(`title-${rowIndex}`, row.role as string, { 
-                font: 'bold 12px sans-serif', 
-                color: '#333' 
+
+              const titleText = new CanvasText(`title-${rowIndex}`, row.role as string, {
+                font: 'bold 12px sans-serif',
+                color: '#333'
               })
               headerRow.addChild(titleText)
 
@@ -199,7 +198,7 @@ const columns: BasicGridColumn<DataRow>[] = [
                   alignItems: 'flex-start',
                   padding: { top: 2, bottom: 2 }
               })
-              
+
               let desc = 'Сотрудник'
               if (row.role === 'Developer') desc = 'Full-stack разработка, React/Node.js'
               if (row.role === 'Manager') desc = 'Управление проектами, Agile/Scrum'
@@ -256,13 +255,13 @@ const columns: BasicGridColumn<DataRow>[] = [
               })
               const dateText = new CanvasText(`date-${rowIndex}`, '2 ч. назад', { font: '9px sans-serif', color: '#aaa' })
               metaInfo.addChild(dateText)
-              
-              const deptText = new CanvasText(`dept-${rowIndex}`, (row.department as string).substring(0, 8) + '...', { 
-                  font: '9px sans-serif', 
-                  color: '#999' 
+
+              const deptText = new CanvasText(`dept-${rowIndex}`, (row.department as string).substring(0, 8) + '...', {
+                  font: '9px sans-serif',
+                  color: '#999'
               })
               metaInfo.addChild(deptText)
-              
+
               actionsArea.addChild(metaInfo)
 
               root.addChild(actionsArea)
@@ -299,7 +298,7 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'Действие',
         dataType: 'string',
         width: 150,
-        renderColumnContent: ( rect) => {
+        renderColumnContent: ( ) => {
           const root = new CanvasContainer('root', {
             direction: 'row',
             alignItems: 'center',
@@ -309,8 +308,6 @@ const columns: BasicGridColumn<DataRow>[] = [
             alignContent: 'center',
           })
 
-          // Устанавливаем размеры корневого контейнера
-          root.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
 
           // Текст
           const text = new CanvasText('text-label', 'Текст:')

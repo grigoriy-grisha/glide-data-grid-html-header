@@ -5,6 +5,7 @@ import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/prim
 import { CanvasFlex } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasFlex'
 import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
 import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIconButton'
+import {CanvasContainer} from "../components/BasicGrid/components/CanvasHeader";
 
 
 
@@ -161,7 +162,6 @@ const ProgressIcon = () => (
 
 // SVG строки для Canvas компонентов
 const POPULATION_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" /></svg>'
-const GDP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor" /></svg>'
 const STATUS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.5"/></svg>'
 const PROGRESS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="8" width="20" height="8" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 10h10v4H5z" fill="currentColor" opacity="0.5"/></svg>'
 const GLOBE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor" /></svg>'
@@ -203,7 +203,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
     for (let c = 0; c < 2; c++) {
       const countryStates: BasicGridColumn<LargeDataRow>[] = []
       const countryName = countryPairs[r % countryPairs.length][c]
-      const countryColor = c === 0 ? '#1e88e5' : '#43a047'
 
       for (let s = 0; s < 2; s++) {
         const stateCities: BasicGridColumn<LargeDataRow>[] = []
@@ -275,18 +274,66 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
               flex.addChild(button)
               return flex
             }
+          } else if (l === 2) {
+            // Вариант 3: Кастомная ячейка с графиком
+            stateCities.push(
+              createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
+                width: 200,
+                sortable: false,
+                renderCellContent: (row, rowIndex) => {
+                    const canvasRoot = new CanvasContainer(`graph-root-${rowIndex}-${globalColIndex}`, {
+                        direction: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'stretch',
+                        padding: { left: 8, right: 8, top: 4, bottom: 4 }
+                    })
+
+                    const header = new CanvasContainer(`graph-header-${rowIndex}-${globalColIndex}`, {
+                        direction: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    })
+
+                    const value = row[colKey] as string
+                    const valueText = new CanvasText(`val-${rowIndex}-${globalColIndex}`, value || '0 km²', {font: '11px sans-serif', color: '#333'})
+
+                    header.addChild(valueText)
+                    canvasRoot.addChild(header)
+
+                    const barBg = new CanvasContainer(`bar-bg-${rowIndex}-${globalColIndex}`, {
+                        direction: 'row',
+                        justifyContent: 'flex-start',
+                        alignItems: 'center',
+                        columnGap: 12,
+                    })
+
+                    const barFill = new CanvasButton(`bar-fill-${rowIndex}-${globalColIndex}`, 'Hello Area!', {variant: 'primary'})
+
+                    barBg.addChild(barFill)
+
+                    const barEmpty = new CanvasButton(`bar-empty-${rowIndex}-${globalColIndex}`, 'Hello Area 2!')
+                    barBg.addChild(barEmpty)
+
+                    canvasRoot.addChild(barBg)
+
+                    return canvasRoot
+                  }
+              })
+            )
+
+            globalColIndex++
+            continue
           } else {
-            // Вариант 3: CanvasButton с текстом
+            // Вариант 4: CanvasButton с текстом
             renderColumnContent = (
             ) => {
-              const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
+              const flex = new CanvasContainer(`flex-btn-${r}-${c}`, {
                 direction: 'row',
                 columnGap: 6,
                 justifyContent: 'center',
                 alignItems: 'center',
                 wrap: 'wrap'
               })
-
 
               const button = new CanvasButton(
                 `btn-${colKey}`,
@@ -313,9 +360,8 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
         // State Level (Level 3)
         const stateRenderContent = (
-          rect: { x: number; y: number; width: number; height: number },
         ) => {
-          const flex = new CanvasFlex(`state-${r}-${c}-${s}`, {
+          const flex = new CanvasContainer(`state-${r}-${c}-${s}`, {
               direction: 'row',
               columnGap: 6,
               justifyContent: 'center',
@@ -350,7 +396,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
         rect: { x: number; y: number; width: number; height: number },
       ) => {
 
-        const flex = new CanvasFlex(`flex-country-${r}-${c}`, {
+        const flex = new CanvasContainer(`flex-country-${r}-${c}`, {
           direction: 'row',
           columnGap: 6,
           justifyContent: 'center',
@@ -380,23 +426,19 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
     // Region Level (Level 1)
     const regionRenderContent = (
-      rect: { x: number; y: number; width: number; height: number },
     ) => {
 
-      const flex = new CanvasFlex(`region-${r}`, {
+      const flex = new CanvasContainer(`region-${r}`, {
         direction: 'row',
         alignItems: 'center',
         columnGap: 6
       })
-      flex.rect = rect
       flex.backgroundColor = regionColor
 
-      const flexContainer = new CanvasFlex(`region-${r}`, {
+      const flexContainer = new CanvasContainer(`region-${r}`, {
         direction: 'row',
         alignItems: 'center',
       })
-
-
 
       const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: '#2f75d5' })
       flex.addChild(icon)
@@ -410,7 +452,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
       flex.addChild(text)
 
 
-      const flex2 = new CanvasFlex(`region-${r}`, {
+      const flex2 = new CanvasContainer(`region-${r}`, {
         direction: 'row',
         columnGap: 10,
         rowGap: 10,
@@ -423,6 +465,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
       flexContainer.addChild(flex)
       flexContainer.addChild(flex2)
+
       return flex
     }
 

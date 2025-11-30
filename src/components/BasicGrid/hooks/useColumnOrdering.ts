@@ -50,13 +50,14 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
   const columnIdsRef = useRef<string[]>([])
   const previousColumnIdsSetRef = useRef<Set<string>>(new Set())
   const isInitialMountRef = useRef(true)
-  
+
   const columnIds = useMemo(() => {
+
     const ids = columns.map((column) => column.id).filter((id): id is string => Boolean(id))
     columnIdsRef.current = ids
     return ids
   }, [columns])
-  
+
   const [internalOrder, setInternalOrder] = useState<string[]>(() => {
     const ids = columns.map((column) => column.id).filter((id): id is string => Boolean(id))
     previousColumnIdsSetRef.current = new Set(ids)
@@ -72,11 +73,11 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
 
     const previousIdsSet = previousColumnIdsSetRef.current
     const newIdsSet = new Set(columnIds)
-    
+
     // Проверяем, изменился ли набор колонок (не порядок, а сам набор)
-    const setsEqual = previousIdsSet.size === newIdsSet.size && 
+    const setsEqual = previousIdsSet.size === newIdsSet.size &&
                       [...previousIdsSet].every(id => newIdsSet.has(id))
-    
+
     if (!setsEqual || isInitialMountRef.current) {
       // При первой инициализации или когда изменился набор колонок
       if (isInitialMountRef.current) {
@@ -84,11 +85,11 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
         previousColumnIdsSetRef.current = newIdsSet
         return // Не обновляем, так как уже установлено в useState
       }
-      
+
       // Объединяем: сохраняем порядок из internalOrder для существующих колонок,
       // добавляем новые колонки в конец
       const newColumns = columnIds.filter(id => !previousIdsSet.has(id))
-      
+
       if (newColumns.length > 0) {
         // Если добавились новые колонки, добавляем их в конец
         setInternalOrder((prev) => {
@@ -99,7 +100,7 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
         // Если только удалились колонки, просто фильтруем
         setInternalOrder((prev) => prev.filter(id => newIdsSet.has(id)))
       }
-      
+
       previousColumnIdsSetRef.current = newIdsSet
     }
   }, [columnIds])
@@ -133,6 +134,7 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
         setInternalOrder(nextOrder)
       }
       onColumnOrderChange?.(nextOrder)
+
     },
     [columnOrder, onColumnOrderChange]
   )

@@ -48,13 +48,6 @@ export function useHorizontalScroll({
       scrollLeftRef.current = clampedValue
       setScrollLeft(clampedValue)
 
-      if (headerElementRef.current) {
-        headerElementRef.current.style.transform = `translateX(-${clampedValue}px)`
-      }
-
-      // if (canvasHeaderRef?.current) {
-      //   canvasHeaderRef.current.style.transform = `translateX(-${clampedValue}px)`
-      // }
     },
     [clampScrollLeft, headerElementRef, canvasHeaderRef]
   )

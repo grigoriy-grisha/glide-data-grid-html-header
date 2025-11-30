@@ -181,7 +181,7 @@ export const useHeaderScene = ({
             const hoverColor = getHoverColor(normalColor)
 
             const column = cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
-            const renderContent = column?.getRenderColumnContent()
+            const renderContent = cell.renderColumnContent ?? column?.getRenderColumnContent()
 
             const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
             wrapper.rect.x = cellX

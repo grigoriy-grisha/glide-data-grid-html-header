@@ -1,6 +1,16 @@
-import { useMemo } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, button, tag, text, layout, layoutRow, renderComponents } from '../components/BasicGrid'
-import { HeaderCard } from './components/HeaderCard'
+import {useMemo} from 'react'
+import {
+    BasicGrid,
+    type BasicGridColumn,
+    button,
+    createColumn,
+    layout,
+    layoutRow,
+    renderComponents,
+    tag,
+    text
+} from '../components/BasicGrid'
+import {HeaderCard} from './components/HeaderCard'
 
 interface LayoutTestRow {
   id: string
@@ -103,11 +113,11 @@ export function CanvasLayoutTestExample() {
       <p className="section-description">
         Visual test for canvas layout engine: Justify Content (Start, Center, End, Space-Between, Space-Around)
       </p>
-      <BasicGrid<LayoutTestRow>
+      <BasicGrid<any>
         columns={columns}
         rows={layoutTestRows}
         height={500}
-        rowHeight={250} 
+        rowHeight={250}
         headerRowHeight={50}
         getRowId={(row) => row.id}
       />

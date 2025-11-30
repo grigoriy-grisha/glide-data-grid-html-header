@@ -110,7 +110,7 @@ export function StandaloneCanvasExample() {
       justifyContent: 'space-between',
       columnGap: 12,
     })
-    
+
     row4Content.style.width = '100%'
 
     row4Content.addChild(new CanvasText('text6', 'Row 4 label text'))
@@ -158,7 +158,6 @@ export function StandaloneCanvasExample() {
       root.render()
     }
 
-    console.log(root);
 
 
     // Initial sizing
