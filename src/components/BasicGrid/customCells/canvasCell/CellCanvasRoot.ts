@@ -8,9 +8,13 @@ export class CellCanvasRoot {
   rootNode: CanvasNode
   private bounds: Rect | null = null
   private hoveredNode: CanvasNode | null = null
+  private currentCursor: string = 'default'
   
   /** Draw batcher for optimized rendering */
   private batcher: DrawBatcher = new DrawBatcher()
+  
+  /** Callback fired when cursor should change based on hovered element */
+  onCursorChange?: (cursor: string) => void
 
   constructor(node: CanvasNode) {
     this.rootNode = node
@@ -103,6 +107,7 @@ export class CellCanvasRoot {
 
     if (type === 'mousemove') {
       this.handleHoverTransition(hits[0])
+      this.updateCursor(hits)
     }
 
     return true
@@ -110,6 +115,7 @@ export class CellCanvasRoot {
 
   handleMouseLeave() {
     this.handleHoverTransition(undefined)
+    this.updateCursor([])
   }
 
   private prepareRootNode(ctx: CanvasRenderingContext2D, rect: Rect) {
@@ -157,5 +163,39 @@ export class CellCanvasRoot {
     }
 
     this.hoveredNode = target ?? null
+  }
+  
+  private updateCursor(hits: CanvasNode[]) {
+    let newCursor = 'default'
+    
+    for (const node of hits) {
+      const cursor = node.style?.cursor
+      if (cursor) {
+        newCursor = cursor
+        break
+      }
+    }
+    
+    if (newCursor !== this.currentCursor) {
+      this.currentCursor = newCursor
+      this.onCursorChange?.(newCursor)
+    }
+  }
+  
+  getCurrentCursor(): string {
+    return this.currentCursor
+  }
+  
+  computeCursor(relativeX: number, relativeY: number): string {
+    const hits = this.rootNode.hitTest(relativeX, relativeY)
+    
+    for (const node of hits) {
+      const cursor = node.style?.cursor
+      if (cursor) {
+        return cursor
+      }
+    }
+    
+    return 'default'
   }
 }

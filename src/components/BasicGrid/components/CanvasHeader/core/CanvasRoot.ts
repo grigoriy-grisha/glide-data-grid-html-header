@@ -7,9 +7,13 @@ export class CanvasRoot {
     ctx: CanvasRenderingContext2D;
     rootNode: CanvasNode;
     hoveredNode: CanvasNode | null = null;
+    private currentCursor: string = 'default';
 
     /** Draw batcher for optimized rendering */
     private batcher: DrawBatcher = new DrawBatcher();
+    
+    /** Callback fired when cursor should change based on hovered element */
+    onCursorChange?: (cursor: string) => void;
 
     constructor(canvas: HTMLCanvasElement, rootNode: CanvasNode) {
         this.canvas = canvas;
@@ -46,6 +50,7 @@ export class CanvasRoot {
         if (type === 'mousemove') {
             this.handleHoverTransition(target, canvasEvent);
             this.dispatchMouseMove(hits, canvasEvent, () => stopped);
+            this.updateCursor(hits);
         }
     }
 
@@ -118,6 +123,23 @@ export class CanvasRoot {
         }
 
         this.hoveredNode = target ?? null;
+    }
+    
+    private updateCursor(hits: CanvasNode[]) {
+        // Find first element with a cursor set (traverse from deepest to root)
+        let newCursor = 'default';
+        for (const node of hits) {
+            const cursor = node.style?.cursor;
+            if (cursor) {
+                newCursor = cursor;
+                break;
+            }
+        }
+        
+        if (newCursor !== this.currentCursor) {
+            this.currentCursor = newCursor;
+            this.onCursorChange?.(newCursor);
+        }
     }
 
     render() {

@@ -43,6 +43,11 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = 
 
     const rootContainer = new CanvasAbsoluteContainer('root')
     const root = new CanvasRoot(canvas, rootContainer)
+
+    root.onCursorChange = (cursor) => {
+      canvas.style.cursor = cursor
+    }
+
     rootRef.current = root
     return () => {
       stopLoop()

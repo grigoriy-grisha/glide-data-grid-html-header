@@ -168,9 +168,9 @@ function buildNode(
 
   const node = createNode(canvasType, nodeId, props)
 
-  // Apply style if provided
+  // Apply style if provided - let the node's setter handle defaults (like cursor)
   if (props.style) {
-    node.style = { ...node.style, ...props.style }
+    node.style = props.style
   }
 
   // Process children for containers

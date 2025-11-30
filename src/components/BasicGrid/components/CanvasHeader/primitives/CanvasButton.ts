@@ -1,6 +1,6 @@
 import { drawButton } from '../../../customCells/canvasCell/buttons';
 import { CanvasLeaf } from "../core/CanvasLeaf";
-import { CanvasEvent } from "../core/CanvasNode";
+import { CanvasEvent, CanvasFlexStyle } from "../core/CanvasNode";
 import { DrawBatcher } from "../core/DrawBatcher";
 
 // Cached constants
@@ -35,11 +35,27 @@ export class CanvasButton extends CanvasLeaf {
     }) {
         super(id);
         this.text = text;
+        // Initialize style with default cursor
+        super.style = { ...super.style, cursor: 'pointer' };
         if (options) {
             if (options.variant !== undefined) this.variant = options.variant;
             if (options.disabled !== undefined) this.disabled = options.disabled;
             if (options.onClick) this.onClick = options.onClick;
         }
+    }
+
+    set style(value: CanvasFlexStyle) {
+        // Merge with existing style, but ensure cursor defaults to 'pointer'
+        super.style = { ...super.style, cursor: 'pointer', ...value };
+    }
+
+    get style(): CanvasFlexStyle {
+        const baseStyle = super.style;
+        // Always ensure cursor is present
+        if (!baseStyle.cursor) {
+            baseStyle.cursor = 'pointer';
+        }
+        return baseStyle;
     }
 
     measure(ctx: CanvasRenderingContext2D) {

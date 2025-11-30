@@ -107,6 +107,12 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     if (renderResult?.canvasRoot instanceof CellCanvasRoot) {
       if (relativeHover) {
         renderResult.canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, argsAny.event)
+        
+        // Compute and apply cursor synchronously during draw
+        const cursor = renderResult.canvasRoot.computeCursor(relativeHover.x, relativeHover.y)
+        if (cursor && cursor !== 'default') {
+          args.overrideCursor?.(cursor as Parameters<NonNullable<typeof args.overrideCursor>>[0])
+        }
       } else {
         renderResult.canvasRoot.handleMouseLeave()
       }
@@ -117,7 +123,8 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
 
     updateHoverState(cell.data, Boolean(relativeHover))
 
-    if (isHovered) {
+    if (isHovered && !renderResult?.canvasRoot) {
+      // Only use legacy hover detection if not using CellCanvasRoot
       args.overrideCursor?.('pointer')
     }
 

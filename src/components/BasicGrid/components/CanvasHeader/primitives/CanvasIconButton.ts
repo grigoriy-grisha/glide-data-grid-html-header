@@ -1,6 +1,6 @@
 import { drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../../customCells/canvasCell/buttons';
 import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
-import { CanvasNode, CanvasEvent } from "../core/CanvasNode";
+import { CanvasNode, CanvasEvent, CanvasFlexStyle } from "../core/CanvasNode";
 import { CanvasLeaf } from "../core/CanvasLeaf";
 import { DrawBatcher } from "../core/DrawBatcher";
 
@@ -44,9 +44,26 @@ export class CanvasIconButton extends CanvasLeaf {
         this.size = options?.size ?? 'auto';
         this.variant = options?.variant ?? 'primary';
         this.disabled = options?.disabled ?? false;
+        // Initialize style with default cursor
+        super.style = { ...super.style, cursor: 'pointer' };
         if (options?.onClick) {
             this.onClick = (event) => options.onClick!(event);
         }
+    }
+
+    // Override style setter to ensure cursor defaults to 'pointer'
+    override set style(value: CanvasFlexStyle) {
+        // Merge with existing style, but ensure cursor defaults to 'pointer'
+        super.style = { ...super.style, cursor: 'pointer', ...value };
+    }
+
+    override get style(): CanvasFlexStyle {
+        const baseStyle = super.style;
+        // Always ensure cursor is present
+        if (!baseStyle.cursor) {
+            baseStyle.cursor = 'pointer';
+        }
+        return baseStyle;
     }
 
     measure(_ctx: CanvasRenderingContext2D) {
