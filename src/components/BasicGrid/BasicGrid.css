@@ -69,9 +69,7 @@
   position: relative;
   width: 100%;
   background: #fff;
-  transition:
-    box-shadow 0.2s ease,
-    transform 0.15s ease-out;
+  transition: box-shadow 0.2s ease;
 }
 
 .basic-grid-header-layer--sticky {

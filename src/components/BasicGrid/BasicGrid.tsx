@@ -208,7 +208,14 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
   const headerHeightPx = levelCount * headerRowHeight
 
-  const { headerLayerStyle, bodyStyle: stickyBodyStyle, handleVirtualScroll, updateStickyMetrics } = useStickyHeader({
+  const {
+    headerLayerStyle,
+    bodyStyle: stickyBodyStyle,
+    headerShellStyle: stickyHeaderShellStyle,
+    handleVirtualScroll,
+    updateStickyMetrics,
+    virtualOffset,
+  } = useStickyHeader({
     enabled: stickyHeaderEnabled,
     gridRef,
     headerHeight: headerHeightPx,
@@ -544,12 +551,17 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [])
 
-  const headerShellStyle = useMemo(() => {
+  const headerShellStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (headerHeightPx <= 0) {
       return undefined
     }
-    return { height: `${headerHeightPx}px` }
-  }, [headerHeightPx])
+    // Объединяем базовую высоту со стилями от sticky header
+    // (которые могут уменьшать высоту при сворачивании хедера)
+    return {
+      height: `${headerHeightPx}px`,
+      ...stickyHeaderShellStyle,
+    }
+  }, [headerHeightPx, stickyHeaderShellStyle])
 
   const estimatedRowHeight = useMemo(() => {
     if (typeof rowHeightProp === 'number' && Number.isFinite(rowHeightProp)) {
@@ -560,6 +572,11 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
     return DEFAULT_ROW_HEIGHT
   }, [resolvedRowHeight, rowHeightProp])
+
+  // Эффективная высота тела таблицы: увеличивается при сворачивании хедера
+  const effectiveBodyHeight = useMemo(() => {
+    return height + virtualOffset
+  }, [height, virtualOffset])
 
   const { handleVisibleRegionChangedWithOverlay, gridBodyStyle } = useGridBodyInteractions({
     estimatedRowHeight,
@@ -642,7 +659,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               rows={gridRows.length + (summaryRows?.length ?? 0)}
               freezeTrailingRows={summaryRows?.length ?? 0}
               width={viewportWidth}
-              height={height}
+              height={effectiveBodyHeight}
               theme={gridTheme}
               customRenderers={customRenderers}
               onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}

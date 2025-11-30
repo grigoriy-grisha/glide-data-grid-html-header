@@ -18,7 +18,8 @@ const createStickyHeaderState = (): StickyHeaderState => ({
 const SCROLLABLE_OVERFLOW = /(auto|scroll)/i
 const STICKY_TOP_OFFSET = 0
 const STICKY_Z_INDEX = 30
-const DEFAULT_SCROLL_SMOOTHING = 0.3
+// Коэффициент сглаживания: 1.0 = мгновенно, меньше = плавнее
+const DEFAULT_SCROLL_SMOOTHING = 1.0
 
 const getScrollableAncestors = (node: HTMLElement | null): (HTMLElement | Window)[] => {
   if (typeof window === 'undefined') {
@@ -174,13 +175,20 @@ export function useStickyHeader({
     [enabled, headerHeight]
   )
 
+  // Стили для слоя хедера:
+  // - Когда sticky выключен: хедер сдвигается вверх на virtualOffset внутри shell'а
+  // - Когда sticky включен: хедер фиксируется при прокрутке страницы
   const headerLayerStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (!enabled && virtualOffset === 0) {
       return undefined
     }
 
     if (!enabled) {
-      return { transform: `translateY(-${virtualOffset}px)` }
+      // Хедер сдвигается вверх внутри shell-контейнера
+      // Shell обрезает его через overflow: hidden
+      return {
+        transform: `translateY(-${virtualOffset}px)`,
+      }
     }
 
     if (!stickyState.isSticky) {
@@ -202,19 +210,37 @@ export function useStickyHeader({
     return style
   }, [enabled, stickyState.isSticky, stickyState.left, stickyState.translateY, stickyState.width, virtualOffset])
 
+  // Стили для тела таблицы - больше не нужны при сворачивании хедера,
+  // т.к. shell уменьшается и тело автоматически поднимается
   const bodyStyle = useMemo<React.CSSProperties | undefined>(() => {
+    // При сворачивающемся хедере стили для body не нужны
+    return undefined
+  }, [])
+
+  // Стиль для shell-контейнера хедера:
+  // При сворачивании хедера уменьшаем высоту shell'а,
+  // чтобы тело таблицы поднималось вслед за хедером
+  const headerShellStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (enabled || virtualOffset === 0) {
       return undefined
     }
-    return { marginTop: -virtualOffset }
-  }, [enabled, virtualOffset])
+    // Уменьшаем высоту shell'а на величину сворачивания
+    // overflow: hidden обрезает часть хедера, которая вышла за пределы
+    return {
+      height: headerHeight - virtualOffset,
+      minHeight: 0,
+      overflow: 'hidden',
+    }
+  }, [enabled, headerHeight, virtualOffset])
 
   return {
     headerLayerStyle,
     bodyStyle,
+    headerShellStyle,
     handleVirtualScroll,
     updateStickyMetrics,
     isSticky: stickyState.isSticky,
+    virtualOffset,
   }
 }
 
