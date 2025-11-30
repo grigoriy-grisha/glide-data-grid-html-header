@@ -7,6 +7,7 @@ import { createCanvasCell } from '../customCells/canvasCell/index'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
+import { buildCanvasTree } from '../components/CanvasHeader/CanvasComponents'
 
 const EMPTY_TEXT_CELL: GridCell = {
   kind: GridCellKind.Text,
@@ -170,7 +171,6 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       const renderCellContent = column.getRenderCellContent()
 
       if (renderCellContent) {
-
         let cellCanvasRoot: CellCanvasRoot | null = null
         const render = (
           ctx: CanvasRenderingContext2D,
@@ -179,10 +179,12 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           _hoverX: number | undefined,
           _hoverY: number | undefined
         ) => {
-          const node = renderCellContent(dataRow, row, rect)
-          if (!node) {
+          const jsxElement = renderCellContent(dataRow, row)
+          if (!jsxElement) {
             return {}
           }
+
+          const node = buildCanvasTree(jsxElement, `cell-${col}-${row}`)
 
           if (!cellCanvasRoot) {
             cellCanvasRoot = new CellCanvasRoot(node)

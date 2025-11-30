@@ -1,5 +1,5 @@
 import type React from 'react'
-import type {CanvasNode} from './components/CanvasHeader/core/CanvasNode'
+import type { ReactElement } from 'react'
 
 export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select' | 'button' | 'canvas'
 
@@ -70,14 +70,10 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
     selectPlaceholder?: string
     buttonOptions?: ButtonCellOptions<RowType>
     canvasOptions?: CanvasCellOptions<RowType>
-    renderColumnContent?: (
-        rect: { x: number; y: number; width: number; height: number },
-    ) => CanvasNode
-    renderCellContent?: (
-        row: RowType,
-        rowIndex: number,
-        rect: { x: number; y: number; width: number; height: number },
-    ) => CanvasNode
+    /** Render custom JSX content in the column header using Canvas.* components */
+    renderColumnContent?: () => ReactElement
+    /** Render custom JSX content in cells using Canvas.* components */
+    renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
 }
 
 export interface BasicGridTreeOptions<RowType = Record<string, unknown>> {

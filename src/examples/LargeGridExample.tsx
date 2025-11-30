@@ -1,13 +1,5 @@
 import React from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn } from '../components/BasicGrid'
-import { CanvasIcon } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIcon'
-import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
-import { CanvasFlex } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasFlex'
-import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
-import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIconButton'
-import {CanvasContainer} from "../components/BasicGrid/components/CanvasHeader";
-
-
+import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components/BasicGrid'
 
 // Тип для строки данных с большим количеством колонок
 interface LargeDataRow extends Record<string, unknown> {
@@ -125,41 +117,6 @@ const createLazyRow = (rowIndex: number): LargeDataRow => {
   })
 }
 
-// SVG иконки для разных типов данных
-const PopulationIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
-    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
-  </svg>
-)
-
-const GDPIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
-    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor" />
-  </svg>
-)
-
-const AreaIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
-    <path d="M20 6.83V20H6.83L4 17.17V4h13.17L20 6.83zM6 18h12V8.83L16.17 7H6v11z" fill="currentColor" />
-    <path d="M9 9h6v6H9z" fill="currentColor" opacity="0.5" />
-  </svg>
-)
-
-const StatusIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-    <circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.5"/>
-  </svg>
-)
-
-const ProgressIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
-    <rect x="2" y="8" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="2"/>
-    <path d="M5 10h10v4H5z" fill="currentColor" opacity="0.5"/>
-  </svg>
-)
-
-
 // SVG строки для Canvas компонентов
 const POPULATION_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" /></svg>'
 const STATUS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.5"/></svg>'
@@ -198,7 +155,6 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
   for (let r = 0; r < REGIONS_COUNT; r++) {
     const regionCountries: BasicGridColumn<LargeDataRow>[] = []
     const regionName = regionNames[r % regionNames.length]
-    const regionColor = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#0097a7'][r % 6]
 
     for (let c = 0; c < 2; c++) {
       const countryStates: BasicGridColumn<LargeDataRow>[] = []
@@ -210,268 +166,146 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
 
         // 5 Leaf columns: Pop, GDP, Area, Status, Progress
         const leafTypes = [
-          { key: 'Pop', icon: <PopulationIcon />, color: '#e91e63', bgColor: '#fce4ec' },
-          { key: 'GDP', icon: <GDPIcon />, color: '#4caf50', bgColor: '#e8f5e9' },
-          { key: 'Area', icon: <AreaIcon />, color: '#ff9800', bgColor: '#fff3e0' },
-          { key: 'Status', icon: <StatusIcon />, color: '#9c27b0', bgColor: '#f3e5f5' },
-          { key: 'Progress', icon: <ProgressIcon />, color: '#00bcd4', bgColor: '#e0f7fa' }
+          { key: 'Pop', icon: POPULATION_SVG, color: '#e91e63' },
+          { key: 'GDP', icon: null, color: '#4caf50' },
+          { key: 'Area', icon: null, color: '#ff9800' },
+          { key: 'Status', icon: STATUS_SVG, color: '#9c27b0' },
+          { key: 'Progress', icon: PROGRESS_SVG, color: '#00bcd4' }
         ]
 
         for (let l = 0; l < LEAF_COLUMNS_COUNT; l++) {
           const colKey = `col_${globalColIndex}`
           const leafType = leafTypes[l]
 
-          let renderColumnContent: any
-
           if (l === 0 || l === 3 || l === 4) {
-            // Вариант 1: CanvasFlex с иконкой и текстом (Pop, Status, Progress)
-            const svgIcon = l === 0 ? POPULATION_SVG : (l === 3 ? STATUS_SVG : PROGRESS_SVG)
+            // Вариант 1: Canvas.Container с иконкой и текстом (Pop, Status, Progress)
+            const svgIcon = leafType.icon!
+            const leafColor = leafType.color
+            const leafKey = leafType.key
 
-            renderColumnContent = (
-              rect: { x: number; y: number; width: number; height: number },
-            ) => {
-              const flex = new CanvasFlex(`flex-${colKey}`, {
-                  direction: 'row',
-                  columnGap: 4,
-                  justifyContent: 'center',
-                  alignItems: 'center'
+            stateCities.push(
+              createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
+                width: 90,
+                sortable: true,
+                renderColumnContent: () => (
+                  <Canvas.Container direction="row" gap={4} justifyContent="center" alignItems="center">
+                    <Canvas.Icon icon={svgIcon} size={14} color={leafColor} />
+                    <Canvas.Text font="bold 11px sans-serif" color={leafColor}>{leafKey}</Canvas.Text>
+                  </Canvas.Container>
+                )
               })
-              flex.rect = rect
-
-              const icon = new CanvasIcon(`icon-${colKey}`, svgIcon, { size: 14, color: leafType.color })
-              flex.addChild(icon)
-
-              const text = new CanvasText(`text-${colKey}`, leafType.key)
-              text.color = leafType.color
-              text.font = "bold 11px sans-serif"
-              flex.addChild(text)
-
-              return flex
-            }
+            )
           } else if (l === 1) {
-            // Вариант 2: CanvasIconButton с иконкой и текстом
-            renderColumnContent = (
-              rect: { x: number; y: number; width: number; height: number },
-            ) => {
-              const flex = new CanvasFlex(`flex-btn-${r}-${c}`, {
-                direction: 'row',
-                columnGap: 6,
-                justifyContent: 'center',
-                alignItems: 'center',
-                wrap: 'wrap'
+            // Вариант 2: Canvas.Button
+            const leafKey = leafType.key
+
+            stateCities.push(
+              createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
+                width: 90,
+                sortable: true,
+                renderColumnContent: () => (
+                  <Canvas.Container direction="row" gap={6} justifyContent="center" alignItems="center" wrap="wrap">
+                    <Canvas.Button onClick={() => console.log(`Clicked ${leafKey} button`)}>
+                      {leafKey}
+                    </Canvas.Button>
+                  </Canvas.Container>
+                )
               })
-
-
-              const button = new CanvasButton(
-                  `btn-${colKey}`,
-                  leafType.key,
-                  {
-                    onClick: () => console.log(`Clicked ${leafType.key} button`)
-                  }
-              )
-
-              flex.rect = { x: rect.x , y: rect.y, width: rect.width, height: rect.height }
-              flex.addChild(button)
-              return flex
-            }
+            )
           } else if (l === 2) {
-            // Вариант 3: Кастомная ячейка с графиком
+            // Вариант 3: Кастомная ячейка с кнопками
+            const currentColKey = colKey
             stateCities.push(
               createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
                 width: 200,
                 sortable: false,
-                renderCellContent: (row, rowIndex) => {
-                    const canvasRoot = new CanvasContainer(`graph-root-${rowIndex}-${globalColIndex}`, {
-                        direction: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'stretch',
-                        padding: { left: 8, right: 8, top: 4, bottom: 4 }
-                    })
-
-                    const header = new CanvasContainer(`graph-header-${rowIndex}-${globalColIndex}`, {
-                        direction: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    })
-
-                    const value = row[colKey] as string
-                    const valueText = new CanvasText(`val-${rowIndex}-${globalColIndex}`, value || '0 km²', {font: '11px sans-serif', color: '#333'})
-
-                    header.addChild(valueText)
-                    canvasRoot.addChild(header)
-
-                    const barBg = new CanvasContainer(`bar-bg-${rowIndex}-${globalColIndex}`, {
-                        direction: 'row',
-                        justifyContent: 'flex-start',
-                        alignItems: 'center',
-                        columnGap: 12,
-                    })
-
-                    const barFill = new CanvasButton(`bar-fill-${rowIndex}-${globalColIndex}`, 'Hello Area!', {variant: 'primary'})
-
-                    barBg.addChild(barFill)
-
-                    const barEmpty = new CanvasButton(`bar-empty-${rowIndex}-${globalColIndex}`, 'Hello Area 2!')
-                    barBg.addChild(barEmpty)
-
-                    canvasRoot.addChild(barBg)
-
-                    return canvasRoot
-                  }
+                renderCellContent: (row) => {
+                  const value = row[currentColKey] as string
+                  return (
+                    <Canvas.Container direction="column" justifyContent="center" alignItems="stretch" padding={{ left: 8, right: 8, top: 4, bottom: 4 }}>
+                      <Canvas.Container direction="row" justifyContent="space-between" alignItems="center">
+                        <Canvas.Text font="11px sans-serif" color="#333">{value || '0 km²'}</Canvas.Text>
+                      </Canvas.Container>
+                      <Canvas.Container direction="row" justifyContent="flex-start" alignItems="center" gap={12}>
+                        <Canvas.Button variant="primary">Hello Area!</Canvas.Button>
+                        <Canvas.Button>Hello Area 2!</Canvas.Button>
+                      </Canvas.Container>
+                    </Canvas.Container>
+                  )
+                }
               })
             )
 
             globalColIndex++
             continue
           } else {
-            // Вариант 4: CanvasButton с текстом
-            renderColumnContent = (
-            ) => {
-              const flex = new CanvasContainer(`flex-btn-${r}-${c}`, {
-                direction: 'row',
-                columnGap: 6,
-                justifyContent: 'center',
-                alignItems: 'center',
-                wrap: 'wrap'
+            // Вариант 4: Canvas.Button с текстом
+            const leafKey = leafType.key
+
+            stateCities.push(
+              createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
+                width: 90,
+                sortable: true,
+                renderColumnContent: () => (
+                  <Canvas.Container direction="row" gap={6} justifyContent="center" alignItems="center" wrap="wrap">
+                    <Canvas.Button onClick={() => console.log(`Clicked ${leafKey} button`)}>
+                      {leafKey}
+                    </Canvas.Button>
+                  </Canvas.Container>
+                )
               })
-
-              const button = new CanvasButton(
-                `btn-${colKey}`,
-                leafType.key,
-                {
-                   onClick: () => console.log(`Clicked ${leafType.key} button`)
-                }
-              )
-
-              flex.addChild(button)
-              return flex
-            }
+            )
           }
-
-          stateCities.push(
-            createColumn<LargeDataRow>(colKey, 'string', leafType.key, {
-              width: 90,
-              sortable: true,
-              renderColumnContent
-            })
-          )
           globalColIndex++
         }
 
         // State Level (Level 3)
-        const stateRenderContent = (
-        ) => {
-          const flex = new CanvasContainer(`state-${r}-${c}-${s}`, {
-              direction: 'row',
-              columnGap: 6,
-              justifyContent: 'center',
-              alignItems: 'center',
-              wrap: 'wrap'
-          })
-
-          const icon = new CanvasIcon(`icon-${stateName}`, MAP_SVG, { size: 14, color: '#2196f3' })
-          flex.addChild(icon)
-
-          const text = new CanvasText(`text-${stateName}`, stateName)
-          text.color = '#333333'
-          text.font = "bold 12px sans-serif"
-          flex.addChild(text)
-
-          const badge = new CanvasButton(`badge-${stateName}`, String(s + 1), {
-            onClick: () => console.log(`Clicked country: ${countryName}`),
-          })
-          flex.addChild(badge)
-
-          return flex
-        }
+        const stateNameCopy = stateName
+        const stateIndex = s
 
         countryStates.push({
           title: stateName,
-          renderColumnContent: stateRenderContent,
+          renderColumnContent: () => (
+            <Canvas.Container direction="row" gap={6} justifyContent="center" alignItems="center" wrap="wrap">
+              <Canvas.Icon icon={MAP_SVG} size={14} color="#2196f3" />
+              <Canvas.Text font="bold 12px sans-serif" color="#333333">{stateNameCopy}</Canvas.Text>
+              <Canvas.Button onClick={() => console.log(`Clicked state: ${stateNameCopy}`)}>
+                {String(stateIndex + 1)}
+              </Canvas.Button>
+            </Canvas.Container>
+          ),
           children: stateCities
         })
       }
 
-      const countryRenderContent = (
-        rect: { x: number; y: number; width: number; height: number },
-      ) => {
-
-        const flex = new CanvasContainer(`flex-country-${r}-${c}`, {
-          direction: 'row',
-          columnGap: 6,
-          justifyContent: 'center',
-          alignItems: 'center',
-          wrap: 'wrap'
-        })
-
-        const button = new CanvasIconButton(
-          `country-${r}-${c}`,
-          GLOBE_SVG,
-          {
-             onClick: () => console.log(`Clicked country: ${countryName}`),
-          }
-        )
-
-        flex.rect = {width: rect.width, height: rect.height, y: rect.y, x: rect.x}
-        flex.addChild(button)
-        return flex
-      }
+      // Country Level (Level 2)
+      const countryNameCopy = countryName
 
       regionCountries.push({
         title: countryName,
-        renderColumnContent: countryRenderContent,
+        renderColumnContent: () => (
+          <Canvas.Container direction="row" gap={6} justifyContent="center" alignItems="center" wrap="wrap">
+            <Canvas.IconButton
+              icon={GLOBE_SVG}
+              onClick={() => console.log(`Clicked country: ${countryNameCopy}`)}
+            />
+          </Canvas.Container>
+        ),
         children: countryStates
       })
     }
 
     // Region Level (Level 1)
-    const regionRenderContent = (
-    ) => {
-
-      const flex = new CanvasContainer(`region-${r}`, {
-        direction: 'row',
-        alignItems: 'center',
-        columnGap: 6
-      })
-      flex.backgroundColor = regionColor
-
-      const flexContainer = new CanvasContainer(`region-${r}`, {
-        direction: 'row',
-        alignItems: 'center',
-      })
-
-      const icon = new CanvasIcon(`icon-region-${r}`, LOCATION_SVG, { size: 18, color: '#2f75d5' })
-      flex.addChild(icon)
-
-      const text = new CanvasText(`text-region-${r}`, regionName, {
-        color: 'black',
-        font: "bold 14px sans-serif",
-        wordWrap: true
-      })
-
-      flex.addChild(text)
-
-
-      const flex2 = new CanvasContainer(`region-${r}`, {
-        direction: 'row',
-        columnGap: 10,
-        rowGap: 10,
-        justifyContent: 'center',
-        alignItems: 'center'
-      })
-
-      const badge = new CanvasButton(`badge-region-${r}`, `R${r + 1}`)
-      flex2.addChild(badge)
-
-      flexContainer.addChild(flex)
-      flexContainer.addChild(flex2)
-
-      return flex
-    }
+    const regionNameCopy = regionName
 
     columns.push({
       title: regionName,
-      renderColumnContent: regionRenderContent,
+      renderColumnContent: () => (
+        <Canvas.Container direction="row" alignItems="center" gap={6}>
+          <Canvas.Icon icon={LOCATION_SVG} size={18} color="#2f75d5" />
+          <Canvas.Text font="bold 14px sans-serif" color="black" wordWrap>{regionNameCopy}</Canvas.Text>
+        </Canvas.Container>
+      ),
       children: regionCountries
     })
   }

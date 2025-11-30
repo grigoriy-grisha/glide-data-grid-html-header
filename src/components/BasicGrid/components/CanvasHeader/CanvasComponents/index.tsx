@@ -14,10 +14,16 @@ import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites'
 // Component Props
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface ContainerProps extends FlexBoxOptions {
+interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
   children?: ReactNode
   style?: Partial<CanvasFlexStyle>
   id?: string
+  /** Universal gap between items (sets both columnGap and rowGap) */
+  gap?: number
+  /** Gap between columns (horizontal spacing in row direction) */
+  columnGap?: number
+  /** Gap between rows (vertical spacing in column direction) */
+  rowGap?: number
 }
 
 interface TextProps extends Omit<CanvasTextOptions, 'font' | 'color'> {
@@ -185,7 +191,13 @@ function buildNode(
 function createNode(type: string, id: string, props: Record<string, any>): CanvasNode {
   switch (type) {
     case 'Container': {
-      const { children, style, id: _, ...flexOptions } = props
+      const { children, style, id: _, gap, columnGap, rowGap, ...restFlexOptions } = props
+      // Universal gap: if gap is set, use it for both axes unless specific gap is provided
+      const flexOptions = {
+        ...restFlexOptions,
+        columnGap: columnGap ?? gap ?? 0,
+        rowGap: rowGap ?? gap ?? 0,
+      }
       const node = new CanvasContainer(id, flexOptions)
       return node
     }

@@ -21,7 +21,7 @@ export {
 export type { NumericAnimationOptions, AnimationEasing } from './utils/cellAnimations'
 
 // Canvas JSX Components
-export { Canvas, buildCanvasTree } from './components/CanvasHeader'
+export { Canvas } from './components/CanvasHeader'
 export type {
   CanvasContainerProps,
   CanvasTextProps,

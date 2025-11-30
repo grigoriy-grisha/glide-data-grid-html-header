@@ -1,5 +1,5 @@
 import type React from 'react'
-import type { CanvasNode } from '../components/CanvasHeader/core/CanvasNode'
+import type { ReactElement } from 'react'
 
 export class GridHeaderCell {
   constructor(
@@ -11,9 +11,7 @@ export class GridHeaderCell {
     public readonly columnIndex: number | undefined,
     public readonly isLeaf: boolean,
     public readonly content?: React.ReactNode,
-    public readonly renderColumnContent?: (
-      rect: { x: number; y: number; width: number; height: number },
-    ) => CanvasNode
+    public readonly renderColumnContent?: () => ReactElement
   ) {}
 
   getSpanWidth(columnWidths: number[]) {

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, Canvas, buildCanvasTree } from '../components/BasicGrid'
+import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components/BasicGrid'
 import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
@@ -27,62 +27,50 @@ const columns: BasicGridColumn<DataRow>[] = [
         dataType: "string",
         title: 'ID',
         width: 150,
-        renderColumnContent: () => {
-          return buildCanvasTree(
-            <Canvas.Container
-              direction="row"
-              alignItems="center"
-              justifyContent="center"
-              columnGap={6}
-              wrap="wrap"
-              alignContent="center"
+        renderColumnContent: () => (
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
+            justifyContent="center"
+            gap={6}
+            wrap="wrap"
+            alignContent="center"
+          >
+            <Canvas.Text color="#666">Текст:</Canvas.Text>
+            <Canvas.Icon
+              icon={svgIcon}
+              size={20}
+              color="#1565c0"
+              style={{ width: 20, height: 20 }}
+              onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
+            />
+          </Canvas.Container>
+        ),
+        renderCellContent: (row) => (
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            gap={8}
+            padding={8}
+            wrap="wrap"
+          >
+            <Canvas.Container direction="column" gap={2} style={{ width: '100%' }}>
+              <Canvas.Text color="#0d47a1" style={{ flexGrow: 1 }}>
+                {row.employeeId ?? '—'}
+              </Canvas.Text>
+              <Canvas.Text color="#607d8b" style={{ flexGrow: 1 }}>
+                {row.role ?? '—'}
+              </Canvas.Text>
+            </Canvas.Container>
+            <Canvas.Button
+              variant="secondary"
+              onClick={() => console.log('Подробнее по сотруднику', row.employeeId)}
             >
-              <Canvas.Text color="#666">Текст:</Canvas.Text>
-              <Canvas.Icon
-                icon={svgIcon}
-                size={20}
-                color="#1565c0"
-                style={{ width: 20, height: 20 }}
-                onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
-              />
-            </Canvas.Container>,
-            'header-id'
-          )
-        },
-        renderCellContent: (row, rowIndex) => {
-          return buildCanvasTree(
-            <Canvas.Container
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              columnGap={8}
-              padding={8}
-              wrap="wrap"
-              id={`cell-root-${row.employeeId ?? rowIndex}`}
-            >
-              <Canvas.Container
-                direction="column"
-                rowGap={2}
-                style={{ width: '100%' }}
-                id={`cell-left-${row.employeeId ?? rowIndex}`}
-              >
-                <Canvas.Text color="#0d47a1" style={{ flexGrow: 1 }}>
-                  {row.employeeId ?? '—'}
-                </Canvas.Text>
-                <Canvas.Text color="#607d8b" style={{ flexGrow: 1 }}>
-                  {row.role ?? '—'}
-                </Canvas.Text>
-              </Canvas.Container>
-              <Canvas.Button
-                variant="secondary"
-                onClick={() => console.log('Подробнее по сотруднику', row.employeeId)}
-              >
-                Подробнее
-              </Canvas.Button>
-            </Canvas.Container>,
-            `cell-${rowIndex}`
-          )
-        },
+              Подробнее
+            </Canvas.Button>
+          </Canvas.Container>
+        ),
       },
       {
         title: 'ФИО',
@@ -107,13 +95,13 @@ const columns: BasicGridColumn<DataRow>[] = [
                 : row.role === 'Designer' ? 'UI/UX дизайн, Figma, прототипирование'
                 : 'Сотрудник'
 
-              return buildCanvasTree(
-                <Canvas.Container direction="row" justifyContent="space-between" padding={4} columnGap={8}>
+              return (
+                <Canvas.Container direction="row" justifyContent="space-between" padding={4} gap={8}>
                   <Canvas.Container
                     direction="column"
                     justifyContent="center"
                     alignItems="center"
-                    rowGap={2}
+                    gap={2}
                     style={{ width: 40, flexShrink: 0 }}
                   >
                     <Canvas.Text font="24px sans-serif">{iconChar}</Canvas.Text>
@@ -129,7 +117,7 @@ const columns: BasicGridColumn<DataRow>[] = [
                         {desc}
                       </Canvas.Text>
                     </Canvas.Container>
-                    <Canvas.Container direction="row" justifyContent="flex-start" alignItems="center" columnGap={4}>
+                    <Canvas.Container direction="row" justifyContent="flex-start" alignItems="center" gap={4}>
                       <Canvas.Button variant="secondary">FullTime</Canvas.Button>
                       <Canvas.Button variant="secondary">Office</Canvas.Button>
                     </Canvas.Container>
@@ -145,15 +133,14 @@ const columns: BasicGridColumn<DataRow>[] = [
                     <Canvas.Button variant="primary" onClick={() => console.log('Chat', row.employeeId)}>
                       Chat
                     </Canvas.Button>
-                    <Canvas.Container direction="column" alignItems="flex-end" rowGap={2}>
+                    <Canvas.Container direction="column" alignItems="flex-end" gap={2}>
                       <Canvas.Text font="9px sans-serif" color="#aaa">2 ч. назад</Canvas.Text>
                       <Canvas.Text font="9px sans-serif" color="#999">
                         {`${(row.department as string).substring(0, 8)}...`}
                       </Canvas.Text>
                     </Canvas.Container>
                   </Canvas.Container>
-                </Canvas.Container>,
-                `role-${rowIndex}`
+                </Canvas.Container>
               )
             },
           }),
@@ -186,34 +173,31 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'Действие',
         dataType: 'string',
         width: 150,
-        renderColumnContent: () => {
-          return buildCanvasTree(
-            <Canvas.Container
-              direction="row"
-              alignItems="center"
-              justifyContent="center"
-              columnGap={6}
-              wrap="wrap"
-              alignContent="center"
-            >
-              <Canvas.Text color="#666">Текст:</Canvas.Text>
-              <Canvas.Icon
-                icon={svgIcon}
-                size={20}
-                color="#1565c0"
-                style={{ width: 20, height: 20 }}
-                onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
-              />
-              <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
-                Button
-              </Canvas.Button>
-              <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
-                Button
-              </Canvas.Button>
-            </Canvas.Container>,
-            'action-header'
-          )
-        },
+        renderColumnContent: () => (
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
+            justifyContent="center"
+            gap={6}
+            wrap="wrap"
+            alignContent="center"
+          >
+            <Canvas.Text color="#666">Текст:</Canvas.Text>
+            <Canvas.Icon
+              icon={svgIcon}
+              size={20}
+              color="#1565c0"
+              style={{ width: 20, height: 20 }}
+              onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
+            />
+            <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+              Button
+            </Canvas.Button>
+            <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+              Button
+            </Canvas.Button>
+          </Canvas.Container>
+        ),
       },
     ],
   },

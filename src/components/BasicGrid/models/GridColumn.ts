@@ -1,15 +1,12 @@
 import type React from 'react'
+import type { ReactElement } from 'react'
 
 import type { BasicGridDataType, BasicGridSelectOption, ButtonCellOptions, CanvasCellOptions, SortDirection } from '../types'
-
-import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode';
 
 export interface GridHeaderSegment {
   title: string
   content?: React.ReactNode
-  renderColumnContent?: (
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
+  renderColumnContent?: () => ReactElement
 }
 
 interface GridColumnOptions<RowType extends Record<string, unknown>> {
@@ -31,14 +28,8 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   selectPlaceholder?: string
   buttonOptions?: ButtonCellOptions<RowType>
   canvasOptions?: CanvasCellOptions<RowType>
-  renderColumnContent?: (
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
-  renderCellContent?: (
-    row: RowType,
-    rowIndex: number,
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
+  renderColumnContent?: () => ReactElement
+  renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
 }
 
 export class GridColumn<RowType extends Record<string, unknown>> {
@@ -56,14 +47,8 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly selectPlaceholder?: string
   readonly buttonOptions?: ButtonCellOptions<RowType>
   readonly canvasOptions?: CanvasCellOptions<RowType>
-  readonly renderColumnContent?: (
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
-  readonly renderCellContent?: (
-    row: RowType,
-    rowIndex: number,
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
+  readonly renderColumnContent?: () => ReactElement
+  readonly renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined

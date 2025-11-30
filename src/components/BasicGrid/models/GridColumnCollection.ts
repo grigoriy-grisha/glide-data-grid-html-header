@@ -1,5 +1,5 @@
 import type React from 'react'
-import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode'
+import type { ReactElement } from 'react'
 
 import type { BasicGridColumn } from '../types'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMN_WIDTH } from '../constants'
@@ -15,9 +15,7 @@ interface HeaderCellDescriptor {
   columnIndex?: number
   isLeaf: boolean
   content?: React.ReactNode
-  renderColumnContent?: (
-    rect: { x: number; y: number; width: number; height: number },
-  ) => CanvasNode
+  renderColumnContent?: () => ReactElement
 }
 
 export class GridColumnCollection<RowType extends Record<string, unknown>> {

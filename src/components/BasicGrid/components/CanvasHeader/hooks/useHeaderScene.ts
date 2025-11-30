@@ -11,6 +11,7 @@ import { GridColumn } from '../../../models/GridColumn'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
 import { DragState } from './useHeaderDragDrop'
+import { buildCanvasTree } from '../CanvasComponents'
 
 // Precomputed hover colors cache
 const hoverColorCache = new Map<string, string>()
@@ -238,9 +239,8 @@ export const useHeaderScene = ({
             }
 
             if (renderContent) {
-                const customContent = renderContent(
-                    { x: cellX, y: cellY, width: cellWidth, height: cellHeight }
-                )
+                const jsxElement = renderContent()
+                const customContent = buildCanvasTree(jsxElement, cellId)
 
                 if (customContent) {
                     contentContainerLeft.addChild(customContent)
