@@ -7,9 +7,8 @@ export {
 } from './types'
 export { createCanvasCell, isCanvasCell } from './factory'
 export { canvasCellRenderer } from './renderer'
-export { drawButton, drawIconButton, drawTag } from './buttons'
+export { drawButton, drawIconButton, drawTag, drawIcon, type DrawTarget } from './buttons'
 export {
-  drawIcon,
   preloadIconSprites,
   registerIconDefinitions,
   resetIconSpriteCache,

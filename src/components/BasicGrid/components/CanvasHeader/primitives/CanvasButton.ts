@@ -1,6 +1,7 @@
 import {drawButton} from '../../../customCells/canvasCell/buttons';
 import {CanvasLeaf} from "../core/CanvasLeaf.ts";
 import {CanvasEvent} from "../core/CanvasNode.ts";
+import type {DrawBatcher} from "../core/DrawBatcher.ts";
 
 // Cached constants
 const BUTTON_FONT = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -68,6 +69,26 @@ export class CanvasButton extends CanvasLeaf {
             this.variant,
             this.disabled,
             this.isHovered
+        );
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
+        const rect = this.rect;
+        // drawButton now works directly with batcher, pass ctx for text measurement
+        drawButton(
+            batcher,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            this.text,
+            BUTTON_THEME,
+            this.variant,
+            this.disabled,
+            this.isHovered,
+            undefined, // leftIcon
+            undefined, // rightIcon
+            ctx // measureCtx
         );
     }
 

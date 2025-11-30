@@ -1,5 +1,6 @@
 import { split } from "canvas-hypertxt";
 import { CanvasNode } from "../core/CanvasNode.ts";
+import { DrawBatcher } from "../core/DrawBatcher.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global caches
@@ -146,6 +147,29 @@ export class CanvasText extends CanvasNode {
             // Single line rendering
             ctx.textBaseline = "middle";
             ctx.fillText(text, rect.x, rect.y + rect.height * 0.5);
+        }
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        const font = this.font;
+        const text = this.text;
+        const rect = this.rect;
+        const color = this.color;
+
+        const lines = this._cachedLines;
+        if (lines !== null && lines.length > 0) {
+            // Multiline rendering
+            const { lineHeightPx } = getCachedFontMetrics(font, this.lineHeight);
+            const contentHeight = lines.length * lineHeightPx;
+            let y = rect.y + Math.max(0, (rect.height - contentHeight) * 0.5);
+            
+            for (let i = 0, len = lines.length; i < len; i++) {
+                batcher.fillText(lines[i], rect.x, y, font, color, "top");
+                y += lineHeightPx;
+            }
+        } else {
+            // Single line rendering
+            batcher.fillText(text, rect.x, rect.y + rect.height * 0.5, font, color, "middle");
         }
     }
 }

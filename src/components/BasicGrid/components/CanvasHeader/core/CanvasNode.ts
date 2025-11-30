@@ -1,4 +1,5 @@
 import {FlexStyle} from '../../../miniflex/types';
+import { DrawBatcher } from './DrawBatcher';
 
 export type DimensionValue = number | '100%';
 
@@ -30,6 +31,9 @@ export abstract class CanvasNode {
     parent: CanvasNode | null = null;
     children: CanvasNode[] = [];
     rect: Rect = {x: 0, y: 0, width: 0, height: 0};
+    
+    /** Z-index for draw ordering. Higher values are drawn on top. */
+    zIndex: number = 0;
 
     // Cached intrinsic size from last measure
     protected _intrinsicWidth = 0;
@@ -119,6 +123,10 @@ export abstract class CanvasNode {
 
     abstract measure(ctx: CanvasRenderingContext2D): void;
 
+    /**
+     * Paint using direct context (legacy mode).
+     * @deprecated Use enqueuePaint with DrawBatcher for optimized rendering.
+     */
     paint(ctx: CanvasRenderingContext2D) {
         this.onPaint(ctx);
         if (CanvasNode.DEBUG) {
@@ -128,6 +136,44 @@ export abstract class CanvasNode {
             ctx.strokeRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
             ctx.restore();
         }
+    }
+
+    /**
+     * Enqueue draw commands to the batcher for optimized rendering.
+     * @param batcher - The draw batcher to enqueue commands to
+     * @param ctx - Canvas context for text measurement (required for proper layout)
+     */
+    enqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void {
+        // Set z-index for this node's commands
+        const prevZ = batcher.getZIndex();
+        batcher.setZIndex(prevZ + this.zIndex);
+        
+        this.onEnqueuePaint(batcher, ctx);
+        
+        if (CanvasNode.DEBUG) {
+            batcher.strokeRect(
+                this.rect.x,
+                this.rect.y,
+                this.rect.width,
+                this.rect.height,
+                this.debugColor,
+                1
+            );
+        }
+        
+        // Restore previous z-index
+        batcher.setZIndex(prevZ);
+    }
+
+    /**
+     * Override this to enqueue draw commands.
+     * Default implementation falls back to custom command with onPaint.
+     * @param batcher - The draw batcher to enqueue commands to
+     * @param ctx - Canvas context for text measurement
+     */
+    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D): void {
+        // Fallback: wrap legacy onPaint in a custom command
+        batcher.custom((ctx) => this.onPaint(ctx));
     }
 
     abstract onPaint(ctx: CanvasRenderingContext2D): void;

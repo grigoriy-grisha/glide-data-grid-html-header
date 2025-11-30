@@ -1,4 +1,5 @@
 import { CanvasLeaf } from '../core/CanvasLeaf';
+import { DrawBatcher } from '../core/DrawBatcher';
 
 const TRANSPARENT = "transparent";
 
@@ -30,6 +31,29 @@ export class CanvasRect extends CanvasLeaf {
                 this.rect.height,
                 this.borderWidth,
                 this.borderColor,
+            );
+        }
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        if (hasVisibleFill(this.color)) {
+            batcher.fillRect(
+                this.rect.x,
+                this.rect.y,
+                this.rect.width,
+                this.rect.height,
+                this.color
+            );
+        }
+
+        if (hasVisibleBorder(this.borderWidth, this.borderColor)) {
+            batcher.strokeRect(
+                this.rect.x + this.borderWidth / 2,
+                this.rect.y + this.borderWidth / 2,
+                this.rect.width - this.borderWidth,
+                this.rect.height - this.borderWidth,
+                this.borderColor,
+                this.borderWidth
             );
         }
     }

@@ -143,6 +143,16 @@ function getIconImage(icon: ButtonIcon, color?: string): HTMLImageElement | null
   return null
 }
 
+// Exported for use in buttons.ts batched rendering
+export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageElement | null {
+  return getIconImage(icon, color)
+}
+
+export function getIconSprite(icon: ButtonIcon, size: number, color?: string): CanvasImageSource | null {
+  if (!icon || size <= 0) return null
+  return iconSpriteManager.getSprite(icon, { size, color })
+}
+
 function buildVariantKey(recordKey: string, options: IconSpriteOptions): string {
   const { size, color, smoothing } = options
   return `${recordKey}|${size}|${color ?? 'default'}|sm=${smoothing === false ? 0 : 1}`
@@ -391,7 +401,25 @@ export function resetIconSpriteCache(): void {
   iconSpriteManager.clear()
 }
 
+/**
+ * Draw icon directly to canvas context.
+ * @deprecated Use drawIcon from buttons.ts which supports both ctx and batcher.
+ */
 export function drawIcon(
+  ctx: CanvasRenderingContext2D,
+  icon: ButtonIcon,
+  x: number,
+  y: number,
+  size: number,
+  color?: string
+): void {
+  drawIconDirect(ctx, icon, x, y, size, color)
+}
+
+/**
+ * Internal: draw icon directly to canvas context.
+ */
+export function drawIconDirect(
   ctx: CanvasRenderingContext2D,
   icon: ButtonIcon,
   x: number,

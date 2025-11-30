@@ -2,6 +2,7 @@ import { drawIconButton, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from '../../..
 import type { ButtonIcon } from '../../../customCells/canvasCell/iconSprites';
 import { CanvasNode, CanvasEvent } from "../core/CanvasNode.ts";
 import { CanvasLeaf } from "../core/CanvasLeaf.ts";
+import type { DrawBatcher } from "../core/DrawBatcher.ts";
 
 const DEFAULT_HEIGHT = 28;
 
@@ -57,6 +58,22 @@ export class CanvasIconButton extends CanvasLeaf {
     onPaint(ctx: CanvasRenderingContext2D) {
         drawIconButton(
             ctx,
+            this.rect.x,
+            this.rect.y,
+            this.rect.width,
+            this.rect.height,
+            this.icon,
+            BUTTON_THEME,
+            this.variant,
+            this.disabled,
+            this.isHovered,
+        );
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        // drawIconButton now works directly with batcher
+        drawIconButton(
+            batcher,
             this.rect.x,
             this.rect.y,
             this.rect.width,

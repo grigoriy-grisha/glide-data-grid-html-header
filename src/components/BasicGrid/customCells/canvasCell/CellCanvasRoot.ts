@@ -1,5 +1,6 @@
 import { CanvasNode, type CanvasEvent, type Rect } from '../../components/CanvasHeader/core/CanvasNode'
 import { CanvasContainer } from '../../components/CanvasHeader/core/CanvasContainer'
+import { DrawBatcher } from '../../components/CanvasHeader/core/DrawBatcher'
 
 type PointerEventType = CanvasEvent['type']
 
@@ -7,6 +8,12 @@ export class CellCanvasRoot {
   rootNode: CanvasNode
   private bounds: Rect | null = null
   private hoveredNode: CanvasNode | null = null
+  
+  /** Draw batcher for optimized rendering */
+  private batcher: DrawBatcher = new DrawBatcher()
+  
+  /** Whether to use batched rendering (true) or legacy direct rendering (false) */
+  useBatchedRendering: boolean = true
 
   constructor(node: CanvasNode) {
     this.rootNode = node
@@ -30,7 +37,15 @@ export class CellCanvasRoot {
       this.handleMouseLeave()
     }
 
-    this.rootNode.paint(ctx)
+    if (this.useBatchedRendering) {
+      // Batched rendering: collect commands, then flush
+      this.batcher.clear()
+      this.rootNode.enqueuePaint(this.batcher, ctx)
+      this.batcher.flush(ctx)
+    } else {
+      // Legacy direct rendering
+      this.rootNode.paint(ctx)
+    }
 
     ctx.restore()
   }

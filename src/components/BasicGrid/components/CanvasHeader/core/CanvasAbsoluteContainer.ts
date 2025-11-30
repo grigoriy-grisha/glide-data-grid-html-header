@@ -1,4 +1,5 @@
 import { CanvasContainer } from './CanvasContainer';
+import { DrawBatcher } from './DrawBatcher';
 
 interface Bounds {
     minX: number;
@@ -83,5 +84,33 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
         }
 
         super.onPaint(ctx);
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
+        // Draw background
+        if (this.backgroundColor && this.backgroundColor !== 'transparent') {
+            batcher.fillRect(
+                this.rect.x,
+                this.rect.y,
+                this.rect.width,
+                this.rect.height,
+                this.backgroundColor
+            );
+        }
+
+        // Draw border
+        if (this.borderWidth > 0 && this.borderColor && this.borderColor !== 'transparent') {
+            batcher.strokeRect(
+                this.rect.x + this.borderWidth / 2,
+                this.rect.y + this.borderWidth / 2,
+                this.rect.width - this.borderWidth,
+                this.rect.height - this.borderWidth,
+                this.borderColor,
+                this.borderWidth
+            );
+        }
+
+        // Enqueue children
+        super.onEnqueuePaint(batcher, ctx);
     }
 }

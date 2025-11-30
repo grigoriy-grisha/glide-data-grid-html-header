@@ -1,4 +1,5 @@
 import { CanvasNode } from './CanvasNode';
+import { DrawBatcher } from './DrawBatcher';
 import {
     RootFlexBox,
     FlexBox,
@@ -416,6 +417,13 @@ export class CanvasContainer extends CanvasNode {
         // Inline loop without intermediate variable for micro-optimization
         for (let i = 0, children = this.children, len = children.length; i < len; i++) {
             children[i].paint(ctx);
+        }
+    }
+
+    onEnqueuePaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
+        // Enqueue all children's paint commands
+        for (let i = 0, children = this.children, len = children.length; i < len; i++) {
+            children[i].enqueuePaint(batcher, ctx);
         }
     }
 }
