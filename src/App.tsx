@@ -1,7 +1,7 @@
 import './App.css'
 import { LargeGridExample } from './examples/LargeGridExample'
 import { BasicGridExample } from './examples/BasicGridExample.tsx'
-import { StandaloneCanvasExample } from './examples/StandaloneCanvasExample'
+// import { StandaloneCanvasExample } from './examples/StandaloneCanvasExample'
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
 
       <main className="main-content">
         <div className="container">
-          <StandaloneCanvasExample />
+          {/*<StandaloneCanvasExample />*/}
           {/*<CanvasLayoutTestExample />*/}
 
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>

@@ -11,7 +11,7 @@ export class CanvasRoot {
 
     /** Draw batcher for optimized rendering */
     private batcher: DrawBatcher = new DrawBatcher();
-    
+
     /** Callback fired when cursor should change based on hovered element */
     onCursorChange?: (cursor: string) => void;
 
@@ -77,18 +77,21 @@ export class CanvasRoot {
                 break;
             }
 
+            // Set currentTarget to the node handling the event
+            const nodeEvent: CanvasEvent = { ...event, currentTarget: node };
+
             switch (type) {
                 case 'click':
-                    node.onClick(event);
+                    node.onClick.bind(node)(nodeEvent);
                     break;
                 case 'mousedown':
-                    node.onMouseDown(event);
+                    node.onMouseDown.bind(node)(nodeEvent);
                     break;
                 case 'mouseup':
-                    node.onMouseUp(event);
+                    node.onMouseUp.bind(node)(nodeEvent);
                     break;
                 case 'dblclick':
-                    node.onDoubleClick(event);
+                    node.onDoubleClick.bind(node)(nodeEvent);
                     break;
             }
         }
@@ -103,7 +106,9 @@ export class CanvasRoot {
             if (isStopped()) {
                 break;
             }
-            node.onMouseMove(event);
+            // Set currentTarget to the node handling the event
+            const nodeEvent: CanvasEvent = { ...event, currentTarget: node };
+            node.onMouseMove.bind(node)(nodeEvent);
         }
     }
 
@@ -113,18 +118,28 @@ export class CanvasRoot {
         }
 
         if (this.hoveredNode) {
-            const leaveEvent = { ...baseEvent, type: 'mouseleave' as const };
-            this.hoveredNode.onMouseLeave(leaveEvent);
+            const leaveEvent: CanvasEvent = { 
+                ...baseEvent, 
+                type: 'mouseleave' as const,
+                target: this.hoveredNode,
+                currentTarget: this.hoveredNode
+            };
+            this.hoveredNode.onMouseLeave.bind(this.hoveredNode)(leaveEvent);
         }
 
         if (target) {
-            const enterEvent = { ...baseEvent, type: 'mouseenter' as const };
-            target.onMouseEnter(enterEvent);
+            const enterEvent: CanvasEvent = { 
+                ...baseEvent, 
+                type: 'mouseenter' as const,
+                target: target,
+                currentTarget: target
+            };
+            target.onMouseEnter.bind(target)(enterEvent);
         }
 
         this.hoveredNode = target ?? null;
     }
-    
+
     private updateCursor(hits: CanvasNode[]) {
         // Find first element with a cursor set (traverse from deepest to root)
         let newCursor = 'default';
@@ -135,7 +150,7 @@ export class CanvasRoot {
                 break;
             }
         }
-        
+
         if (newCursor !== this.currentCursor) {
             this.currentCursor = newCursor;
             this.onCursorChange?.(newCursor);

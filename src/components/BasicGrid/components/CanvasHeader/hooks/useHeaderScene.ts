@@ -215,6 +215,7 @@ export const useHeaderScene = ({
                 justifyContent: 'center',
                 columnGap: 6,
             })
+            // contentContainerLeft.style.width = '100%'
             const contentContainerRight = new CanvasContainer(`${cellId}-right`, {
                 direction: 'row-reverse',
                 alignItems: 'center',

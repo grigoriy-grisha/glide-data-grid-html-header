@@ -16,12 +16,14 @@ export interface Rect {
     height: number;
 }
 
-export interface CanvasEvent {
+export interface CanvasEvent<T extends CanvasNode = CanvasNode> {
     type: 'click' | 'mousedown' | 'mouseup' | 'mousemove' | 'mouseenter' | 'mouseleave' | 'dblclick';
     x: number;
     y: number;
     originalEvent: MouseEvent | React.MouseEvent;
     target?: CanvasNode;
+    /** The node that the event handler is attached to (current element) */
+    currentTarget?: T;
     stopPropagation: () => void;
     preventDefault: () => void;
 }
@@ -191,24 +193,24 @@ export abstract class CanvasNode {
 
 
     // Event handlers
-    onClick(_event: CanvasEvent) {
+    onClick(_event: CanvasEvent<any>) {
     }
 
-    onMouseDown(_event: CanvasEvent) {
+    onMouseDown(_event: CanvasEvent<any>) {
     }
 
-    onMouseUp(_event: CanvasEvent) {
+    onMouseUp(_event: CanvasEvent<any>) {
     }
 
-    onMouseEnter(_event: CanvasEvent) {
+    onMouseEnter(_event: CanvasEvent<any>) {
     }
 
-    onMouseLeave(_event: CanvasEvent) {
+    onMouseLeave(_event: CanvasEvent<any>) {
     }
 
-    onMouseMove(_event: CanvasEvent) {
+    onMouseMove(_event: CanvasEvent<any>) {
     }
 
-    onDoubleClick(_event: CanvasEvent) {
+    onDoubleClick(_event: CanvasEvent<any>) {
     }
 }

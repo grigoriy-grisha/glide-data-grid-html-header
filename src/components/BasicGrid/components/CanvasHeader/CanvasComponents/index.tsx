@@ -40,9 +40,9 @@ interface IconProps {
   color?: string
   style?: Partial<CanvasFlexStyle>
   backgroundColor?: string
-  onClick?: (event: CanvasEvent) => void
-  onMouseEnter?: (event: CanvasEvent) => void
-  onMouseLeave?: (event: CanvasEvent) => void
+  onClick?: (event: CanvasEvent<CanvasIcon>) => void
+  onMouseEnter?: (event: CanvasEvent<CanvasIcon>) => void
+  onMouseLeave?: (event: CanvasEvent<CanvasIcon>) => void
   id?: string
 }
 
@@ -50,7 +50,7 @@ interface ButtonProps {
   children: string
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
-  onClick?: (event: CanvasEvent) => void
+  onClick?: (event: CanvasEvent<CanvasButton>) => void
   style?: Partial<CanvasFlexStyle>
   id?: string
 }
@@ -60,7 +60,7 @@ interface IconButtonProps {
   size?: number | 'auto'
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
-  onClick?: (event: CanvasEvent) => void
+  onClick?: (event: CanvasEvent<CanvasIconButton>) => void
   style?: Partial<CanvasFlexStyle>
   id?: string
 }
@@ -120,6 +120,32 @@ export const Canvas = {
   Button: ButtonComponent,
   IconButton: IconButtonComponent,
   Rect: RectComponent,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper to wrap event handlers and preserve node context
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Wraps an event handler to ensure it receives the node as `this` context.
+ * Arrow functions ignore `.bind()`, so this wrapper creates a regular function
+ * that can be properly bound to the node.
+ */
+function wrapEventHandler<T extends CanvasNode>(
+  handler: ((event: CanvasEvent<T>) => void) | undefined,
+  _node: T
+): (event: CanvasEvent<T>) => void {
+  if (!handler) {
+    // Return a no-op function if handler is undefined
+    return () => {}
+  }
+  
+  // Create a regular function that calls the handler with node as `this`
+  // This allows the handler to access the node via `this` when bound
+  // Note: Arrow functions will still ignore `this`, so use `event.currentTarget` instead
+  return function(this: T, event: CanvasEvent<T>) {
+    handler.call(this, event)
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,22 +239,24 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave } = props
       const node = new CanvasIcon(id, icon, { size, color })
       if (backgroundColor) node.backgroundColor = backgroundColor
-      if (onClick) node.onClick = onClick
-      if (onMouseEnter) node.onMouseEnter = onMouseEnter
-      if (onMouseLeave) node.onMouseLeave = onMouseLeave
+      node.onClick = wrapEventHandler(onClick, node) as any
+      node.onMouseEnter = wrapEventHandler(onMouseEnter, node) as any
+      node.onMouseLeave = wrapEventHandler(onMouseLeave, node) as any
       return node
     }
 
     case 'Button': {
       const { children, variant, disabled, onClick } = props
       const text = typeof children === 'string' ? children : ''
-      const node = new CanvasButton(id, text, { variant, disabled, onClick })
+      const node = new CanvasButton(id, text, { variant, disabled })
+      node.onClick = wrapEventHandler(onClick, node) as any
       return node
     }
 
     case 'IconButton': {
       const { icon, size, variant, disabled, onClick } = props
-      const node = new CanvasIconButton(id, icon, { size, variant, disabled, onClick })
+      const node = new CanvasIconButton(id, icon, { size, variant, disabled })
+      node.onClick = wrapEventHandler(onClick, node) as any
       return node
     }
 

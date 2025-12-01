@@ -429,7 +429,6 @@ export class DrawBatcher {
             }
         }
 
-        // Clear commands after flush
         this.clear();
     }
 

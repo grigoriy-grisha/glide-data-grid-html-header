@@ -609,7 +609,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
         <div className="basic-grid-wrapper" ref={gridRef} style={{ position: 'relative' }}>
-          {/* Виртуальная линия resize на всю высоту таблицы */}
           {virtualResizeState && (
             <div
               ref={virtualResizeLineRef}

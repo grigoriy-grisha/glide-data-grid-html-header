@@ -31,7 +31,8 @@ const columns: BasicGridColumn<DataRow>[] = [
           <Canvas.Container
             direction="row"
             alignItems="center"
-            justifyContent="center"
+            justifyContent="space-between"
+            style={{width: "100%"}}
             gap={6}
             wrap="wrap"
             alignContent="center"
@@ -43,6 +44,12 @@ const columns: BasicGridColumn<DataRow>[] = [
               color="#1565c0"
               style={{ width: 20, height: 20 }}
               onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
+              onMouseEnter={(event) => {
+                event.currentTarget!.color = '#9065c0'
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget!.color = '#1565c0'
+              }}
             />
           </Canvas.Container>
         ),
@@ -96,23 +103,22 @@ const columns: BasicGridColumn<DataRow>[] = [
                 : 'Сотрудник'
 
               return (
-                <Canvas.Container direction="row" justifyContent="space-between" padding={4} gap={8}>
+                <Canvas.Container direction="row" justifyContent="space-between" padding={4} >
                   <Canvas.Container
                     direction="column"
                     justifyContent="center"
                     alignItems="center"
                     gap={2}
-                    style={{ width: 40, flexShrink: 0 }}
                   >
                     <Canvas.Text font="24px sans-serif">{iconChar}</Canvas.Text>
                     <Canvas.Text font="9px sans-serif" color="#999">{`#${rowIndex + 1}`}</Canvas.Text>
                   </Canvas.Container>
-                  <Canvas.Container direction="column" justifyContent="flex-start" padding={{ left: 4, right: 4 }}>
+                  <Canvas.Container direction="column" justifyContent="flex-start" >
                     <Canvas.Container direction="row" justifyContent="space-between" alignItems="center">
-                      <Canvas.Text font="bold 12px sans-serif" color="#333">{row.role as string}</Canvas.Text>
-                      <Canvas.Text font="10px sans-serif" color="#4caf50">{row.status?.name || 'Active'}</Canvas.Text>
+                      <Canvas.Text font="bold 12px sans-serif" color="#333">{row.role}</Canvas.Text>
+                      <Canvas.Text font="10px sans-serif" color="#4caf50">{row.status.name}</Canvas.Text>
                     </Canvas.Container>
-                    <Canvas.Container direction="row" alignItems="flex-start" padding={{ top: 2, bottom: 2 }}>
+                    <Canvas.Container direction="row" alignItems="flex-start" >
                       <Canvas.Text font="10px sans-serif" color="#666" wordWrap lineHeight={1.2}>
                         {desc}
                       </Canvas.Text>
@@ -127,8 +133,6 @@ const columns: BasicGridColumn<DataRow>[] = [
                     direction="column"
                     justifyContent="space-around"
                     alignItems="flex-end"
-                    padding={{ left: 4 }}
-                    style={{ width: 80, flexShrink: 0 }}
                   >
                     <Canvas.Button variant="primary" onClick={() => console.log('Chat', row.employeeId)}>
                       Chat
