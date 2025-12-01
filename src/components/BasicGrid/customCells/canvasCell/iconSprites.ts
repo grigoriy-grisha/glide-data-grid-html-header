@@ -13,10 +13,8 @@ export type IconDefinition = {
 
 type IconDefinitionInput = IconDefinition[] | Record<string, string>
 
-type CanvasSprite = (CanvasImageSource | ImageBitmap) & { width: number; height: number }
+type CanvasSprite = CanvasImageSource & { width: number; height: number }
 
-// Check if ImageBitmap is supported
-const hasImageBitmap = typeof createImageBitmap === 'function'
 
 type IconImageRecord = {
   image: HTMLImageElement
@@ -38,7 +36,6 @@ const iconIdentity = new WeakMap<HTMLImageElement, string>()
 const iconRegistry = new Map<string, string>()
 let iconIdentityCursor = 0
 
-const hasDOM = typeof window !== 'undefined' && typeof document !== 'undefined'
 const hasImageConstructor = typeof Image !== 'undefined'
 const hasHTMLImageElement = typeof HTMLImageElement !== 'undefined'
 
@@ -153,16 +150,30 @@ export function getIconSprite(icon: ButtonIcon, size: number, color?: string): C
   return iconSpriteManager.getSprite(icon, { size, color })
 }
 
-function buildVariantKey(recordKey: string, options: IconSpriteOptions): string {
-  const { size, color, smoothing } = options
-  return `${recordKey}|${size}|${color ?? 'default'}|sm=${smoothing === false ? 0 : 1}`
+// Get current device pixel ratio (cached per frame for consistency)
+let cachedDpr = 1
+let dprTimestamp = 0
+function getDevicePixelRatio(): number {
+  const now = performance.now()
+  // Refresh DPR every 1000ms (handles display changes)
+  if (now - dprTimestamp > 1000) {
+    cachedDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    dprTimestamp = now
+  }
+  return cachedDpr
 }
 
-function createMemoryCanvas(size: number): HTMLCanvasElement | null {
-  if (!hasDOM) return null
+function buildVariantKey(recordKey: string, options: IconSpriteOptions): string {
+  const { size, color, smoothing } = options
+  const dpr = getDevicePixelRatio()
+  return `${recordKey}|${size}|${dpr}|${color ?? 'default'}|sm=${smoothing === false ? 0 : 1}`
+}
+
+function createMemoryCanvas(width: number, height: number): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = width
+  canvas.height = height
   return canvas
 }
 
@@ -252,12 +263,6 @@ class IconSpriteManager {
   }
 
   clear() {
-    // Close ImageBitmaps to free GPU memory
-    this.sprites.forEach((sprite) => {
-      if (sprite instanceof ImageBitmap) {
-        sprite.close()
-      }
-    })
     this.sprites.clear()
     this.pending.clear()
     this.stats.cacheSize = 0
@@ -328,53 +333,31 @@ class IconSpriteManager {
   }
 
   // Synchronous canvas rasterization for immediate use
+  // Renders at device pixel ratio for crisp display
   private rasterizeToCanvas(source: CanvasImageSource, options: IconSpriteOptions): CanvasSprite | null {
-    if (!hasDOM) {
-      return source as CanvasSprite
-    }
-    const canvas = createMemoryCanvas(options.size)
+    const dpr = getDevicePixelRatio()
+    const physicalSize = Math.ceil(options.size * dpr)
+    
+    const canvas = createMemoryCanvas(physicalSize, physicalSize)
     if (!canvas) {
       return source as CanvasSprite
     }
+    
     const ctx = canvas.getContext('2d')
     if (!ctx) {
       return source as CanvasSprite
     }
+    
     ctx.imageSmoothingEnabled = options.smoothing !== false
-    ctx.drawImage(source, 0, 0, options.size, options.size)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(source, 0, 0, physicalSize, physicalSize)
+    
     return canvas
   }
 
-  // Async rasterization to ImageBitmap (faster for repeated draws)
+  // Async rasterization with DPI awareness
   private async rasterize(source: CanvasImageSource, options: IconSpriteOptions): Promise<CanvasSprite | null> {
-    if (!hasDOM) {
-      return source as CanvasSprite
-    }
-
-    // First render to canvas
-    const canvas = createMemoryCanvas(options.size)
-    if (!canvas) {
-      return source as CanvasSprite
-    }
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      return source as CanvasSprite
-    }
-    ctx.imageSmoothingEnabled = options.smoothing !== false
-    ctx.drawImage(source, 0, 0, options.size, options.size)
-
-    // Convert to ImageBitmap if available (faster for repeated draws)
-    if (hasImageBitmap) {
-      try {
-        const bitmap = await createImageBitmap(canvas)
-        return bitmap as CanvasSprite
-      } catch {
-        // Fallback to canvas if ImageBitmap creation fails
-        return canvas
-      }
-    }
-
-    return canvas
+    return this.rasterizeToCanvas(source, options)
   }
 }
 
