@@ -101,6 +101,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const gridBodyRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const dataEditorRef = useRef<DataEditorRef>(null)
+  console.log(dataEditorRef.current);
+  
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
@@ -605,6 +607,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [handleColumnSort]
   )
 
+  console.log('render');
+  
+
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
@@ -644,7 +649,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                   sortColumn={sortState?.columnId}
                   sortDirection={sortState?.direction}
                   onColumnSort={handleHeaderSort}
-                  // debugMode
+                  debugMode={false}
                 />
               </div>
             </div>
@@ -654,7 +659,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             <DataEditorWithVirtualization
               ref={dataEditorRef}
               getCellContent={getCellContent}
-              columns={dataEditorColumns}
+              columns={[...dataEditorColumns]}
               rows={gridRows.length + (summaryRows?.length ?? 0)}
               freezeTrailingRows={summaryRows?.length ?? 0}
               width={viewportWidth}

@@ -1,6 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
 const svgIcon = `
@@ -9,18 +8,43 @@ const svgIcon = `
 </svg>
 `
 
+function CounterHeader() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount(c => c + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <Canvas.Container 
+      direction="row" 
+      gap={6} 
+      alignItems="center" 
+      justifyContent="center"
+ 
+    >
+      <Canvas.Text color="#333" font="bold 12px sans-serif">
+        Counter: {count.toString()}
+      </Canvas.Text>
+    </Canvas.Container>
+  )
+}
+
+function SimpleHeader() {
+  return (
+    <Canvas.Container direction="row" gap={12} alignItems="center">
+        <Canvas.Text color="blue" style={{ flexShrink: 0 }}>Simple</Canvas.Text>
+        <Canvas.Text color="red" style={{ flexShrink: 0 }}>Header</Canvas.Text>
+    </Canvas.Container>
+  )
+}
+
 const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Основные данные',
-    headerContent: (
-      <HeaderCard
-        icon="🧾"
-        iconTone="blue"
-        title="Основные данные"
-        subtitle="Идентификаторы и роли"
-        chip={{ label: 'Core', tone: 'blue' }}
-      />
-    ),
     children: [
       {
         accessor: 'employeeId',
@@ -28,30 +52,7 @@ const columns: BasicGridColumn<DataRow>[] = [
         title: 'ID',
         width: 150,
         renderColumnContent: () => (
-          <Canvas.Container
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            style={{width: "100%"}}
-            gap={6}
-            wrap="wrap"
-            alignContent="center"
-          >
-            <Canvas.Text color="#666">Текст:</Canvas.Text>
-            <Canvas.Icon
-              icon={svgIcon}
-              size={20}
-              color="#1565c0"
-              style={{ width: 20, height: 20 }}
-              onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
-              onMouseEnter={(event) => {
-                event.currentTarget!.color = '#9065c0'
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget!.color = '#1565c0'
-              }}
-            />
-          </Canvas.Container>
+          <CounterHeader />
         ),
         renderCellContent: (row) => (
           <Canvas.Container
@@ -82,7 +83,10 @@ const columns: BasicGridColumn<DataRow>[] = [
       {
         title: 'ФИО',
         children: [
-          createColumn<DataRow>('firstName', 'string', 'Имя', { width: 150 }),
+          createColumn<DataRow>('firstName', 'string', 'Имя', { 
+             width: 150,
+             renderColumnContent: SimpleHeader
+          }),
           createColumn<DataRow>('lastName', 'string', 'Фамилия', { width: 170 }),
         ],
       },
@@ -155,9 +159,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Контакты',
-    headerContent: (
-      <HeaderCard icon="☎" iconTone="purple" title="Контакты" subtitle="CRM & сервис" chip={{ label: 'Live', tone: 'green' }} />
-    ),
     children: [
       createColumn<DataRow>('email', 'string', 'Email', { width: 260 }),
       createColumn<DataRow>('contact.phone', 'string', 'Телефон', { width: 180 }),
@@ -165,7 +166,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Прогресс',
-    headerContent: <HeaderCard icon="📈" iconTone="purple" title="Прогресс" subtitle="KPI + статус" compact />,
     children: [
       createColumn<DataRow>('status.name', 'select', 'Статус', {
         width: 160,
@@ -212,6 +212,16 @@ const columns: BasicGridColumn<DataRow>[] = [
 ]
 
 export function BasicGridExample() {
+
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount(c => c + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const rows = useMemo(() => {
     const extraRows: DataRow[] = Array.from({ length: 100 }).map((_, i) => {
       const id = i + 100
@@ -263,6 +273,7 @@ export function BasicGridExample() {
   return (
     <div className="data-grid-section">
       <h2 className="section-title">Basic Grid</h2>
+      {count}
       <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
       <BasicGrid<DataRow>
         columns={columns}

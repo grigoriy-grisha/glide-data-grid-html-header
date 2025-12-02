@@ -1,4 +1,4 @@
-import React, { ReactElement, ReactNode } from 'react'
+import React, { ReactElement, ReactNode, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { CanvasContainer } from '../core/CanvasContainer'
 import { CanvasNode, CanvasFlexStyle, CanvasEvent } from '../core/CanvasNode'
 import { CanvasText, CanvasTextOptions } from '../primitives/CanvasText'
@@ -27,7 +27,7 @@ interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
 }
 
 interface TextProps extends Omit<CanvasTextOptions, 'font' | 'color'> {
-  children?: string
+  children?: ReactNode
   font?: string
   color?: string
   style?: Partial<CanvasFlexStyle>
@@ -74,37 +74,259 @@ interface RectProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// JSX Component Functions
-// Return null (valid React element) but attach descriptor for buildCanvasTree
+// Context & Hooks for React-Managed Nodes
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ContainerComponent(_props: ContainerProps): ReactElement | null {
+interface CanvasContextValue {
+    parent: CanvasContainer | null
+    requestRender?: () => void
+}
+
+const CanvasContext = React.createContext<CanvasContextValue>({ parent: null })
+
+export interface RootBridgeProps {
+    children: ReactNode
+    onNodeCreated: (node: CanvasNode) => void
+    requestRender?: () => void
+}
+
+export function RootBridge({ children, onNodeCreated, requestRender }: RootBridgeProps) {
+    // RootBridge acts as the "Context Provider" for the first level
+    // It receives the root node from its first child and passes it up via onNodeCreated
+    
+    // We use a "Fake" parent that captures the child
+    const fakeParent = useMemo(() => {
+        const p = new CanvasContainer('root-bridge', {})
+        // Override addChild to capture the node
+        p.addChild = (child: CanvasNode) => {
+             onNodeCreated(child)
+        }
+        return p
+    }, [onNodeCreated])
+
+    const contextValue = useMemo(() => ({
+        parent: fakeParent,
+        requestRender
+    }), [fakeParent, requestRender])
+
+    return (
+        <CanvasContext.Provider value={contextValue}>
+            {children}
+        </CanvasContext.Provider>
+    )
+}
+
+function useCanvasNode<T extends CanvasNode>(
+  type: string,
+  createFn: () => T,
+  updateFn: (node: T) => void,
+  deps: any[]
+): T | null {
+  const { parent, requestRender } = useContext(CanvasContext)
+
+  // If no parent, we are in "Immediate Mode" (JSX -> buildCanvasTree), so return null
+  if (!parent) return null
+
+  // We are in "Retained Mode" (React managing nodes)
+  const node = useMemo(createFn, []) // Create once
+
+  // Update properties on every render
+  useLayoutEffect(() => {
+      updateFn(node)
+      requestRender?.()
+  })
+
+  // Manage parent-child relationship
+  useLayoutEffect(() => {
+    parent.addChild(node)
+    requestRender?.()
+    return () => {
+      parent.removeChild(node) // Assuming removeChild exists or we handle cleanup
+      // If removeChild is not implemented in CanvasContainer, we might need to check
+      // But usually for this architecture we want cleanup.
+      // Let's assume standard scene graph behavior.
+      if (parent.children) {
+          const idx = parent.children.indexOf(node)
+          if (idx !== -1) parent.children.splice(idx, 1)
+      }
+      requestRender?.()
+    }
+  }, [parent, node, requestRender])
+
+  return node
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JSX Component Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ContainerComponent(props: ContainerProps): ReactElement | null {
+  const { children, id, columnGap, rowGap, gap, style, ...rest } = props
+  
+  const node = useCanvasNode(
+      'Container',
+      () => new CanvasContainer(id ?? `container-${Math.random().toString(36).substr(2, 9)}`, {}),
+      (n) => {
+          n.style = style || {}
+          // Update FlexOptions
+           const flexOptions = {
+            ...rest,
+            columnGap: columnGap ?? gap ?? 0,
+            rowGap: rowGap ?? gap ?? 0,
+          }
+          // IMPORTANT: We must update flexOptions property to trigger internal layout invalidation
+          if (n instanceof CanvasContainer) {
+               n.setFlexOptions({
+                   direction: rest.direction,
+                   alignItems: rest.alignItems,
+                   justifyContent: rest.justifyContent,
+                   wrap: rest.wrap,
+                   padding: rest.padding,
+                   columnGap: flexOptions.columnGap,
+                   rowGap: flexOptions.rowGap
+               })
+          }
+      },
+      [props]
+  )
+
+  if (node) {
+      // If node exists, we are in "Retained Mode", so we render children wrapped in Context
+      // We also pass down the requestRender from parent context
+      const { requestRender } = useContext(CanvasContext)
+      const contextValue = useMemo(() => ({
+          parent: node,
+          requestRender
+      }), [node, requestRender])
+
+      return (
+          <CanvasContext.Provider value={contextValue}>
+              {children}
+          </CanvasContext.Provider>
+      )
+  }
   return null
 }
-// Attach descriptor factory
 (ContainerComponent as any).__canvasType = 'Container'
 
-function TextComponent(_props: TextProps): ReactElement | null {
+function extractTextFromChildren(children: ReactNode): string {
+    if (children === null || children === undefined) return ''
+    if (typeof children === 'string' || typeof children === 'number') return String(children)
+    if (Array.isArray(children)) {
+        return children.map(extractTextFromChildren).join('')
+    }
+    // React Element (not supported inside Text, but return empty string to be safe)
+    return ''
+}
+
+const DEFAULT_FONT = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+
+function TextComponent(props: TextProps): ReactElement | null {
+  const { children, id, font, color, wordWrap, lineHeight, style } = props
+  const text = extractTextFromChildren(children)
+  
+  useCanvasNode(
+      'Text',
+      () => new CanvasText(id ?? `text-${Math.random()}`, text, { 
+          font: font ?? DEFAULT_FONT, 
+          color, 
+          wordWrap, 
+          lineHeight 
+      }),
+      (n) => {
+          n.text = text
+          n.font = font ?? DEFAULT_FONT
+          if (color) n.color = color
+          if (wordWrap !== undefined) n.wordWrap = wordWrap
+          if (lineHeight !== undefined) n.lineHeight = lineHeight
+          if (style) n.style = style
+      },
+      [props]
+  )
   return null
 }
 (TextComponent as any).__canvasType = 'Text'
 
-function IconComponent(_props: IconProps): ReactElement | null {
+function IconComponent(props: IconProps): ReactElement | null {
+  const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, style, id } = props
+  
+  useCanvasNode(
+      'Icon',
+      () => new CanvasIcon(id ?? `icon-${Math.random()}`, icon, { size, color }),
+      (n) => {
+          n.icon = icon
+          if (size) n.size = size
+          if (color) n.color = color
+          if (backgroundColor) n.backgroundColor = backgroundColor
+          if (style) n.style = style
+          
+          // Event handlers need special wrapping to preserve 'this'
+          // reuse wrapEventHandler from below? It's not exported but available in module scope
+          n.onClick = wrapEventHandler(onClick, n) as any
+          n.onMouseEnter = wrapEventHandler(onMouseEnter, n) as any
+          n.onMouseLeave = wrapEventHandler(onMouseLeave, n) as any
+      },
+      [props]
+  )
   return null
 }
 (IconComponent as any).__canvasType = 'Icon'
 
-function ButtonComponent(_props: ButtonProps): ReactElement | null {
+function ButtonComponent(props: ButtonProps): ReactElement | null {
+  const { children, variant, disabled, onClick, style, id } = props
+  const text = typeof children === 'string' ? children : ''
+
+  useCanvasNode(
+      'Button',
+      () => new CanvasButton(id ?? `btn-${Math.random()}`, text, { variant, disabled }),
+      (n) => {
+          n.text = text
+          if (variant) n.variant = variant
+          if (disabled !== undefined) n.disabled = disabled
+          if (style) n.style = style
+          n.onClick = wrapEventHandler(onClick, n) as any
+      },
+      [props]
+  )
   return null
 }
 (ButtonComponent as any).__canvasType = 'Button'
 
-function IconButtonComponent(_props: IconButtonProps): ReactElement | null {
+function IconButtonComponent(props: IconButtonProps): ReactElement | null {
+  const { icon, size, variant, disabled, onClick, style, id } = props
+
+  useCanvasNode(
+      'IconButton',
+      () => new CanvasIconButton(id ?? `icon-btn-${Math.random()}`, icon, { size, variant, disabled }),
+      (n) => {
+          n.icon = icon
+          if (size) n.size = size
+          if (variant) n.variant = variant
+          if (disabled !== undefined) n.disabled = disabled
+          if (style) n.style = style
+          n.onClick = wrapEventHandler(onClick, n) as any
+      },
+      [props]
+  )
   return null
 }
 (IconButtonComponent as any).__canvasType = 'IconButton'
 
-function RectComponent(_props: RectProps): ReactElement | null {
+function RectComponent(props: RectProps): ReactElement | null {
+  const { color, borderColor, borderWidth, style, id } = props
+
+  useCanvasNode(
+      'Rect',
+      () => new CanvasRect(id ?? `rect-${Math.random()}`, color),
+      (n) => {
+          n.color = color
+          if (borderColor) n.borderColor = borderColor
+          if (borderWidth) n.borderWidth = borderWidth
+          if (style) n.style = style
+      },
+      [props]
+  )
   return null
 }
 (RectComponent as any).__canvasType = 'Rect'
@@ -230,8 +452,13 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
 
     case 'Text': {
       const { children, style: _style, id: _, font, color, wordWrap, lineHeight } = props
-      const text = typeof children === 'string' ? children : ''
-      const node = new CanvasText(id, text, { font, color, wordWrap, lineHeight })
+      const text = extractTextFromChildren(children)
+      const node = new CanvasText(id, text, { 
+          font: font ?? DEFAULT_FONT, 
+          color, 
+          wordWrap, 
+          lineHeight 
+      })
       return node
     }
 

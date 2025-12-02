@@ -7,6 +7,8 @@ import { useHeaderDragDrop } from './hooks/useHeaderDragDrop'
 import { useHeaderScene } from './hooks/useHeaderScene'
 import { ResizeHandles } from './components/ResizeHandles'
 import { DragOverlays } from './components/DragOverlays'
+import { CanvasNode } from './core/CanvasNode'
+import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
 
 interface CanvasHeaderProps {
   width: number
@@ -61,6 +63,9 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const [isHovered, setIsHovered] = React.useState(false)
   const [isVisible, setIsVisible] = React.useState(true)
 
+  // Registry for React-managed nodes (Headless Renderer)
+  const nodeRegistry = React.useRef(new Map<string, CanvasNode>())
+
   // 1. Canvas Lifecycle & Ref Management
   const { canvasRef, rootRef } = useCanvasLifecycle({
     width,
@@ -68,6 +73,12 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     canvasHeaderRef,
     isActive: isVisible,
   })
+
+  const requestRender = React.useCallback(() => {
+      if (rootRef.current) {
+          rootRef.current.render()
+      }
+  }, [rootRef])
 
   // 2. Drag and Drop State & Logic
   const { dragState, handleDragStart, ghostRef, dropIndicatorRef } = useHeaderDragDrop({
@@ -123,6 +134,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     onColumnSort,
     debugMode,
     isVisible,
+    nodeRegistry,
   })
 
   return (
@@ -133,6 +145,17 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         height: `${height}px`,
       }}
     >
+      {/* Headless Renderer for React Components in Headers */}
+      {isVisible && (
+          <HeadlessHeaderRenderer
+              visibleIndices={visibleIndices}
+              headerCells={headerCells}
+              orderedColumns={orderedColumns}
+              nodeRegistry={nodeRegistry}
+              requestRender={requestRender}
+          />
+      )}
+
       {showRowMarkers && (
         <div
           style={{

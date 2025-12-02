@@ -224,6 +224,9 @@ export class CanvasContainer extends CanvasNode {
             availableWidth -= padding.left + padding.right;
         }
 
+        // Ensure we don't clamp to negative values
+        availableWidth = Math.max(0, availableWidth);
+
         if (this.rect.width > availableWidth) {
             this.rect.width = availableWidth;
         }

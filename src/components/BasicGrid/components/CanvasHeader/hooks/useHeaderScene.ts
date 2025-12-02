@@ -52,6 +52,7 @@ interface UseHeaderSceneProps {
     onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
     debugMode?: boolean
     isVisible?: boolean
+    nodeRegistry?: React.MutableRefObject<Map<string, CanvasNode>>
 }
 
 export const useHeaderScene = ({
@@ -71,6 +72,7 @@ export const useHeaderScene = ({
     onColumnSort,
     debugMode = false,
     isVisible = true,
+    nodeRegistry,
 }: UseHeaderSceneProps) => {
 
     // Update global debug mode
@@ -240,8 +242,14 @@ export const useHeaderScene = ({
             }
 
             if (renderContent) {
-                const jsxElement = renderContent()
-                const customContent = buildCanvasTree(jsxElement, cellId)
+                // Try to get retained node first (from Hooks/React tree)
+                let customContent = nodeRegistry?.current.get(cellId)
+
+                // Fallback to immediate mode (just parsing JSX) if no node in registry
+                if (!customContent) {
+                     const jsxElement = renderContent()
+                     customContent = buildCanvasTree(jsxElement, cellId)
+                }
 
                 if (customContent) {
                     contentContainerLeft.addChild(customContent)
@@ -302,5 +310,5 @@ export const useHeaderScene = ({
         }
 
         rootContainer.children = wrappers
-    }, [canvasRef, columnPositions, columnWidths, createGripIconHandlers, enableColumnReorder, headerCells, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells])
+    }, [canvasRef, columnPositions, columnWidths, createGripIconHandlers, enableColumnReorder, headerCells, headerRowHeight, isVisible, onColumnSort, orderedColumns, rootRef, scrollLeft, sortColumn, sortDirection, visibleCells, nodeRegistry])
 }

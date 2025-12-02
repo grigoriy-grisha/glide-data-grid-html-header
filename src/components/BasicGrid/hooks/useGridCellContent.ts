@@ -193,7 +193,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           }
 
           const hoverPos = _hoverX !== undefined && _hoverY !== undefined ? { x: _hoverX, y: _hoverY } : undefined
-          cellCanvasRoot.rootNode.style = { width: rect.width }
+          cellCanvasRoot.rootNode.style = { width: rect.width, height: rect.height }
 
           cellCanvasRoot.render(ctx, rect, hoverPos)
 
