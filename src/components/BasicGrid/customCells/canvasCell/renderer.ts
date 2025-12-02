@@ -85,8 +85,7 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     return undefined
   },
   draw: (args, cell) => {
-    console.log('draw');
-    
+    console.log(args)
     const { ctx, rect, theme } = args
     const argsAny = args as any
     const { render } = cell.data

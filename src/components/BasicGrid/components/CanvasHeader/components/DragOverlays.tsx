@@ -20,44 +20,8 @@ const SnapshotImage: React.FC<{ snapshot: ImageBitmap | string; width: number; h
         if (typeof snapshot !== 'string' && canvasRef.current) {
             const ctx = canvasRef.current.getContext('2d')
             if (ctx) {
-                // Clear canvas before drawing
                 ctx.clearRect(0, 0, width, height)
-                // Draw image covering the full canvas - but we need to be careful about aspect ratio
-                // If we force full height, it might look stretched if the snapshot is smaller/different ratio
-                // The snapshot IS the exact size of the cell (width * dpr, height * dpr).
-                
-                // However, if the source cell was NOT full height of the header (e.g. nested header),
-                // but here we are setting canvas height to `ghostHeight` (which is nearly full header height),
-                // then stretching happens if we just do drawImage(snapshot, 0, 0, width, height).
-                
-                // We should probably maintain aspect ratio or just center it?
-                // Actually, the snapshot size IS what we captured.
-                // Let's trust the source snapshot dimensions if possible, 
-                // BUT the canvas must fit the container.
-                
-                // Better approach: Draw snapshot 1:1 to canvas size (assuming container matches snapshot size conceptually)
-                // But 'height' passed here is 'ghostHeight', which is `height - 8` from DragOverlays.
-                // The captured rect.height might be different if it was a nested column.
-                // We don't know the original rect height here easily without storing it in DragState.
-                
-                // Assuming we want to fill the ghost element, stretching is expected unless we crop/fit.
-                // But typically the ghost element should match the dragged item's size.
-                // DragOverlays sets height to `height - 8` (basically full header height).
-                // If we dragged a small sub-header, this is wrong.
-                
-                // FIX: The DragState should probably contain the original height, and the ghost should use THAT height.
-                // But for now, let's fix the rendering to 'contain' or 'cover' without distortion if we can't change the container size easily.
-                // Actually, we can't easily change ghost size from here without props.
-                
-                // Let's try to draw it with correct aspect ratio centered?
-                // Or just fill? The user says "stretches to full height", implying distortion.
-                
-                // If the snapshot is high DPI, we need to account for that.
-                // The snapshot is width*dpr x height*dpr pixels.
-                // The canvas is width x height CSS pixels.
-                // We should set canvas width/height attributes to match snapshot size (high res)
-                // and style width/height to match container.
-                
+            
                 canvasRef.current.width = snapshot.width
                 canvasRef.current.height = snapshot.height
                 

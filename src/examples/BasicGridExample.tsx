@@ -213,15 +213,6 @@ const columns: BasicGridColumn<DataRow>[] = [
 
 export function BasicGridExample() {
 
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCount(c => c + 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
-
   const rows = useMemo(() => {
     const extraRows: DataRow[] = Array.from({ length: 100 }).map((_, i) => {
       const id = i + 100
@@ -273,7 +264,6 @@ export function BasicGridExample() {
   return (
     <div className="data-grid-section">
       <h2 className="section-title">Basic Grid</h2>
-      {count}
       <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
       <BasicGrid<DataRow>
         columns={columns}

@@ -607,9 +607,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [handleColumnSort]
   )
 
-  console.log('render');
-  
-
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>

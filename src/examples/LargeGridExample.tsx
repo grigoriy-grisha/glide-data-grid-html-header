@@ -270,7 +270,7 @@ const generateColumns = (): BasicGridColumn<LargeDataRow>[] => {
           renderColumnContent: () => (
             <Canvas.Container direction="row" gap={6} justifyContent="center" alignItems="center" wrap="wrap">
               <Canvas.Icon icon={MAP_SVG} size={14} color="#2196f3" />
-              <Canvas.Text font="bold 12px sans-serif" color="#333333">{stateNameCopy}</Canvas.Text>
+              <Canvas.Text font="bold 12px sans-serif" color="#333333" style={{flexShrink: 0}}>{stateNameCopy}</Canvas.Text>
               <Canvas.Button onClick={() => console.log(`Clicked state: ${stateNameCopy}`)}>
                 {String(stateIndex + 1)}
               </Canvas.Button>
