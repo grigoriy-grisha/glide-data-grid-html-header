@@ -5,10 +5,14 @@ import { useHeaderVirtualization } from '../../context/HeaderVirtualizationConte
 import { useCanvasLifecycle } from './hooks/useCanvasLifecycle'
 import { useHeaderDragDrop } from './hooks/useHeaderDragDrop'
 import { useHeaderScene } from './hooks/useHeaderScene'
+import { useNodeRegistry } from './hooks/useNodeRegistry'
 import { ResizeHandles } from './components/ResizeHandles'
 import { DragOverlays } from './components/DragOverlays'
-import { CanvasNode } from './core/CanvasNode'
 import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface CanvasHeaderProps {
   width: number
@@ -37,6 +41,37 @@ interface CanvasHeaderProps {
   debugMode?: boolean
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Visibility Hook
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useIntersectionVisibility(
+  targetRef: React.RefObject<HTMLElement | null>
+): boolean {
+  const [isVisible, setIsVisible] = React.useState(true)
+
+  React.useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    
+    const target = targetRef.current
+    if (!target) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry?.isIntersecting ?? true),
+      { root: null, threshold: 0.05 }
+    )
+    
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [targetRef])
+
+  return isVisible
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   width,
   height,
@@ -61,26 +96,22 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const [isHovered, setIsHovered] = React.useState(false)
-  const [isVisible, setIsVisible] = React.useState(true)
 
-  // Registry for React-managed nodes (Headless Renderer)
-  const nodeRegistry = React.useRef(new Map<string, CanvasNode>())
+  // Node registry for React-managed content
+  const { registryRef, notifyChange, subscribe } = useNodeRegistry()
 
-  // 1. Canvas Lifecycle & Ref Management
+  // Canvas lifecycle
   const { canvasRef, rootRef } = useCanvasLifecycle({
     width,
     height,
     canvasHeaderRef,
-    isActive: isVisible,
+    isActive: true,
   })
 
-  const requestRender = React.useCallback(() => {
-      if (rootRef.current) {
-          rootRef.current.render()
-      }
-  }, [rootRef])
+  // Visibility detection
+  const isVisible = useIntersectionVisibility(canvasRef)
 
-  // 2. Drag and Drop State & Logic
+  // Drag and drop
   const { dragState, handleDragStart, ghostRef, dropIndicatorRef } = useHeaderDragDrop({
     canvasRef,
     columnCount: orderedColumns.length,
@@ -91,30 +122,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     onColumnReorder
   })
 
-  React.useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') {
-      return
-    }
-    const target = canvasRef.current
-    if (!target) {
-      return
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry?.isIntersecting ?? true)
-      },
-      {
-        root: null,
-        threshold: 0.05,
-      }
-    )
-    observer.observe(target)
-    return () => {
-      observer.disconnect()
-    }
-  }, [canvasRef])
-
-  // 3. Scene Construction (Canvas Render Logic)
+  // Scene construction
   useHeaderScene({
     rootRef,
     canvasRef,
@@ -134,7 +142,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     onColumnSort,
     debugMode,
     isVisible,
-    nodeRegistry,
+    nodeRegistry: registryRef,
+    subscribeToRegistryChange: subscribe,
   })
 
   return (
@@ -145,17 +154,18 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         height: `${height}px`,
       }}
     >
-      {/* Headless Renderer for React Components in Headers */}
+      {/* Headless Renderer for React Components */}
       {isVisible && (
-          <HeadlessHeaderRenderer
-              visibleIndices={visibleIndices}
-              headerCells={headerCells}
-              orderedColumns={orderedColumns}
-              nodeRegistry={nodeRegistry}
-              requestRender={requestRender}
-          />
+        <HeadlessHeaderRenderer
+          visibleIndices={visibleIndices}
+          headerCells={headerCells}
+          orderedColumns={orderedColumns}
+          nodeRegistry={registryRef}
+          onRegistryChange={notifyChange}
+        />
       )}
 
+      {/* Row Marker Column */}
       {showRowMarkers && (
         <div
           style={{
@@ -167,6 +177,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           }}
         />
       )}
+
+      {/* Main Canvas Area */}
       <div
         style={{
           width: `${width}px`,
@@ -187,6 +199,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           }}
         />
 
+        {/* Resize Handles */}
         {handleResizeMouseDown && isHovered && isVisible && (
           <ResizeHandles
             visibleIndices={visibleIndices}
@@ -200,6 +213,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           />
         )}
 
+        {/* Drag Overlays */}
         {isVisible && (
           <DragOverlays
             dragState={dragState}

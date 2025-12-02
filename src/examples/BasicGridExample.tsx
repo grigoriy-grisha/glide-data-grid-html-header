@@ -51,9 +51,7 @@ const columns: BasicGridColumn<DataRow>[] = [
         dataType: "string",
         title: 'ID',
         width: 150,
-        renderColumnContent: () => (
-          <CounterHeader />
-        ),
+        renderColumnContent: CounterHeader,
         renderCellContent: (row) => (
           <Canvas.Container
             direction="row"

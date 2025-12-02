@@ -101,7 +101,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const gridBodyRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const dataEditorRef = useRef<DataEditorRef>(null)
-  console.log(dataEditorRef.current);
+  
   
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
@@ -183,7 +183,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       nodesByRowIndex,
       treeEnabled,
     })
-
+ 
   const gridTheme = useMemo(
     () => ({
       accentColor: '#1e88e5',
