@@ -222,11 +222,15 @@ export class HeaderSceneBuilder {
             ? sortDirection
             : undefined
 
-        // Check if we need full rebuild (sort state changed, size changed significantly)
+        // Check if we need full rebuild:
+        // - Sort state changed
+        // - Size changed
+        // - Has custom content (React component may have updated)
         const needsRebuild = 
             cached.sortDirection !== currentSortDirection ||
             cached.cellWidth !== cellWidth ||
-            cached.cellHeight !== cellHeight
+            cached.cellHeight !== cellHeight ||
+            cached.hasCustomContent // Always rebuild custom content cells
 
         if (needsRebuild) {
             // Remove from cache and build fresh
