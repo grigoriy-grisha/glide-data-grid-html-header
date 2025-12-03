@@ -1,6 +1,8 @@
 import React from 'react'
-import type { GridHeaderCell } from '../../models/GridHeaderCell'
+import { GridHeaderCell } from '../../models/GridHeaderCell'
+import type { GridHeaderCell as GridHeaderCellType } from '../../models/GridHeaderCell'
 import type { GridColumn } from '../../models/GridColumn'
+import { SELECTION_COLUMN_ID } from '../../constants'
 import { useHeaderVirtualization } from '../../context/HeaderVirtualizationContext'
 import { useCanvasLifecycle } from './hooks/useCanvasLifecycle'
 import { useHeaderDragDrop } from './hooks/useHeaderDragDrop'
@@ -17,7 +19,7 @@ import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
 interface CanvasHeaderProps {
   width: number
   height: number
-  headerCells: GridHeaderCell[]
+  headerCells: GridHeaderCellType[]
   orderedColumns: GridColumn<any>[]
   columnPositions: number[]
   columnWidths: number[]
@@ -114,7 +116,6 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const containerRef = React.useRef<HTMLDivElement>(null)
   const selectAllCheckboxRef = React.useRef<HTMLInputElement>(null)
 
-  // Update indeterminate state for checkbox
   React.useEffect(() => {
     if (selectAllCheckboxRef.current) {
       selectAllCheckboxRef.current.indeterminate = hasPartialRowSelection
@@ -124,9 +125,28 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   // Node registry for React-managed content
   const { registryRef, notifyChange, subscribe } = useNodeRegistry()
 
-  // Canvas lifecycle
-  const { canvasRef, rootRef } = useCanvasLifecycle({
+  const {
+    canvasWidth,
+    effectiveMarkerWidth,
+    headerCells: canvasHeaderCells,
+    orderedColumns: canvasOrderedColumns,
+    columnPositions: canvasColumnPositions,
+    columnWidths: canvasColumnWidths,
+    visibleIndices: canvasVisibleIndices,
+  } = useSelectionAdjustedHeaderData({
     width,
+    headerCells,
+    orderedColumns,
+    columnPositions,
+    columnWidths,
+    visibleIndices,
+    enableRowSelection,
+    showRowMarkers,
+    markerWidthValue,
+  })
+
+  const { canvasRef, rootRef } = useCanvasLifecycle({
+    width: canvasWidth,
     height,
     canvasHeaderRef,
     isActive: true,
@@ -153,14 +173,14 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   useHeaderScene({
     rootRef,
     canvasRef,
-    visibleIndices,
-    headerCells,
-    orderedColumns,
-    columnPositions,
-    columnWidths,
+    visibleIndices: canvasVisibleIndices,
+    headerCells: canvasHeaderCells,
+    orderedColumns: canvasOrderedColumns,
+    columnPositions: canvasColumnPositions,
+    columnWidths: canvasColumnWidths,
     scrollLeft,
     headerRowHeight,
-    markerWidthValue,
+    markerWidthValue: effectiveMarkerWidth,
     enableColumnReorder,
     dragState,
     handleDragStart,
@@ -174,32 +194,24 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   })
 
   // Selection column width (first column when row selection is enabled)
-  const selectionColumnWidth = enableRowSelection && columnWidths.length > 0 ? columnWidths[0] : 0
-  
-  // Marker width: use markerWidthValue if showRowMarkers, otherwise use selection column width
-  const effectiveMarkerWidth = showRowMarkers ? markerWidthValue : (enableRowSelection ? selectionColumnWidth : 0)
-
   const headerStyle = React.useMemo(() => ({
-    '--canvas-header-width': `${width + effectiveMarkerWidth}px`,
+    '--canvas-header-width': `${canvasWidth + effectiveMarkerWidth}px`,
     '--canvas-header-height': `${height}px`,
     '--canvas-marker-width': `${effectiveMarkerWidth + 1}px`,
-    '--canvas-main-width': `${width - selectionColumnWidth}px`,
-  } as React.CSSProperties), [width, height, effectiveMarkerWidth, selectionColumnWidth])
+    '--canvas-main-width': `${canvasWidth}px`,
+  } as React.CSSProperties), [canvasWidth, height, effectiveMarkerWidth])
 
   return (
     <div className="canvas-header" style={headerStyle} ref={containerRef}>
-      {/* Headless Renderer for React Components */}
       {isVisible && (
         <HeadlessHeaderRenderer
-          visibleIndices={visibleIndices}
-          headerCells={headerCells}
-          orderedColumns={orderedColumns}
+          visibleIndices={canvasVisibleIndices}
+          headerCells={canvasHeaderCells}
+          orderedColumns={canvasOrderedColumns}
           nodeRegistry={registryRef}
           onRegistryChange={notifyChange}
         />
       )}
-
-      {/* Row Marker Column - shows checkbox when row selection is enabled */}
       {(showRowMarkers || enableRowSelection) && (
         <div
           className="canvas-header__marker"
@@ -220,8 +232,6 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           )}
         </div>
       )}
-
-      {/* Main Canvas Area */}
       <div
         className="canvas-header__main"
         style={{
@@ -239,22 +249,18 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
             height: 'var(--canvas-header-height)',
           }}
         />
-
-        {/* Resize Handles */}
         {handleResizeMouseDown && isHovered && isVisible && (
           <ResizeHandles
-            visibleIndices={visibleIndices}
-            orderedColumns={orderedColumns}
-            columnWidths={columnWidths}
-            columnPositions={columnPositions}
+            visibleIndices={canvasVisibleIndices}
+            orderedColumns={canvasOrderedColumns}
+            columnWidths={canvasColumnWidths}
+            columnPositions={canvasColumnPositions}
             scrollLeft={scrollLeft}
-            width={width}
+            width={canvasWidth}
             handleResizeMouseDown={handleResizeMouseDown}
             handleResizeDoubleClick={handleResizeDoubleClick}
           />
         )}
-
-        {/* Drag Overlays */}
         {isVisible && (
           <DragOverlays
             dragState={dragState}
@@ -267,3 +273,114 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     </div>
   )
 })
+
+interface SelectionAdjustedHeaderInput {
+  width: number
+  headerCells: GridHeaderCellType[]
+  orderedColumns: GridColumn<any>[]
+  columnPositions: number[]
+  columnWidths: number[]
+  visibleIndices: { start: number; end: number }
+  enableRowSelection: boolean
+  showRowMarkers: boolean
+  markerWidthValue: number
+}
+
+interface SelectionAdjustedHeaderData {
+  canvasWidth: number
+  effectiveMarkerWidth: number
+  headerCells: GridHeaderCellType[]
+  orderedColumns: GridColumn<any>[]
+  columnPositions: number[]
+  columnWidths: number[]
+  visibleIndices: { start: number; end: number }
+}
+
+function useSelectionAdjustedHeaderData({
+  width,
+  headerCells,
+  orderedColumns,
+  columnPositions,
+  columnWidths,
+  visibleIndices,
+  enableRowSelection,
+  showRowMarkers,
+  markerWidthValue,
+}: SelectionAdjustedHeaderInput): SelectionAdjustedHeaderData {
+  return React.useMemo(() => {
+    const selectionColumnWidth = enableRowSelection && columnWidths.length > 0 ? columnWidths[0] : 0
+    const canvasWidth = width - (enableRowSelection ? selectionColumnWidth : 0)
+    const effectiveMarkerWidth = showRowMarkers ? markerWidthValue : (enableRowSelection ? selectionColumnWidth : 0)
+
+    if (!enableRowSelection) {
+      return {
+        canvasWidth,
+        effectiveMarkerWidth,
+        headerCells,
+        orderedColumns,
+        columnPositions,
+        columnWidths,
+        visibleIndices,
+      }
+    }
+
+    const adjustedColumns = orderedColumns.filter((column) => column.id !== SELECTION_COLUMN_ID)
+    const adjustedColumnWidths = columnWidths.slice(1)
+    const offset = selectionColumnWidth
+    const adjustedPositions = columnPositions.slice(1).map((pos) => pos - offset)
+    const adjustedVisibleIndices = {
+      start: Math.max(0, visibleIndices.start - 1),
+      end: Math.max(0, visibleIndices.end - 1),
+    }
+
+    const adjustedHeaderCells: GridHeaderCellType[] = []
+    for (const cell of headerCells) {
+      if (cell.columnIndex === 0) {
+        continue
+      }
+
+      const adjustedStartIndex = Math.max(0, cell.startIndex - 1)
+      const adjustedColSpan = cell.startIndex === 0 ? cell.colSpan - 1 : cell.colSpan
+      if (adjustedColSpan <= 0) {
+        continue
+      }
+
+      const adjustedColumnIndex =
+        typeof cell.columnIndex === 'number' ? cell.columnIndex - 1 : cell.columnIndex
+
+      adjustedHeaderCells.push(
+        new GridHeaderCell(
+          cell.title,
+          cell.level,
+          cell.rowSpan,
+          adjustedColSpan,
+          adjustedStartIndex,
+          adjustedColumnIndex,
+          cell.isLeaf,
+          cell.content,
+          cell.renderColumnContent
+        )
+      )
+    }
+
+    return {
+      canvasWidth,
+      effectiveMarkerWidth,
+      headerCells: adjustedHeaderCells,
+      orderedColumns: adjustedColumns,
+      columnPositions: adjustedPositions,
+      columnWidths: adjustedColumnWidths,
+      visibleIndices: adjustedVisibleIndices,
+    }
+  }, [
+    width,
+    headerCells,
+    orderedColumns,
+    columnPositions,
+    columnWidths,
+    visibleIndices,
+    enableRowSelection,
+    showRowMarkers,
+    markerWidthValue,
+  ])
+}

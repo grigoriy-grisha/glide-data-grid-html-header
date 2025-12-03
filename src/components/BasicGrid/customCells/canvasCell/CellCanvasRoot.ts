@@ -110,7 +110,7 @@ export class CellCanvasRoot {
       this.updateCursor(hits)
     }
 
-    return true
+    return stopped
   }
 
   handleMouseLeave() {

@@ -9,7 +9,8 @@ export function createCanvasCell(
     rect: RectBounds,
     theme: any,
     hoverX: number | undefined,
-    hoverY: number | undefined
+    hoverY: number | undefined,
+    args?: any
   ) => CanvasRenderResult,
   onClick?: (
     x: number,

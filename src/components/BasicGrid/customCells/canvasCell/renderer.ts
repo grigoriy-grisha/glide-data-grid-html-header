@@ -99,7 +99,9 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     ctx.rect(rect.x, rect.y, rect.width, rect.height)
     ctx.clip()
 
-    const renderResult = render(ctx, rect, theme, relativeHover?.x, relativeHover?.y)
+    const renderData = retrieveRenderData(cellId, cell)
+    
+    const renderResult = render(ctx, rect, theme, relativeHover?.x, relativeHover?.y, { ...argsAny, canvasRoot: renderData?.canvasRoot })
     const hoveredAreas = renderResult?.hoveredAreas ?? []
 
     storeRenderData(cellId, cell, renderResult)

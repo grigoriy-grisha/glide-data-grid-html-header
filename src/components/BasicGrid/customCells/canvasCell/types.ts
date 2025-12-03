@@ -25,7 +25,8 @@ export interface CanvasCellData {
     rect: RectBounds,
     theme: any,
     hoverX: number | undefined,
-    hoverY: number | undefined
+    hoverY: number | undefined,
+    args?: any // Generic args passed from renderer
   ) => CanvasRenderResult
   onClick?: (
     x: number,

@@ -3,7 +3,8 @@ import type { GridCell, CustomRenderer } from '@glideapps/glide-data-grid'
 
 import type { BasicGridTreeOptions } from '../types'
 import { GridTree, type GridTreeNode, areSetsEqual } from '../models/GridTree'
-import { treeViewCellRenderer, createTreeViewCell } from '../customCells/treeViewCell'
+import { canvasCellRenderer } from '../customCells/canvasCell'
+import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
 import { getGridCellDisplayText } from '../utils/gridCell'
 
 interface UseGridTreeParams<RowType extends Record<string, unknown>> {
@@ -71,7 +72,7 @@ export function useGridTree<RowType extends Record<string, unknown>>({
   const nodesByRowIndex = treeEnabled ? snapshot?.nodes ?? [] : undefined
   const displayRows = treeEnabled ? snapshot?.visibleRows ?? rows : rows
   const customRenderers: readonly CustomRenderer<any>[] | undefined = treeEnabled
-    ? [treeViewCellRenderer]
+    ? [canvasCellRenderer]
     : undefined
 
   const toggleRow = useCallback((rowId: string) => {
@@ -111,9 +112,9 @@ export function useGridTree<RowType extends Record<string, unknown>>({
       }
 
       const text = getGridCellDisplayText(cell)
-      return createTreeViewCell(text, node)
+      return createTreeViewCanvasCell(text, node, () => toggleRow(node.rowId))
     },
-    [nodesByRowIndex, treeColumnId, treeEnabled]
+    [nodesByRowIndex, treeColumnId, treeEnabled, toggleRow]
   )
 
   return {

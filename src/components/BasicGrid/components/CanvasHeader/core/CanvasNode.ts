@@ -6,7 +6,8 @@ export type DimensionValue = number | '100%';
 export type CanvasFlexStyle = Omit<Partial<FlexStyle>, 'width' | 'height'> & {
     width?: DimensionValue;
     height?: DimensionValue;
-    cursor?: string;  // 'pointer', 'grab', 'default', etc.
+    cursor?: string;
+    marginRight?: number; // Temporary support for margin
 };
 
 export interface Rect {

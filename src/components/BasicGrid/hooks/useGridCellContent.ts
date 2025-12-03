@@ -8,6 +8,7 @@ import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
 import { buildCanvasTree } from '../components/CanvasHeader/CanvasComponents'
+import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
 
 const EMPTY_TEXT_CELL: GridCell = {
   kind: GridCellKind.Text,
@@ -26,6 +27,11 @@ interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   decorateCell: (cell: GridCell, columnId: string | undefined, rowIndex: number) => GridCell
   selectionColumnId: string
   summaryRows?: RowType[]
+  // Tree props
+  treeEnabled?: boolean
+  nodesByRowIndex?: any[] // GridTreeNode<RowType>[]
+  treeColumnId?: string
+  onTreeToggle?: (rowIndex: number) => void
 }
 
 export function useGridCellContent<RowType extends Record<string, unknown>>({
@@ -38,6 +44,10 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
   decorateCell,
   selectionColumnId,
   summaryRows,
+  treeEnabled,
+  nodesByRowIndex,
+  treeColumnId,
+  onTreeToggle,
 }: UseGridCellContentParams<RowType>) {
   // Cache for button/canvas cell handlers to avoid recreation
   const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, any>>(), [])
@@ -200,6 +210,21 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           return {
             canvasRoot: cellCanvasRoot,
           }
+        }
+
+        if (treeEnabled && nodesByRowIndex && treeColumnId && column.id === treeColumnId) {
+            const node = nodesByRowIndex[row];
+            if (node) {
+                // If there is a renderCellContent for the tree column, wrap it
+                const wrappedRenderContent = renderCellContent ? (r: RowType) => renderCellContent(r, row) : undefined;
+                return createTreeViewCanvasCell(
+                  "", 
+                  node, 
+                  () => onTreeToggle?.(row),
+                  wrappedRenderContent, 
+                  dataRow
+                );
+            }
         }
 
         return createCanvasCell(render)

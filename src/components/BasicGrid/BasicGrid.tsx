@@ -69,8 +69,8 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const gridBodyRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const dataEditorRef = useRef<DataEditorRef>(null)
-  
-  
+
+
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
   const virtualResizeLineRef = useRef<HTMLDivElement>(null)
@@ -149,7 +149,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       nodesByRowIndex,
       treeEnabled,
     })
- 
+
   const gridTheme = useMemo(
     () => ({
       accentColor: '#1e88e5',
@@ -177,7 +177,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     gridRef,
     headerHeight: headerHeightPx,
   })
-  
+
   // Эффективная высота хедера (уменьшается при сворачивании)
   const effectiveHeaderHeight = headerHeightPx - virtualOffset
 
@@ -297,6 +297,10 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     decorateCell,
     selectionColumnId: SELECTION_COLUMN_ID,
     summaryRows,
+    treeEnabled,
+    nodesByRowIndex,
+    treeColumnId,
+    onTreeToggle: toggleRowByIndex,
   })
 
   const handleCellEdited = useCellEditing({
@@ -339,7 +343,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
       }
 
       if (treeEnabled && treeColumnId && column.id === treeColumnId) {
-        toggleRowByIndex(rowIndex)
+        // toggleRowByIndex(rowIndex) -> Moved to Chevron click handler
         return
       }
 
@@ -441,15 +445,15 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             />
           )}
 
-          {/* 
+          {/*
             Хедер позиционируется абсолютно поверх body.
             При сворачивании уменьшается высота хедера, body "выглядывает" из-под него.
             DataEditor всегда имеет полную высоту = height + headerHeight.
           */}
           {columnPositions.length > 0 && levelCount > 0 && (
-            <div 
-              className="basic-grid-header-overlay" 
-              style={{ 
+            <div
+              className="basic-grid-header-overlay"
+              style={{
                 height: effectiveHeaderHeight,
                 ...headerLayerStyle,
               }}
