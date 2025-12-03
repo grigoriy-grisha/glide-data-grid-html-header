@@ -14,6 +14,8 @@ export class CanvasRoot {
 
     /** Callback fired when cursor should change based on hovered element */
     onCursorChange?: (cursor: string) => void;
+    /** Callback fired when portal-aware hover target changes */
+    onPortalHoverTargetChange?: (node: CanvasNode | null, event: CanvasEvent | null) => void;
 
     constructor(canvas: HTMLCanvasElement, rootNode: CanvasNode) {
         this.canvas = canvas;
@@ -135,9 +137,29 @@ export class CanvasRoot {
                 currentTarget: target
             };
             target.onMouseEnter.bind(target)(enterEvent);
+
+            const portalTarget = this.findPortalTarget(target);
+            if (portalTarget) {
+                this.onPortalHoverTargetChange?.(portalTarget, baseEvent);
+            } else {
+                this.onPortalHoverTargetChange?.(null, null);
+            }
+        } else {
+            this.onPortalHoverTargetChange?.(null, null);
         }
 
         this.hoveredNode = target ?? null;
+    }
+
+    private findPortalTarget(node: CanvasNode | undefined): CanvasNode | null {
+        let current: CanvasNode | null | undefined = node;
+        while (current) {
+            if (current.portalHoverEnabled) {
+                return current;
+            }
+            current = current.parent;
+        }
+        return null;
     }
 
     private updateCursor(hits: CanvasNode[]) {

@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
+import { subscribeToCanvasPortalHover } from '../components/BasicGrid/components/CanvasHeader/utils/portalHoverEvents'
 
 const svgIcon = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,14 +21,14 @@ function CounterHeader() {
   }, [])
 
   return (
-    <Canvas.Container 
-      direction="row" 
-      gap={6} 
-      alignItems="center" 
+    <Canvas.Container
+      direction="row"
+      gap={6}
+      alignItems="center"
       justifyContent="center"
- 
+
     >
-      <Canvas.Text color="#333" font="bold 12px sans-serif">
+      <Canvas.Text color="#333" font="bold 12px sans-serif" portalHoverEnabled>
         Counter: {count.toString()}
       </Canvas.Text>
     </Canvas.Container>
@@ -35,13 +37,69 @@ function CounterHeader() {
 
 function SimpleHeader() {
   return (
-    <Canvas.Container direction="row" gap={12} alignItems="center">
-        <Canvas.Text color="blue" style={{ flexShrink: 0 }}>Simple</Canvas.Text>
+    <Canvas.Container direction="row" gap={12} alignItems="center" portalHoverEnabled>
+        <Canvas.Text color="blue" style={{ flexShrink: 0 }} >Simple</Canvas.Text >
         <Canvas.Text color="red" style={{ flexShrink: 0 }}>Header</Canvas.Text>
         <Canvas.Tag backgroundColor="#FFF3E0" textColor="#E65100">
           NEW
         </Canvas.Tag>
     </Canvas.Container>
+  )
+}
+
+function HeaderHoverPortal() {
+  const [state, setState] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    nodeId: '',
+  })
+
+  useEffect(() => {
+    return subscribeToCanvasPortalHover((detail) => {
+      setState({
+        visible: detail.visible,
+        x: detail.x,
+        y: detail.y,
+        width: detail.width,
+        height: detail.height,
+        nodeId: detail.nodeId ?? '',
+      })
+    })
+  }, [])
+
+  if (!state.visible || typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        left: `${state.x}px`,
+        top: `${state.y}px`,
+        width: `${Math.max(0, state.width)}px`,
+        height: `${Math.max(0, state.height)}px`,
+        pointerEvents: 'none',
+        boxSizing: 'border-box',
+        borderRadius: 8,
+        border: '1px solid rgba(21, 101, 192, 0.8)',
+        background: 'rgba(21, 101, 192, 0.12)',
+        color: '#0f172a',
+        fontSize: 11,
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-end',
+        padding: '4px 6px',
+        zIndex: 2147483601,
+      }}
+    >
+      {state.nodeId}
+    </div>,
+    document.body
   )
 }
 
@@ -64,7 +122,7 @@ const columns: BasicGridColumn<DataRow>[] = [
             padding={8}
             wrap="wrap"
           >
-            <Canvas.Container direction="column" gap={2} style={{ width: '100%' }}>
+            <Canvas.Container  direction="column" gap={2} style={{ width: '100%' }}>
               <Canvas.Text color="#0d47a1" style={{ flexGrow: 1 }}>
                 {row.employeeId ?? '—'}
               </Canvas.Text>
@@ -73,6 +131,7 @@ const columns: BasicGridColumn<DataRow>[] = [
               </Canvas.Text>
             </Canvas.Container>
             <Canvas.Button
+            portalHoverEnabled
               variant="secondary"
               onClick={() => console.log('Подробнее по сотруднику', row.employeeId)}
             >
@@ -84,7 +143,7 @@ const columns: BasicGridColumn<DataRow>[] = [
       {
         title: 'ФИО',
         children: [
-          createColumn<DataRow>('firstName', 'string', 'Имя', { 
+          createColumn<DataRow>('firstName', 'string', 'Имя', {
              width: 150,
              renderColumnContent: SimpleHeader
           }),
@@ -188,6 +247,7 @@ const columns: BasicGridColumn<DataRow>[] = [
             gap={6}
             wrap="wrap"
             alignContent="center"
+            portalHoverEnabled
           >
             <Canvas.Text color="#666">Текст:</Canvas.Text>
             <Canvas.Icon
@@ -266,6 +326,7 @@ export function BasicGridExample() {
 
   return (
     <div className="data-grid-section">
+      <HeaderHoverPortal />
       <h2 className="section-title">Basic Grid</h2>
       <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
       <BasicGrid<DataRow>

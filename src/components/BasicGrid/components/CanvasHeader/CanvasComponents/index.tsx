@@ -26,6 +26,8 @@ interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
   columnGap?: number
   /** Gap between rows (vertical spacing in column direction) */
   rowGap?: number
+  /** Enables hover portal feedback for this node */
+  portalHoverEnabled?: boolean
 }
 
 interface TextProps extends Omit<CanvasTextOptions, 'font' | 'color'> {
@@ -34,6 +36,7 @@ interface TextProps extends Omit<CanvasTextOptions, 'font' | 'color'> {
   color?: string
   style?: Partial<CanvasFlexStyle>
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 interface IconProps {
@@ -46,6 +49,7 @@ interface IconProps {
   onMouseEnter?: (event: CanvasEvent<CanvasIcon>) => void
   onMouseLeave?: (event: CanvasEvent<CanvasIcon>) => void
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 interface ButtonProps {
@@ -55,6 +59,7 @@ interface ButtonProps {
   onClick?: (event: CanvasEvent<CanvasButton>) => void
   style?: Partial<CanvasFlexStyle>
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 interface IconButtonProps {
@@ -65,6 +70,7 @@ interface IconButtonProps {
   onClick?: (event: CanvasEvent<CanvasIconButton>) => void
   style?: Partial<CanvasFlexStyle>
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 interface RectProps {
@@ -73,12 +79,14 @@ interface RectProps {
   borderWidth?: number
   style?: Partial<CanvasFlexStyle>
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 interface TagProps extends CanvasTagOptions {
   children: ReactNode
   style?: Partial<CanvasFlexStyle>
   id?: string
+  portalHoverEnabled?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,9 +259,15 @@ function buildNode(
   }
 
   const props = element.props as Record<string, any>
-  const nodeId = props.id ?? `${idPrefix}-${canvasType.toLowerCase()}-${index}`
+  const elementKey = element.key != null ? String(element.key) : null
+  const nodeSuffix = elementKey ?? index
+  const nodeId = props.id ?? `${idPrefix}-${canvasType.toLowerCase()}-${nodeSuffix}`
 
   const node = createNode(canvasType, nodeId, props)
+
+  if (props.portalHoverEnabled) {
+    node.portalHoverEnabled = true
+  }
 
   // Apply style if provided - let the node's setter handle defaults (like cursor)
   if (props.style) {
@@ -278,7 +292,7 @@ function buildNode(
 function createNode(type: string, id: string, props: Record<string, any>): CanvasNode {
   switch (type) {
     case 'Container': {
-      const { children, style, id: _, gap, columnGap, rowGap, ...restFlexOptions } = props
+      const { children, style, id: _, gap, columnGap, rowGap, portalHoverEnabled: _phe, ...restFlexOptions } = props
       // Universal gap: if gap is set, use it for both axes unless specific gap is provided
       const flexOptions = {
         ...restFlexOptions,
@@ -289,7 +303,7 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Text': {
-      const { children, style: _style, id: _, font, color, wordWrap, lineHeight } = props
+      const { children, style: _style, id: _, font, color, wordWrap, lineHeight, portalHoverEnabled: _phe } = props
       const text = extractTextFromChildren(children)
       const node = new CanvasText(id, text, { 
           font: font ?? '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
@@ -301,7 +315,7 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Icon': {
-      const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave } = props
+      const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, portalHoverEnabled: _phe } = props
       const node = new CanvasIcon(id, icon, { size, color })
       if (backgroundColor) node.backgroundColor = backgroundColor
       node.onClick = wrapEventHandler(onClick, node) as any
@@ -311,7 +325,7 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Button': {
-      const { children, variant, disabled, onClick } = props
+      const { children, variant, disabled, onClick, portalHoverEnabled: _phe } = props
       const text = typeof children === 'string' ? children : ''
       const node = new CanvasButton(id, text, { variant, disabled })
       node.onClick = wrapEventHandler(onClick, node) as any
@@ -319,14 +333,14 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'IconButton': {
-      const { icon, size, variant, disabled, onClick } = props
+      const { icon, size, variant, disabled, onClick, portalHoverEnabled: _phe } = props
       const node = new CanvasIconButton(id, icon, { size, variant, disabled })
       node.onClick = wrapEventHandler(onClick, node) as any
       return node
     }
 
     case 'Rect': {
-      const { color, borderColor, borderWidth } = props
+      const { color, borderColor, borderWidth, portalHoverEnabled: _phe } = props
       const node = new CanvasRect(id, color)
       if (borderColor) node.borderColor = borderColor
       if (borderWidth) node.borderWidth = borderWidth
@@ -334,7 +348,7 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Tag': {
-      const { children, font, textColor, backgroundColor, paddingX, paddingY, borderRadius } = props
+      const { children, font, textColor, backgroundColor, paddingX, paddingY, borderRadius, portalHoverEnabled: _phe } = props
       const text = extractTextFromChildren(children)
       return new CanvasTag(id, text, {
         font,

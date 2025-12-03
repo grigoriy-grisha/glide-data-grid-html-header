@@ -99,24 +99,30 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     ctx.rect(rect.x, rect.y, rect.width, rect.height)
     ctx.clip()
 
-    const renderData = retrieveRenderData(cellId, cell)
-    
-    const renderResult = render(ctx, rect, theme, relativeHover?.x, relativeHover?.y, { ...argsAny, canvasRoot: renderData?.canvasRoot })
+    const previousRenderData = retrieveRenderData(cellId, cell)
+
+    const renderResult = render(ctx, rect, theme, relativeHover?.x, relativeHover?.y, {
+      ...argsAny,
+      canvasRoot: previousRenderData?.canvasRoot,
+    })
     const hoveredAreas = renderResult?.hoveredAreas ?? []
 
     storeRenderData(cellId, cell, renderResult)
 
-    if (renderResult?.canvasRoot instanceof CellCanvasRoot) {
+    const canvasRoot = renderResult?.canvasRoot ?? previousRenderData?.canvasRoot
+
+    if (canvasRoot instanceof CellCanvasRoot) {
       if (relativeHover) {
-        renderResult.canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, argsAny.event)
-        
+        canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, argsAny.event)
+
         // Compute and apply cursor synchronously during draw
-        const cursor = renderResult.canvasRoot.computeCursor(relativeHover.x, relativeHover.y)
+        const cursor = canvasRoot.computeCursor(relativeHover.x, relativeHover.y)
         if (cursor && cursor !== 'default') {
           args.overrideCursor?.(cursor as Parameters<NonNullable<typeof args.overrideCursor>>[0])
         }
       } else {
-        renderResult.canvasRoot.handleMouseLeave()
+        canvasRoot.handleMouseLeave()
+        canvasRoot.forcePortalHide()
       }
     }
 
@@ -125,7 +131,7 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
 
     updateHoverState(cell.data, Boolean(relativeHover))
 
-    if (isHovered && !renderResult?.canvasRoot) {
+    if (isHovered && !canvasRoot) {
       // Only use legacy hover detection if not using CellCanvasRoot
       args.overrideCursor?.('pointer')
     }

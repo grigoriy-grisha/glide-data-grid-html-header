@@ -182,12 +182,14 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 
       if (renderCellContent) {
         let cellCanvasRoot: CellCanvasRoot | null = null
+        const cellPortalOriginId = `cell-${col}-${row}`
         const render = (
           ctx: CanvasRenderingContext2D,
           rect: { x: number; y: number; width: number; height: number },
           _theme: any,
           _hoverX: number | undefined,
-          _hoverY: number | undefined
+          _hoverY: number | undefined,
+          renderArgs?: any
         ) => {
           const jsxElement = renderCellContent(dataRow, row)
           if (!jsxElement) {
@@ -196,19 +198,31 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 
           const node = buildCanvasTree(jsxElement, `cell-${col}-${row}`)
 
-          if (!cellCanvasRoot) {
-            cellCanvasRoot = new CellCanvasRoot(node)
+          let canvasRootInstance: CellCanvasRoot | null =
+            renderArgs?.canvasRoot instanceof CellCanvasRoot ? renderArgs.canvasRoot : cellCanvasRoot
+
+          if (!canvasRootInstance) {
+            canvasRootInstance = new CellCanvasRoot(node, cellPortalOriginId)
           } else {
-            cellCanvasRoot.setRootNode(node)
+            canvasRootInstance.setRootNode(node)
+            canvasRootInstance.setOriginId(cellPortalOriginId)
           }
 
           const hoverPos = _hoverX !== undefined && _hoverY !== undefined ? { x: _hoverX, y: _hoverY } : undefined
-          cellCanvasRoot.rootNode.style = { width: rect.width, height: rect.height }
+          canvasRootInstance.rootNode.style = { width: rect.width, height: rect.height }
 
-          cellCanvasRoot.render(ctx, rect, hoverPos)
+          const canvasRect = ctx.canvas.getBoundingClientRect()
+          const absoluteBounds = {
+            x: canvasRect.left + rect.x,
+            y: canvasRect.top + rect.y,
+            width: rect.width,
+            height: rect.height,
+          }
+          canvasRootInstance.render(ctx, rect, hoverPos, absoluteBounds)
+          cellCanvasRoot = canvasRootInstance
 
           return {
-            canvasRoot: cellCanvasRoot,
+            canvasRoot: canvasRootInstance,
           }
         }
 

@@ -61,7 +61,7 @@ export class CanvasButton extends CanvasLeaf {
     measure(ctx: CanvasRenderingContext2D) {
         const text = this.text;
         let width = textWidthCache.get(text);
-        
+
         if (width === undefined) {
             ctx.font = BUTTON_FONT;
             width = ctx.measureText(text).width;
@@ -92,10 +92,12 @@ export class CanvasButton extends CanvasLeaf {
     }
 
     onMouseEnter() {
+        console.log('onMouseEnter')
         this.isHovered = true;
     }
 
     onMouseLeave() {
+        console.log('onMouseLeave')
         this.isHovered = false;
     }
 }

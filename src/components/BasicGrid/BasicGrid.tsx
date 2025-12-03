@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, {useCallback, useMemo, useRef, useState} from 'react'
 import {
   type CellClickedEventArgs,
   type Item,
@@ -35,8 +35,6 @@ import { useStickyHeader } from './hooks/useStickyHeader'
 import { useGridBodyInteractions } from './hooks/useGridBodyInteractions'
 import { useRowOverlay } from './hooks/useRowOverlay'
 import { useCustomRenderers } from './hooks/useCustomRenderers'
-
-
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   rows,
@@ -69,7 +67,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const gridBodyRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const dataEditorRef = useRef<DataEditorRef>(null)
-
 
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
@@ -330,6 +327,13 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
 
   const handleCellClicked = useCallback(
     (cell: Item, event?: CellClickedEventArgs) => {
+      if (event) {
+        const pageX = event.bounds.x + event.localEventX
+        const pageY = event.bounds.y + event.localEventY
+        console.log('[BasicGrid] cell click', { cell, pageX, pageY })
+      } else {
+        console.log('[BasicGrid] cell click (no event)', { cell })
+      }
       const [colIndex, rowIndex] = cell
       const column = orderedColumns[colIndex]
       if (!column) {
@@ -501,7 +505,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               width={viewportWidth}
               height={height + headerHeightPx}
               theme={gridTheme}
-              customRenderers={customRenderers}
+              customRenderers={customRenderers} 
               onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
               onHeaderClicked={handleDataEditorHeaderClick}
               onCellClicked={handleCellClicked}

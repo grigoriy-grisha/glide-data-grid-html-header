@@ -69,6 +69,9 @@ export abstract class CanvasNode {
     borderColor: string = 'transparent';
     borderWidth: number = 0;
 
+    /** Flag indicating whether this node should drive the hover portal */
+    portalHoverEnabled = false;
+
     constructor(id: string) {
         this.id = id;
     }

@@ -1,4 +1,5 @@
 import type { CanvasCell, CanvasCellData, CanvasRenderResult } from './types'
+import { CellCanvasRoot } from './CellCanvasRoot'
 
 const hoverStateMap = new WeakMap<CanvasCellData, { hovered: boolean }>()
 const renderDataMap = new Map<string, CanvasRenderResult>()
@@ -20,6 +21,7 @@ export function retrieveRenderData(cellId: string, cell: CanvasCell): CanvasRend
 }
 
 export function updateHoverState(cellData: CanvasCellData, isHovered: boolean): void {
+  console.log(isHovered)
   const wasHovered = hoverStateMap.get(cellData)?.hovered ?? false
   if (wasHovered === isHovered) {
     return
@@ -27,10 +29,15 @@ export function updateHoverState(cellData: CanvasCellData, isHovered: boolean): 
 
   hoverStateMap.set(cellData, { hovered: isHovered })
 
+  console.log(isHovered)
   if (isHovered) {
     cellData.onMouseEnter?.()
   } else {
-    cellData.onMouseLeave?.()
+    // cellData.onMouseLeave?.()
+    const renderData = cellData.renderData
+    if (renderData?.canvasRoot instanceof CellCanvasRoot) {
+      renderData.canvasRoot.forcePortalHide()
+    }
   }
 }
 
