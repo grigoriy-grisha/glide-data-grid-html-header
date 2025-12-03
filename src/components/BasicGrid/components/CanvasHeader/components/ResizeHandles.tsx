@@ -47,16 +47,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
     handles.push(
       <div
         key={`resize-${col.id}-${i}`}
-        className="basic-grid-resize-handle"
-        style={{
-          position: 'absolute',
-          left: `${relativeX - 5}px`,
-          top: 0,
-          bottom: 0,
-          width: '10px',
-          cursor: 'col-resize',
-          zIndex: 10,
-        }}
+        className="resize-handle"
+        style={{ left: `${relativeX - 5}px` }}
         onMouseDown={(e) => {
           handleResizeMouseDown(e, i, 1)
         }}

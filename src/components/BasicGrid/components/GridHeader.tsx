@@ -77,47 +77,42 @@ export const GridHeader = React.memo(function GridHeader<RowType extends Record<
     })
   }, [headerCells, visibleIndices])
 
-  // Memoize header wrapper style
+  // Memoize header wrapper style - dynamic dimensions only
   const headerWrapperStyle = useMemo(
     () => ({
       width: `${viewportWidth}px`,
       paddingRight: `${scrollbarReserve}px`,
-      boxSizing: 'border-box' as const,
     }),
     [viewportWidth, scrollbarReserve]
   )
 
-  // Memoize header content style
+  // Memoize header content style - dynamic dimensions only
   const headerContentStyle = useMemo(
     () => ({
       width: `${dataViewportWidth}px`,
       paddingRight: `${scrollbarReserve}px`,
-      boxSizing: 'border-box' as const,
     }),
     [dataViewportWidth, scrollbarReserve]
   )
 
-  // Memoize header inner style
+  // Memoize header inner style - dynamic dimensions only
   const headerInnerStyle = useMemo(
     () => ({
       width: `${dataAreaWidth}px`,
       height: `${headerHeight}px`,
-      willChange: 'transform' as const,
     }),
     [dataAreaWidth, headerHeight]
   )
 
-  // Memoize row marker style
+  // Memoize row marker style - dynamic width only
   const rowMarkerStyle = useMemo(() => ({ width: `${markerWidth}px` }), [markerWidth])
 
-  // Memoize level styles
+  // Memoize level styles - dynamic positions only
   const levelStyles = useMemo(
     () =>
       Array.from({ length: levelCount }).map((_, levelIndex) => ({
-        position: 'absolute' as const,
         top: `${levelIndex * headerRowHeight}px`,
         height: `${headerRowHeight}px`,
-        width: '100%',
       })),
     [levelCount, headerRowHeight]
   )
@@ -141,16 +136,16 @@ export const GridHeader = React.memo(function GridHeader<RowType extends Record<
   }
 
   return (
-    <div className="basic-grid-html-header" style={headerWrapperStyle}>
+    <div className="basic-grid-html-header basic-grid-html-header--styled" style={headerWrapperStyle}>
       {showRowMarkers && (
         <div className="basic-grid-header-row-marker" style={rowMarkerStyle} />
       )}
-      <div className="basic-grid-header-content" style={headerContentStyle}>
-        <div className="basic-grid-header-content-inner" ref={headerInnerRef} style={headerInnerStyle}>
+      <div className="basic-grid-header-content basic-grid-header-content--styled" style={headerContentStyle}>
+        <div className="basic-grid-header-content-inner basic-grid-header-content-inner--styled" ref={headerInnerRef} style={headerInnerStyle}>
           {levelStyles.map((style, levelIndex) => (
             <div
               key={`level-${levelIndex}`}
-              className="basic-grid-header-level"
+              className="basic-grid-header-level basic-grid-header-level--styled"
               style={style}
             />
           ))}

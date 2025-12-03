@@ -56,9 +56,15 @@ function useIntersectionVisibility(
     const target = targetRef.current
     if (!target) return
 
+    // Используем rootMargin чтобы считать элемент видимым даже когда он
+    // частично за пределами viewport (для плавного сворачивания хедера)
     const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry?.isIntersecting ?? true),
-      { root: null, threshold: 0.05 }
+      ([entry]) => {
+        // Считаем видимым если элемент пересекается с viewport
+        // или находится близко к нему (в пределах 100px)
+        setIsVisible(entry?.isIntersecting ?? true)
+      },
+      { root: null, threshold: 0, rootMargin: '100px 0px 100px 0px' }
     )
     
     observer.observe(target)
@@ -96,6 +102,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const [isHovered, setIsHovered] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
 
   // Node registry for React-managed content
   const { registryRef, notifyChange, subscribe } = useNodeRegistry()
@@ -108,8 +115,11 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     isActive: true,
   })
 
-  // Visibility detection
-  const isVisible = useIntersectionVisibility(canvasRef)
+  // Visibility detection - observe container, not canvas
+  // This ensures visibility is tracked correctly even when header is collapsing
+  // Always render when header height > 0 to prevent issues during collapse/expand
+  const intersectionVisible = useIntersectionVisibility(containerRef)
+  const isVisible = intersectionVisible || height > 0
 
   // Drag and drop
   const { dragState, handleDragStart, ghostRef, dropIndicatorRef } = useHeaderDragDrop({
@@ -146,14 +156,15 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     subscribeToRegistryChange: subscribe,
   })
 
+  const headerStyle = React.useMemo(() => ({
+    '--canvas-header-width': `${width + markerWidthValue}px`,
+    '--canvas-header-height': `${height}px`,
+    '--canvas-marker-width': `${markerWidthValue + 1}px`,
+    '--canvas-main-width': `${width}px`,
+  } as React.CSSProperties), [width, height, markerWidthValue])
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        width: `${width + markerWidthValue}px`,
-        height: `${height}px`,
-      }}
-    >
+    <div className="canvas-header" style={headerStyle} ref={containerRef}>
       {/* Headless Renderer for React Components */}
       {isVisible && (
         <HeadlessHeaderRenderer
@@ -168,34 +179,30 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
       {/* Row Marker Column */}
       {showRowMarkers && (
         <div
+          className="canvas-header__marker"
           style={{
-            width: `${markerWidthValue + 1}px`,
-            height: `${height}px`,
-            backgroundColor: '#f3f6fc',
-            borderRight: '1px solid #e0e0e0',
-            flexShrink: 0,
+            width: 'var(--canvas-marker-width)',
+            height: 'var(--canvas-header-height)',
           }}
         />
       )}
 
       {/* Main Canvas Area */}
       <div
+        className="canvas-header__main"
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          overflow: 'hidden',
-          position: 'relative',
-          flexShrink: 0,
+          width: 'var(--canvas-main-width)',
+          height: 'var(--canvas-header-height)',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <canvas
           ref={canvasRef}
+          className="canvas-header__canvas"
           style={{
-            display: 'block',
-            width: `${width}px`,
-            height: `${height}px`,
+            width: 'var(--canvas-main-width)',
+            height: 'var(--canvas-header-height)',
           }}
         />
 

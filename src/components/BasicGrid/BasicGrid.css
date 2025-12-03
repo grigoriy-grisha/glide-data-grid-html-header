@@ -58,22 +58,16 @@
   background: #fff;
 }
 
-.basic-grid-header-shell {
-  position: relative;
-  width: 100%;
-  flex-shrink: 0;
+.basic-grid-header-overlay {
+  position: absolute;
+  top: 36px; /* padding-top wrapper */
+  left: 0;
+  right: 0;
   overflow: hidden;
-}
-
-.basic-grid-header-layer {
-  position: relative;
-  width: 100%;
+  z-index: 10;
   background: #fff;
-  transition: box-shadow 0.2s ease;
-}
-
-.basic-grid-header-layer--sticky {
-  will-change: transform;
+  /* Изолируем layout - изменение height не влияет на внешний layout */
+  contain: strict;
 }
 
 .basic-grid-header-layer--shadow {
@@ -470,6 +464,13 @@
   border: none !important;
 }
 
+/* Изолируем layout shift от теней скролла glide-data-grid */
+.basic-grid-wrapper #shadow-y,
+.basic-grid-wrapper #shadow-x {
+  contain: strict !important;
+  will-change: opacity, transform !important;
+}
+
 .basic-grid-html-header {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   pointer-events: auto;
@@ -567,4 +568,146 @@
 
 .basic-grid-header-cell--drop-after::after {
   right: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Canvas Header Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.canvas-header {
+  display: flex;
+}
+
+.canvas-header__marker {
+  background-color: #f3f6fc;
+  border-right: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.canvas-header__main {
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.canvas-header__canvas {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Drag Overlays Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.drag-overlay__indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background-color: #1e88e5;
+  z-index: 100;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.drag-overlay__ghost {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #1e88e5;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 101;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #1e88e5;
+  font-weight: 600;
+  will-change: transform;
+  opacity: 0.5;
+  overflow: hidden;
+}
+
+.drag-overlay__snapshot {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Resize Handle Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Select Cell Editor Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.select-cell-editor {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+}
+
+.select-cell-editor__select {
+  width: 100%;
+  font-size: 14px;
+  padding: 6px 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Canvas React Layer Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.canvas-react-layer {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Virtual Resize Line Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.basic-grid-virtual-resize-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: rgba(21, 101, 192, 0.8);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Grid Header (HTML) Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.basic-grid-html-header--styled {
+  box-sizing: border-box;
+}
+
+.basic-grid-header-content--styled {
+  box-sizing: border-box;
+}
+
+.basic-grid-header-content-inner--styled {
+  will-change: transform;
+}
+
+.basic-grid-header-level--styled {
+  position: absolute;
+  width: 100%;
 }

@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import DataEditor, {
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
   type CellClickedEventArgs,
-  type CustomRenderer,
   type Item,
   type DataEditorProps,
   type DataEditorRef,
@@ -9,10 +8,7 @@ import DataEditor, {
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
-import type {
-  BasicGridColumn,
-  BasicGridProps,
-} from './types'
+import type { BasicGridColumn, BasicGridProps } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_MIN_COLUMN_WIDTH,
@@ -21,6 +17,7 @@ import {
   SELECTION_COLUMN_ID,
 } from './constants'
 import { CanvasHeader } from './components/CanvasHeader'
+import { DataEditorWithVirtualization } from './components/DataEditorWithVirtualization'
 import { useContainerWidth } from './hooks/useContainerWidth'
 import { useNormalizedColumnsData } from './hooks/useNormalizedColumnsData'
 import { useColumnMetrics } from './hooks/useColumnMetrics'
@@ -30,43 +27,14 @@ import { useHorizontalScroll } from './hooks/useHorizontalScroll'
 import { useColumnOrdering } from './hooks/useColumnOrdering'
 import { useColumnResize } from './hooks/useColumnResize'
 import { useGridTree } from './hooks/useGridTree'
-import { selectCellRenderer } from './customCells/selectCell'
-import { buttonCellRenderer } from './customCells/buttonCell'
-import { canvasCellRenderer } from './customCells/canvasCell/index'
 import { useRowSelectionState } from './hooks/useRowSelectionState'
 import { useGridCellContent } from './hooks/useGridCellContent'
 import { useCellEditing } from './hooks/useCellEditing'
-import { HeaderVirtualizationProvider, useHeaderVirtualization } from './context/HeaderVirtualizationContext'
+import { HeaderVirtualizationProvider } from './context/HeaderVirtualizationContext'
 import { useStickyHeader } from './hooks/useStickyHeader'
 import { useGridBodyInteractions } from './hooks/useGridBodyInteractions'
-
-// Internal component that uses context to update visible indices
-// Defined outside to prevent recreation on each render
-const DataEditorWithVirtualization = React.memo(
-  React.forwardRef<DataEditorRef, DataEditorProps>(function DataEditorWithVirtualization(
-    { onVisibleRegionChanged, ...dataEditorProps },
-    ref
-  ) {
-    const { updateVisibleIndices } = useHeaderVirtualization()
-
-    const handleVisibleRegionChanged = useCallback<NonNullable<DataEditorProps['onVisibleRegionChanged']>>(
-      (range, tx = 0, _ty = 0, _extras) => {
-        onVisibleRegionChanged?.(range, tx, _ty, _extras)
-
-        const start = Math.floor(range.x)
-        const end = Math.ceil(range.x + range.width)
-        const buffer = 5
-        const newStart = Math.max(0, start - buffer)
-        const newEnd = end + buffer
-
-        updateVisibleIndices({ start: newStart, end: newEnd })
-      },
-      [onVisibleRegionChanged, updateVisibleIndices]
-    )
-
-    return <DataEditor ref={ref} {...dataEditorProps} onVisibleRegionChanged={handleVisibleRegionChanged} />
-  })
-)
+import { useRowOverlay } from './hooks/useRowOverlay'
+import { useCustomRenderers } from './hooks/useCustomRenderers'
 
 
 export function BasicGrid<RowType extends Record<string, unknown> = Record<string, unknown>>({
@@ -108,7 +76,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const virtualResizeLineRef = useRef<HTMLDivElement>(null)
 
-  // Состояние виртуальной линии resize
   const [virtualResizeState, setVirtualResizeState] = useState<{
     x: number
     columnIndex: number
@@ -193,35 +160,27 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     []
   )
 
-  const hasSelectColumns = useMemo(
-    () => editable && orderedColumns.some((column) => column.isSelect()),
-    [editable, orderedColumns]
-  )
-
-  const hasButtonColumns = useMemo(
-    () => orderedColumns.some((column) => column.isButton()),
-    [orderedColumns]
-  )
-
-  const hasCanvasColumns = useMemo(
-    () => orderedColumns.some((column) => column.isCanvas() || column.hasRenderCellContent()),
-    [orderedColumns]
-  )
+  const customRenderers = useCustomRenderers({
+    orderedColumns,
+    editable,
+    treeCustomRenderers,
+  })
 
   const headerHeightPx = levelCount * headerRowHeight
 
   const {
     headerLayerStyle,
-    bodyStyle: stickyBodyStyle,
-    headerShellStyle: stickyHeaderShellStyle,
     handleVirtualScroll,
     updateStickyMetrics,
     virtualOffset,
   } = useStickyHeader({
     enabled: stickyHeaderEnabled,
-    gridRef,
+    gridRef, 
     headerHeight: headerHeightPx,
   })
+  
+  // Эффективная высота хедера (уменьшается при сворачивании)
+  const effectiveHeaderHeight = headerHeightPx - virtualOffset
 
 
 
@@ -256,23 +215,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     canvasHeaderRef,
   })
 
-
-  const customRenderers = useMemo(() => {
-    const renderers: CustomRenderer<any>[] = []
-    if (treeCustomRenderers) {
-      renderers.push(...treeCustomRenderers)
-    }
-    if (hasSelectColumns) {
-      renderers.push(selectCellRenderer)
-    }
-    if (hasButtonColumns) {
-      renderers.push(buttonCellRenderer)
-    }
-    if (hasCanvasColumns) {
-      renderers.push(canvasCellRenderer)
-    }
-    return renderers.length > 0 ? renderers : undefined
-  }, [treeCustomRenderers, hasSelectColumns, hasButtonColumns, hasCanvasColumns])
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? orderedColumns[index]?.baseWidth ?? DEFAULT_MIN_COLUMN_WIDTH,
@@ -365,104 +307,22 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     onCellChange,
   })
 
-  const resolveRowId = useCallback(
-    (row: RowType, index: number) => {
-      if (getRowId) {
-        return getRowId(row, index)
-      }
-      const candidate = (row as Record<string, unknown> | undefined)?.['id']
-      if (typeof candidate === 'string' || typeof candidate === 'number') {
-        return candidate
-      }
-      return index
-    },
-    [getRowId]
-  )
-
-  const overlayRowIndex = useMemo(() => {
-    if (!renderRowOverlay || rowOverlayRowId == null) {
-      return -1
-    }
-    return gridRows.findIndex((row, index) => resolveRowId(row, index) === rowOverlayRowId)
-  }, [gridRows, renderRowOverlay, resolveRowId, rowOverlayRowId])
-
-  const overlayRow = overlayRowIndex >= 0 ? gridRows[overlayRowIndex] : null
-  const overlayContent = useMemo(() => {
-    if (!overlayRow || overlayRowIndex < 0 || !renderRowOverlay) {
-      return null
-    }
-    return renderRowOverlay(overlayRow, overlayRowIndex)
-  }, [overlayRow, overlayRowIndex, renderRowOverlay])
-
-  const [overlayPosition, setOverlayPosition] = useState<{ top: number } | null>(null)
-  const [overlayPaddingBottom, setOverlayPaddingBottom] = useState(0)
-
-  const updateOverlayPosition = useCallback(() => {
-    if (!overlayRow || overlayRowIndex < 0 || !gridBodyRef.current || !dataEditorRef.current) {
-      setOverlayPosition(null)
-      return
-    }
-    if (orderedColumns.length === 0) {
-      setOverlayPosition(null)
-      return
-    }
-    const bounds = dataEditorRef.current.getBounds(0, overlayRowIndex)
-    if (!bounds) {
-      setOverlayPosition(null)
-      return
-    }
-    const bodyRect = gridBodyRef.current.getBoundingClientRect()
-    const nextTop = bounds.y - bodyRect.top + bounds.height
-    setOverlayPosition((prev) => {
-      if (prev && Math.abs(prev.top - nextTop) < 0.5) {
-        return prev
-      }
-      return { top: nextTop }
-    })
-  }, [overlayRow, overlayRowIndex, orderedColumns.length])
-
-  useLayoutEffect(() => {
-    if (!overlayRow || !overlayContent) {
-      setOverlayPosition(null)
-      if (overlayPaddingBottom !== 0) {
-        setOverlayPaddingBottom(0)
-      }
-      return
-    }
-    updateOverlayPosition()
-  }, [overlayRow, overlayContent, overlayPaddingBottom, updateOverlayPosition])
-
-  useEffect(() => {
-    if (!overlayRow) {
-      return
-    }
-    const handleResize = () => updateOverlayPosition()
-    window.addEventListener('resize', handleResize)
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [overlayRow, updateOverlayPosition])
-
-  useLayoutEffect(() => {
-    if (!overlayRow || !overlayPosition || !gridBodyRef.current) {
-      if (overlayPaddingBottom !== 0) {
-        setOverlayPaddingBottom(0)
-      }
-      return
-    }
-    const overlayHeight = overlayRef.current?.offsetHeight ?? 0
-    if (overlayHeight === 0) {
-      return
-    }
-    const currentPadding = overlayPaddingBottom
-    const body = gridBodyRef.current
-    const baseBodyHeight = body.clientHeight - currentPadding
-    const overflow = overlayPosition.top + overlayHeight + 16 - baseBodyHeight
-    const nextPadding = overflow > 0 ? overflow : 0
-    if (Math.abs(nextPadding - currentPadding) > 0.5) {
-      setOverlayPaddingBottom(nextPadding)
-    }
-  }, [overlayPaddingBottom, overlayPosition, overlayRow])
+  const {
+    overlayRow,
+    overlayContent,
+    overlayPosition,
+    overlayPaddingBottom,
+    updateOverlayPosition,
+  } = useRowOverlay({
+    gridRows,
+    orderedColumnsLength: orderedColumns.length,
+    renderRowOverlay,
+    rowOverlayRowId,
+    getRowId,
+    gridBodyRef,
+    dataEditorRef,
+    overlayRef,
+  })
 
 
   const handleCellClicked = useCallback(
@@ -514,7 +374,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
   const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
 
-  // Memoize columns array to prevent unnecessary re-renders during drag n drop
   const dataEditorColumns = useMemo(
     () =>
       orderedColumns.map((column, index) => ({
@@ -524,24 +383,17 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     [orderedColumns, columnWidths]
   )
 
-  // Вычисляем позицию виртуальной линии resize
-  const virtualResizeLineStyle = useMemo(() => {
+  const virtualResizeLineStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (!virtualResizeState) {
       return { display: 'none' }
     }
 
     const relativeX = virtualResizeState.x - scrollLeft + markerWidth
+    const isVisible = relativeX >= 0 && relativeX <= dataViewportWidth + markerWidth
 
     return {
-      position: 'absolute' as const,
       left: `${relativeX}px`,
-      top: '0',
-      bottom: '0',
-      width: '2px',
-      backgroundColor: 'rgba(21, 101, 192, 0.8)',
-      pointerEvents: 'none' as const,
-      zIndex: 1000,
-      display: relativeX >= 0 && relativeX <= dataViewportWidth + markerWidth ? 'block' : 'none',
+      display: isVisible ? 'block' : 'none',
     }
   }, [virtualResizeState, scrollLeft, markerWidth, dataViewportWidth])
 
@@ -553,17 +405,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     }
   }, [])
 
-  const headerShellStyle = useMemo<React.CSSProperties | undefined>(() => {
-    if (headerHeightPx <= 0) {
-      return undefined
-    }
-    // Объединяем базовую высоту со стилями от sticky header
-    // (которые могут уменьшать высоту при сворачивании хедера)
-    return {
-      height: `${headerHeightPx}px`,
-      ...stickyHeaderShellStyle,
-    }
-  }, [headerHeightPx, stickyHeaderShellStyle])
 
   const estimatedRowHeight = useMemo(() => {
     if (typeof rowHeightProp === 'number' && Number.isFinite(rowHeightProp)) {
@@ -575,15 +416,9 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     return DEFAULT_ROW_HEIGHT
   }, [resolvedRowHeight, rowHeightProp])
 
-  // Эффективная высота тела таблицы: увеличивается при сворачивании хедера
-  const effectiveBodyHeight = useMemo(() => {
-    return height + virtualOffset
-  }, [height, virtualOffset])
-
   const { handleVisibleRegionChangedWithOverlay, gridBodyStyle } = useGridBodyInteractions({
     estimatedRowHeight,
     stickyHeaderEnabled,
-    stickyBodyStyle,
     overlayPaddingBottom,
     overlayRow,
     overlayContent,
@@ -610,7 +445,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
-        <div className="basic-grid-wrapper" ref={gridRef} style={{ position: 'relative' }}>
+        <div className="basic-grid-wrapper" ref={gridRef}>
           {virtualResizeState && (
             <div
               ref={virtualResizeLineRef}
@@ -619,36 +454,45 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
             />
           )}
 
+          {/* 
+            Хедер позиционируется абсолютно поверх body.
+            При сворачивании уменьшается высота хедера, body "выглядывает" из-под него.
+            DataEditor всегда имеет полную высоту = height + headerHeight.
+          */}
           {columnPositions.length > 0 && levelCount > 0 && (
-            <div className="basic-grid-header-shell" style={headerShellStyle}>
-              <div className="basic-grid-header-layer" style={headerLayerStyle}>
-                <CanvasHeader
-                  width={dataViewportWidth}
-                  height={headerHeightPx}
-                  headerCells={headerCells}
-                  orderedColumns={orderedColumns}
-                  columnPositions={columnPositions}
-                  columnWidths={columnWidths}
-                  levelCount={levelCount}
-                  headerRowHeight={headerRowHeight}
-                  markerWidth={markerWidth}
-                  showRowMarkers={showRowMarkers}
-                  scrollLeft={scrollLeft}
-                  canvasHeaderRef={canvasHeaderRef}
-                  handleResizeMouseDown={handleResizeMouseDown}
-                  handleResizeDoubleClick={handleResizeDoubleClick}
-                  getColumnWidth={getColumnWidth}
-                  setColumnWidths={setColumnWidths}
-                  onVirtualResizeChange={handleVirtualResizeChange}
-                  enableColumnReorder={enableColumnReorder}
-                  onColumnReorder={reorderColumns}
-                  dataAreaWidth={dataAreaWidth}
-                  sortColumn={sortState?.columnId}
-                  sortDirection={sortState?.direction}
-                  onColumnSort={handleHeaderSort}
-                  debugMode={false}
-                />
-              </div>
+            <div 
+              className="basic-grid-header-overlay" 
+              style={{ 
+                height: effectiveHeaderHeight,
+                ...headerLayerStyle,
+              }}
+            >
+              <CanvasHeader
+                width={dataViewportWidth}
+                height={headerHeightPx}
+                headerCells={headerCells}
+                orderedColumns={orderedColumns}
+                columnPositions={columnPositions}
+                columnWidths={columnWidths}
+                levelCount={levelCount}
+                headerRowHeight={headerRowHeight}
+                markerWidth={markerWidth}
+                showRowMarkers={showRowMarkers}
+                scrollLeft={scrollLeft}
+                canvasHeaderRef={canvasHeaderRef}
+                handleResizeMouseDown={handleResizeMouseDown}
+                handleResizeDoubleClick={handleResizeDoubleClick}
+                getColumnWidth={getColumnWidth}
+                setColumnWidths={setColumnWidths}
+                onVirtualResizeChange={handleVirtualResizeChange}
+                enableColumnReorder={enableColumnReorder}
+                onColumnReorder={reorderColumns}
+                dataAreaWidth={dataAreaWidth}
+                sortColumn={sortState?.columnId}
+                sortDirection={sortState?.direction}
+                onColumnSort={handleHeaderSort}
+                debugMode={false}
+              />
             </div>
           )}
 
@@ -660,7 +504,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               rows={gridRows.length + (summaryRows?.length ?? 0)}
               freezeTrailingRows={summaryRows?.length ?? 0}
               width={viewportWidth}
-              height={effectiveBodyHeight}
+              height={height + headerHeightPx}
               theme={gridTheme}
               customRenderers={customRenderers}
               onVisibleRegionChanged={handleVisibleRegionChangedWithOverlay}
@@ -675,7 +519,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
               rowSelect={rowSelectionEnabled ? 'multi' : undefined}
               smoothScrollX={true}
               smoothScrollY={true}
-              headerHeight={0}
+              headerHeight={effectiveHeaderHeight}
             />
             {overlayRow && overlayContent && overlayPosition && (
               <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>

@@ -109,23 +109,12 @@ export const selectCellRenderer: CustomRenderer<SelectCell> = {
       }
 
       return (
-        <div
-          style={{
-            padding: '6px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            minHeight: '100%',
-          }}
-        >
+        <div className="select-cell-editor">
           <select
             autoFocus
             value={value.data.value}
             onChange={handleChange}
-            style={{
-              width: '100%',
-              fontSize: 14,
-              padding: '6px 8px',
-            }}
+            className="select-cell-editor__select"
           >
             {placeholder && <option value="">{placeholder}</option>}
             {options.map((option) => (
