@@ -38,6 +38,9 @@ function SimpleHeader() {
     <Canvas.Container direction="row" gap={12} alignItems="center">
         <Canvas.Text color="blue" style={{ flexShrink: 0 }}>Simple</Canvas.Text>
         <Canvas.Text color="red" style={{ flexShrink: 0 }}>Header</Canvas.Text>
+        <Canvas.Tag backgroundColor="#FFF3E0" textColor="#E65100">
+          NEW
+        </Canvas.Tag>
     </Canvas.Container>
   )
 }
@@ -116,9 +119,11 @@ const columns: BasicGridColumn<DataRow>[] = [
                     <Canvas.Text font="9px sans-serif" color="#999">{`#${rowIndex + 1}`}</Canvas.Text>
                   </Canvas.Container>
                   <Canvas.Container direction="column" justifyContent="flex-start" >
-                    <Canvas.Container direction="row" justifyContent="space-between" alignItems="center">
+                    <Canvas.Container direction="row" justifyContent="space-between" alignItems="center" gap={6}>
                       <Canvas.Text font="bold 12px sans-serif" color="#333">{row.role}</Canvas.Text>
-                      <Canvas.Text font="10px sans-serif" color="#4caf50">{row.status.name}</Canvas.Text>
+                      <Canvas.Tag backgroundColor="#E8F5E9" textColor="#2E7D32">
+                        {row.status.name}
+                      </Canvas.Tag>
                     </Canvas.Container>
                     <Canvas.Container direction="row" alignItems="flex-start" >
                       <Canvas.Text font="10px sans-serif" color="#666" wordWrap lineHeight={1.2}>

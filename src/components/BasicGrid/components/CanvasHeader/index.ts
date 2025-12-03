@@ -12,6 +12,7 @@ export { CanvasRect } from './primitives/CanvasRect'
 export { CanvasIcon } from './primitives/CanvasIcon'
 export { CanvasFlex } from './primitives/CanvasFlex'
 export { CanvasIconButton } from './primitives/CanvasIconButton'
+export { CanvasTag } from './primitives/CanvasTag'
 
 // JSX Components
 export { Canvas, buildCanvasTree, RootBridge } from './CanvasComponents'

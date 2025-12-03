@@ -6,6 +6,7 @@ import {CanvasIcon} from '../primitives/CanvasIcon'
 import {CanvasButton} from '../primitives/CanvasButton'
 import {CanvasIconButton} from '../primitives/CanvasIconButton'
 import {CanvasRect} from '../primitives/CanvasRect'
+import {CanvasTag, CanvasTagOptions} from '../primitives/CanvasTag'
 import type {FlexBoxOptions} from '../../../miniflex'
 import type {ButtonIcon} from '../../../customCells/canvasCell/iconSprites'
 import { useLayoutEffect } from 'react'
@@ -70,6 +71,12 @@ interface RectProps {
   color?: string
   borderColor?: string
   borderWidth?: number
+  style?: Partial<CanvasFlexStyle>
+  id?: string
+}
+
+interface TagProps extends CanvasTagOptions {
+  children: ReactNode
   style?: Partial<CanvasFlexStyle>
   id?: string
 }
@@ -147,6 +154,11 @@ function RectComponent(_props: RectProps): ReactElement | null {
 }
 (RectComponent as any).__canvasType = 'Rect'
 
+function TagComponent(_props: TagProps): ReactElement | null {
+  return null
+}
+(TagComponent as any).__canvasType = 'Tag'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Canvas Namespace
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,6 +170,7 @@ export const Canvas = {
   Button: ButtonComponent,
   IconButton: IconButtonComponent,
   Rect: RectComponent,
+  Tag: TagComponent,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,6 +333,19 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       return node
     }
 
+    case 'Tag': {
+      const { children, font, textColor, backgroundColor, paddingX, paddingY, borderRadius } = props
+      const text = extractTextFromChildren(children)
+      return new CanvasTag(id, text, {
+        font,
+        textColor,
+        backgroundColor,
+        paddingX,
+        paddingY,
+        borderRadius,
+      })
+    }
+
     default:
       throw new Error(`Unknown canvas component type: ${type}`)
   }
@@ -333,4 +359,5 @@ export type {
   ButtonProps as CanvasButtonProps,
   IconButtonProps as CanvasIconButtonProps,
   RectProps as CanvasRectProps,
+  TagProps as CanvasTagProps,
 }
