@@ -1,13 +1,13 @@
 import { CanvasNode, CanvasEvent } from './CanvasNode';
 import { CanvasContainer } from './CanvasContainer';
 import { DrawBatcher } from './DrawBatcher';
+import { CanvasHoverController } from './CanvasHoverController';
 
 export class CanvasRoot {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     rootNode: CanvasNode;
-    hoveredNode: CanvasNode | null = null;
-    private currentCursor: string = 'default';
+    private hoverController: CanvasHoverController;
 
     /** Draw batcher for optimized rendering */
     private batcher: DrawBatcher = new DrawBatcher();
@@ -21,6 +21,11 @@ export class CanvasRoot {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d', {alpha: false})!;
         this.rootNode = rootNode;
+
+        this.hoverController = new CanvasHoverController({
+            onCursorChange: (cursor) => this.onCursorChange?.(cursor),
+            onPortalTargetChange: (node, event) => this.onPortalHoverTargetChange?.(node, event),
+        });
 
         this.setupEvents();
     }
@@ -50,9 +55,8 @@ export class CanvasRoot {
 
         this.bubbleEvent(hits, canvasEvent, type, () => stopped);
         if (type === 'mousemove') {
-            this.handleHoverTransition(target, canvasEvent);
             this.dispatchMouseMove(hits, canvasEvent, () => stopped);
-            this.updateCursor(hits);
+            this.hoverController.handlePointerMove(hits, canvasEvent);
         }
     }
 
@@ -111,71 +115,6 @@ export class CanvasRoot {
             // Set currentTarget to the node handling the event
             const nodeEvent: CanvasEvent = { ...event, currentTarget: node };
             node.onMouseMove.bind(node)(nodeEvent);
-        }
-    }
-
-    private handleHoverTransition(target: CanvasNode | undefined, baseEvent: CanvasEvent) {
-        if (this.hoveredNode === target) {
-            return;
-        }
-
-        if (this.hoveredNode) {
-            const leaveEvent: CanvasEvent = { 
-                ...baseEvent, 
-                type: 'mouseleave' as const,
-                target: this.hoveredNode,
-                currentTarget: this.hoveredNode
-            };
-            this.hoveredNode.onMouseLeave.bind(this.hoveredNode)(leaveEvent);
-        }
-
-        if (target) {
-            const enterEvent: CanvasEvent = { 
-                ...baseEvent, 
-                type: 'mouseenter' as const,
-                target: target,
-                currentTarget: target
-            };
-            target.onMouseEnter.bind(target)(enterEvent);
-
-            const portalTarget = this.findPortalTarget(target);
-            if (portalTarget) {
-                this.onPortalHoverTargetChange?.(portalTarget, baseEvent);
-            } else {
-                this.onPortalHoverTargetChange?.(null, null);
-            }
-        } else {
-            this.onPortalHoverTargetChange?.(null, null);
-        }
-
-        this.hoveredNode = target ?? null;
-    }
-
-    private findPortalTarget(node: CanvasNode | undefined): CanvasNode | null {
-        let current: CanvasNode | null | undefined = node;
-        while (current) {
-            if (current.portalHoverEnabled) {
-                return current;
-            }
-            current = current.parent;
-        }
-        return null;
-    }
-
-    private updateCursor(hits: CanvasNode[]) {
-        // Find first element with a cursor set (traverse from deepest to root)
-        let newCursor = 'default';
-        for (const node of hits) {
-            const cursor = node.style?.cursor;
-            if (cursor) {
-                newCursor = cursor;
-                break;
-            }
-        }
-
-        if (newCursor !== this.currentCursor) {
-            this.currentCursor = newCursor;
-            this.onCursorChange?.(newCursor);
         }
     }
 

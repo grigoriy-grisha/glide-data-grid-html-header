@@ -2,15 +2,14 @@ import { CanvasNode, type CanvasEvent, type Rect } from '../../components/Canvas
 import { CanvasContainer } from '../../components/CanvasHeader/core/CanvasContainer'
 import { DrawBatcher } from '../../components/CanvasHeader/core/DrawBatcher'
 import { dispatchCanvasPortalHover } from '../../components/CanvasHeader/utils/portalHoverEvents'
+import { CanvasHoverController } from '../../components/CanvasHeader/core/CanvasHoverController'
 
 type PointerEventType = CanvasEvent['type']
 
 export class CellCanvasRoot {
   rootNode: CanvasNode
   private bounds: Rect | null = null
-  private hoveredNode: CanvasNode | null = null
-  private currentCursor: string = 'default'
-  private activePortalNode: { id: string; rect: Rect } | null = null
+  private hoverController: CanvasHoverController
 
   /** Draw batcher for optimized rendering */
   private batcher: DrawBatcher = new DrawBatcher()
@@ -20,6 +19,11 @@ export class CellCanvasRoot {
 
   constructor(node: CanvasNode, _originId?: string) {
     this.rootNode = node
+    this.hoverController = new CanvasHoverController({
+      onCursorChange: (cursor) => this.onCursorChange?.(cursor),
+      portalHoverDispatch: dispatchCanvasPortalHover,
+      portalSource: 'cell',
+    })
   }
 
   setRootNode(node: CanvasNode) {
@@ -37,6 +41,7 @@ export class CellCanvasRoot {
     absoluteBounds?: Rect
   ) {
     this.bounds = { ...(absoluteBounds ?? rect) }
+    this.hoverController.setAbsoluteBounds(this.bounds)
 
     ctx.save()
     ctx.translate(rect.x, rect.y)
@@ -80,13 +85,9 @@ export class CellCanvasRoot {
       },
     }
 
-    if (type === 'mousemove') {
-      this.handleHoverTransition(hits[0], hits.length > 0 ? canvasEvent : null)
-    }
-
     if (hits.length === 0) {
       if (type === 'mousemove') {
-        this.updateCursor([])
+        this.hoverController.handlePointerMove([], null)
       }
       return false
     }
@@ -122,15 +123,14 @@ export class CellCanvasRoot {
     }
 
     if (type === 'mousemove') {
-      this.updateCursor(hits)
+      this.hoverController.handlePointerMove(hits, canvasEvent)
     }
 
     return stopped
   }
 
   handleMouseLeave() {
-    this.handleHoverTransition(undefined, null)
-    this.updateCursor([])
+    this.hoverController.handlePointerLeave()
   }
 
   private prepareRootNode(ctx: CanvasRenderingContext2D, rect: Rect) {
@@ -146,141 +146,15 @@ export class CellCanvasRoot {
     }
   }
 
-  private handleHoverTransition(target: CanvasNode | undefined, baseEvent: CanvasEvent | null) {
-    if (this.hoveredNode === target) {
-      this.updatePortalHover(target)
-      return
-    }
-
-    const buildEvent = (type: CanvasEvent['type'], node: CanvasNode): CanvasEvent => {
-      if (baseEvent) {
-        return {
-          ...baseEvent,
-          type,
-          target: node,
-          currentTarget: node,
-        }
-      }
-      return {
-        type,
-        x: 0,
-        y: 0,
-        originalEvent: {} as MouseEvent,
-        stopPropagation: () => {},
-        preventDefault: () => {},
-        target: node,
-        currentTarget: node,
-      }
-    }
-
-    if (this.hoveredNode) {
-      const leaveEvent = buildEvent('mouseleave', this.hoveredNode)
-      this.hoveredNode.onMouseLeave(leaveEvent)
-    }
-
-    if (target) {
-      const enterEvent = buildEvent('mouseenter', target)
-      target.onMouseEnter(enterEvent)
-    }
-
-    this.hoveredNode = target ?? null
-    this.updatePortalHover(target)
-  }
-
-  private updateCursor(hits: CanvasNode[]) {
-    let newCursor = 'default'
-
-    for (const node of hits) {
-      const cursor = node.style?.cursor
-      if (cursor) {
-        newCursor = cursor
-        break
-      }
-    }
-
-    if (newCursor !== this.currentCursor) {
-      this.currentCursor = newCursor
-      this.onCursorChange?.(newCursor)
-    }
+  computeCursor(relativeX: number, relativeY: number): string {
+    return this.hoverController.computeCursor(relativeX, relativeY, this.rootNode)
   }
 
   getCurrentCursor(): string {
-    return this.currentCursor
-  }
-
-  private findPortalTarget(node: CanvasNode | undefined): CanvasNode | null {
-    let current: CanvasNode | null | undefined = node
-    while (current) {
-      if (current.portalHoverEnabled) {
-        return current
-      }
-      current = current.parent
-    }
-    return null
-  }
-
-  private updatePortalHover(target: CanvasNode | undefined) {
-    const portalTarget = this.findPortalTarget(target)
-    const portalTargetId = portalTarget?.id ?? null
-    const rect = portalTarget ? { ...portalTarget.rect } : null
-
-    if (portalTargetId && this.activePortalNode?.id === portalTargetId) {
-      return
-    }
-
-    const previousActive = this.activePortalNode
-    this.activePortalNode = portalTargetId && rect ? { id: portalTargetId, rect } : null
-
-    if (portalTarget && rect && this.bounds) {
-      dispatchCanvasPortalHover({
-        visible: true,
-        x: this.bounds.x + rect.x,
-        y: this.bounds.y + rect.y,
-        width: rect.width,
-        height: rect.height,
-        nodeId: portalTarget.id,
-        originId: portalTarget.id,
-        source: 'cell',
-      })
-    } else if (previousActive && previousActive.id) {
-      dispatchCanvasPortalHover({
-        visible: false,
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        originId: previousActive.id,
-        source: 'cell',
-      })
-    }
-  }
-
-  computeCursor(relativeX: number, relativeY: number): string {
-    const hits = this.rootNode.hitTest(relativeX, relativeY)
-
-    for (const node of hits) {
-      const cursor = node.style?.cursor
-      if (cursor) {
-        return cursor
-      }
-    }
-
-    return 'default'
+    return this.hoverController.getCurrentCursor()
   }
 
   forcePortalHide() {
-    if (!this.activePortalNode) {
-      return
-    }
-    dispatchCanvasPortalHover({
-      visible: false,
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      originId: this.activePortalNode.id,
-      source: 'cell',
-    })
-    this.activePortalNode = null
+    this.hoverController.handlePortalReset()
   }
 }
