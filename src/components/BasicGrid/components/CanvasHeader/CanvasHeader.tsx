@@ -39,6 +39,11 @@ interface CanvasHeaderProps {
   onColumnSort?: (columnId: string, direction: 'asc' | 'desc' | undefined) => void
   dataAreaWidth?: number
   debugMode?: boolean
+  // Row selection props
+  enableRowSelection?: boolean
+  isAllRowsSelected?: boolean
+  hasPartialRowSelection?: boolean
+  onSelectAllChange?: (checked: boolean) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,12 +102,24 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   sortColumn,
   sortDirection,
   onColumnSort,
-  debugMode
+  debugMode,
+  enableRowSelection = false,
+  isAllRowsSelected = false,
+  hasPartialRowSelection = false,
+  onSelectAllChange,
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const [isHovered, setIsHovered] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const selectAllCheckboxRef = React.useRef<HTMLInputElement>(null)
+
+  // Update indeterminate state for checkbox
+  React.useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = hasPartialRowSelection
+    }
+  }, [hasPartialRowSelection])
 
   // Node registry for React-managed content
   const { registryRef, notifyChange, subscribe } = useNodeRegistry()
@@ -156,12 +173,18 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     subscribeToRegistryChange: subscribe,
   })
 
+  // Selection column width (first column when row selection is enabled)
+  const selectionColumnWidth = enableRowSelection && columnWidths.length > 0 ? columnWidths[0] : 0
+  
+  // Marker width: use markerWidthValue if showRowMarkers, otherwise use selection column width
+  const effectiveMarkerWidth = showRowMarkers ? markerWidthValue : (enableRowSelection ? selectionColumnWidth : 0)
+
   const headerStyle = React.useMemo(() => ({
-    '--canvas-header-width': `${width + markerWidthValue}px`,
+    '--canvas-header-width': `${width + effectiveMarkerWidth}px`,
     '--canvas-header-height': `${height}px`,
-    '--canvas-marker-width': `${markerWidthValue + 1}px`,
-    '--canvas-main-width': `${width}px`,
-  } as React.CSSProperties), [width, height, markerWidthValue])
+    '--canvas-marker-width': `${effectiveMarkerWidth + 1}px`,
+    '--canvas-main-width': `${width - selectionColumnWidth}px`,
+  } as React.CSSProperties), [width, height, effectiveMarkerWidth, selectionColumnWidth])
 
   return (
     <div className="canvas-header" style={headerStyle} ref={containerRef}>
@@ -176,15 +199,26 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         />
       )}
 
-      {/* Row Marker Column */}
-      {showRowMarkers && (
+      {/* Row Marker Column - shows checkbox when row selection is enabled */}
+      {(showRowMarkers || enableRowSelection) && (
         <div
           className="canvas-header__marker"
           style={{
             width: 'var(--canvas-marker-width)',
             height: 'var(--canvas-header-height)',
           }}
-        />
+        >
+          {enableRowSelection && (
+            <input
+              ref={selectAllCheckboxRef}
+              type="checkbox"
+              className="basic-grid-header-row-checkbox"
+              checked={isAllRowsSelected}
+              onChange={(e) => onSelectAllChange?.(e.target.checked)}
+              aria-label="Выбрать все строки"
+            />
+          )}
+        </div>
       )}
 
       {/* Main Canvas Area */}

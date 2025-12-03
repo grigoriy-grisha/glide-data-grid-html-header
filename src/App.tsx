@@ -1,60 +1,104 @@
+import { lazy, Suspense } from 'react'
 import './App.css'
-import { LargeGridExample } from './examples/LargeGridExample'
-import { BasicGridExample } from './examples/BasicGridExample.tsx'
-// import { StandaloneCanvasExample } from './examples/StandaloneCanvasExample'
+import { Tabs, TabPanel, useTabs, type Tab } from './components/Tabs'
+
+// Lazy load examples for better performance
+const BasicGridExample = lazy(() => import('./examples/BasicGridExample').then(m => ({ default: m.BasicGridExample })))
+const LargeGridExample = lazy(() => import('./examples/LargeGridExample').then(m => ({ default: m.LargeGridExample })))
+const EditableGridExample = lazy(() => import('./examples/EditableGridExample').then(m => ({ default: m.EditableGridExample })))
+const SelectableGridExample = lazy(() => import('./examples/SelectableGridExample').then(m => ({ default: m.SelectableGridExample })))
+const ButtonCellsExample = lazy(() => import('./examples/ButtonCellsExample').then(m => ({ default: m.ButtonCellsExample })))
+const SelectCellsExample = lazy(() => import('./examples/SelectCellsExample').then(m => ({ default: m.SelectCellsExample })))
+const NetworkTreeGridExample = lazy(() => import('./examples/NetworkTreeGridExample').then(m => ({ default: m.NetworkTreeGridExample })))
+const ProductsExample = lazy(() => import('./examples/ProductsExample').then(m => ({ default: m.ProductsExample })))
+const TasksExample = lazy(() => import('./examples/TasksExample').then(m => ({ default: m.TasksExample })))
+const TransactionsExample = lazy(() => import('./examples/TransactionsExample').then(m => ({ default: m.TransactionsExample })))
+const UsersExample = lazy(() => import('./examples/UsersExample').then(m => ({ default: m.UsersExample })))
+
+const tabs: Tab[] = [
+  { id: 'basic', label: 'Basic Grid', icon: '📊' },
+  { id: 'large', label: 'Large Grid', icon: '🚀' },
+  { id: 'editable', label: 'Editable', icon: '✏️' },
+  { id: 'selectable', label: 'Selectable', icon: '☑️' },
+  { id: 'buttons', label: 'Buttons', icon: '🔘' },
+  { id: 'select', label: 'Select Cells', icon: '📋' },
+  { id: 'tree', label: 'Tree Grid', icon: '🌳' },
+  { id: 'products', label: 'Products', icon: '🛍️' },
+  { id: 'tasks', label: 'Tasks', icon: '✅' },
+  { id: 'transactions', label: 'Transactions', icon: '💳' },
+  { id: 'users', label: 'Users', icon: '👥' },
+]
+
+function LoadingSpinner() {
+  return (
+    <div className="loading-spinner">
+      <div className="spinner"></div>
+      <p>Загрузка примера...</p>
+    </div>
+  )
+}
 
 function App() {
+  const { activeTab, handleTabChange } = useTabs('basic')
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="container">
           <h1 className="logo">✨ Glide</h1>
-          <p className="subtitle">Современное React приложение</p>
+          <p className="subtitle">Современное React приложение с Data Grid</p>
         </div>
       </header>
 
       <main className="main-content">
         <div className="container">
-          {/*<StandaloneCanvasExample />*/}
-          {/*<CanvasLayoutTestExample />*/}
+          <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            Базовые примеры
-          </h2>
+          <Suspense fallback={<LoadingSpinner />}>
+            <TabPanel id="basic" activeTab={activeTab}>
+              <BasicGridExample />
+            </TabPanel>
 
-          <BasicGridExample />
-          {/*<NetworkTreeGridExample />*/}
-          <LargeGridExample />
+            <TabPanel id="large" activeTab={activeTab}>
+              <LargeGridExample />
+            </TabPanel>
 
-          {/*<RowOverlayExample />*/}
-          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
-          {/*  Примеры типов ячеек*/}
-          {/*</h2>*/}
-          {/*<ButtonCellsExample />*/}
-          {/*<SelectCellsExample />*/}
-          {/*<CanvasCellsExample />*/}
-          {/*<MixedCellsExample />*/}
+            <TabPanel id="editable" activeTab={activeTab}>
+              <EditableGridExample />
+            </TabPanel>
 
-          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
-          {/*  Примеры верстки canvas ячеек*/}
-          {/*</h2>*/}
-          {/*<VerticalLayoutExample />*/}
-          {/*<CenteredContentExample />*/}
-          {/*<IconTextLayoutExample />*/}
-          {/*<SpacedLayoutExample />*/}
-          {/*<CompactLayoutExample />*/}
-          {/*<MultiRowLayoutExample />*/}
-          {/*<AsymmetricLayoutExample />*/}
+            <TabPanel id="selectable" activeTab={activeTab}>
+              <SelectableGridExample />
+            </TabPanel>
 
-          {/*<h2 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>*/}
-          {/*  Примеры с разными данными*/}
-          {/*</h2>*/}
-          {/*<ProductsExample />*/}
-          {/*<TasksExample />*/}
-          {/*<TransactionsExample />*/}
-          {/*<UsersExample />*/}
-          {/*<ProductsCanvasExample />*/}
-          {/*<TasksCanvasExample />*/}
+            <TabPanel id="buttons" activeTab={activeTab}>
+              <ButtonCellsExample />
+            </TabPanel>
+
+            <TabPanel id="select" activeTab={activeTab}>
+              <SelectCellsExample />
+            </TabPanel>
+
+            <TabPanel id="tree" activeTab={activeTab}>
+              <NetworkTreeGridExample />
+            </TabPanel>
+
+            <TabPanel id="products" activeTab={activeTab}>
+              <ProductsExample />
+            </TabPanel>
+
+            <TabPanel id="tasks" activeTab={activeTab}>
+              <TasksExample />
+            </TabPanel>
+
+            <TabPanel id="transactions" activeTab={activeTab}>
+              <TransactionsExample />
+            </TabPanel>
+
+            <TabPanel id="users" activeTab={activeTab}>
+              <UsersExample />
+            </TabPanel>
+          </Suspense>
         </div>
       </main>
 

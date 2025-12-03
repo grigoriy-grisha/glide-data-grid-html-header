@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import {
   type CellClickedEventArgs,
   type Item,
@@ -73,7 +73,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
   
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
-  const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
   const virtualResizeLineRef = useRef<HTMLDivElement>(null)
 
   const [virtualResizeState, setVirtualResizeState] = useState<{
@@ -141,7 +140,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     onSortChange,
   })
   const rowSelectionEnabled = Boolean(enableRowSelection)
-  const { getSelectionStateForRow, toggleRowSelection, hasPartialRowSelection } =
+  const { getSelectionStateForRow, toggleRowSelection, hasPartialRowSelection, isAllRowsSelected, handleSelectAllChange } =
     useRowSelectionState({
       gridRows,
       rowSelectionEnabled,
@@ -175,7 +174,7 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     virtualOffset,
   } = useStickyHeader({
     enabled: stickyHeaderEnabled,
-    gridRef, 
+    gridRef,
     headerHeight: headerHeightPx,
   })
   
@@ -359,18 +358,6 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
     ]
   )
 
-  useEffect(() => {
-    if (!rowSelectionEnabled) {
-      if (selectAllCheckboxRef.current) {
-        selectAllCheckboxRef.current.indeterminate = false
-      }
-      return
-    }
-    if (selectAllCheckboxRef.current) {
-      selectAllCheckboxRef.current.indeterminate = hasPartialRowSelection
-    }
-  }, [hasPartialRowSelection, rowSelectionEnabled])
-
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
   const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
 
@@ -492,6 +479,10 @@ export function BasicGrid<RowType extends Record<string, unknown> = Record<strin
                 sortDirection={sortState?.direction}
                 onColumnSort={handleHeaderSort}
                 debugMode={false}
+                enableRowSelection={rowSelectionEnabled}
+                isAllRowsSelected={isAllRowsSelected}
+                hasPartialRowSelection={hasPartialRowSelection}
+                onSelectAllChange={handleSelectAllChange}
               />
             </div>
           )}
