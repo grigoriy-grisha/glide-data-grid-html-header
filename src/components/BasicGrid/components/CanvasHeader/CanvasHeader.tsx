@@ -196,53 +196,18 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     subscribeToRegistryChange: subscribe,
   })
 
+  const rootInstance = rootRef.current
+  const canvasElement = canvasRef.current
+
   React.useEffect(() => {
-    let cleanup: (() => void) | null = null
-    let rafId: number | null = null
+    if (!rootInstance || !canvasElement) {
+      return
+    }
+
     let lastOriginId: string | null = null
 
-    const attachHandlers = () => {
-      const rootInstance = rootRef.current
-      const canvasElement = canvasRef.current
-
-      if (!rootInstance || !canvasElement) {
-        rafId = window.requestAnimationFrame(attachHandlers)
-        return
-      }
-
-      const handlePortalHoverChange = (node: CanvasNode | null, _event: CanvasEvent | null) => {
-        if (!node) {
-          dispatchCanvasPortalHover({
-            visible: false,
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            originId: lastOriginId ?? undefined,
-            source: 'header',
-          })
-          return
-        }
-
-        const canvasBounds = canvasElement.getBoundingClientRect()
-        lastOriginId = node.id
-        dispatchCanvasPortalHover({
-          visible: true,
-          x: canvasBounds.left + node.rect.x,
-          y: canvasBounds.top + node.rect.y,
-          width: node.rect.width,
-          height: node.rect.height,
-          nodeId: node.id,
-          originId: node.id,
-          source: 'header',
-        })
-      }
-
-      rootInstance.onPortalHoverTargetChange = handlePortalHoverChange
-      cleanup = () => {
-        if (rootInstance.onPortalHoverTargetChange === handlePortalHoverChange) {
-          rootInstance.onPortalHoverTargetChange = undefined
-        }
+    const handlePortalHoverChange = (node: CanvasNode | null, _event: CanvasEvent | null) => {
+      if (!node) {
         dispatchCanvasPortalHover({
           visible: false,
           x: 0,
@@ -252,18 +217,40 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
           originId: lastOriginId ?? undefined,
           source: 'header',
         })
+        return
       }
+
+      const canvasBounds = canvasElement.getBoundingClientRect()
+      lastOriginId = node.id
+      dispatchCanvasPortalHover({
+        visible: true,
+        x: canvasBounds.left + node.rect.x,
+        y: canvasBounds.top + node.rect.y,
+        width: node.rect.width,
+        height: node.rect.height,
+        nodeId: node.id,
+        originId: node.id,
+        source: 'header',
+      })
     }
 
-    attachHandlers()
+    rootInstance.onPortalHoverTargetChange = handlePortalHoverChange
 
     return () => {
-      if (rafId !== null) {
-        window.cancelAnimationFrame(rafId)
+      if (rootInstance.onPortalHoverTargetChange === handlePortalHoverChange) {
+        rootInstance.onPortalHoverTargetChange = undefined
       }
-      cleanup?.()
+      dispatchCanvasPortalHover({
+        visible: false,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        originId: lastOriginId ?? undefined,
+        source: 'header',
+      })
     }
-  }, [rootRef, canvasRef])
+  }, [rootInstance, canvasElement])
 
   // Selection column width (first column when row selection is enabled)
   const headerStyle = React.useMemo(() => ({

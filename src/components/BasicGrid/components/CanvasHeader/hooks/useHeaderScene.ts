@@ -159,6 +159,9 @@ export function useHeaderScene({
     // Subscribe to registry changes
     useEffect(() => {
         if (!subscribeToRegistryChange) return
-        return subscribeToRegistryChange(rebuildScene)
+        return subscribeToRegistryChange( () => {
+            console.log('123')
+            rebuildScene()
+        })
     }, [subscribeToRegistryChange, rebuildScene])
 }

@@ -3,7 +3,7 @@ import { GridCellKind, type CustomRenderer } from '@glideapps/glide-data-grid'
 import type { CanvasCell } from './types'
 import { CANVAS_CELL_KIND } from './types'
 import { buildCellId, getCellIndices, normalizeHoverPoint, resolveClickPoint, toRelativePoint, isPointInArea } from './helpers'
-import { retrieveRenderData, storeRenderData, updateHoverState } from './state'
+import { getHoverState, retrieveRenderData, updateHoverState } from './state'
 import { CellCanvasRoot } from './CellCanvasRoot'
 import type { RectBounds } from './types'
 
@@ -95,9 +95,6 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
       normalizeHoverPoint(argsAny.hoverX, argsAny.hoverY, rect) ?? getRelativePointerPosition(argsAny, rect)
 
     ctx.save()
-    ctx.beginPath()
-    ctx.rect(rect.x, rect.y, rect.width, rect.height)
-    ctx.clip()
 
     const previousRenderData = retrieveRenderData(cellId, cell)
 
@@ -107,7 +104,7 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     })
     const hoveredAreas = renderResult?.hoveredAreas ?? []
 
-    storeRenderData(cellId, cell, renderResult)
+    // storeRenderData(cellId, cell, renderResult)
 
     const canvasRoot = renderResult?.canvasRoot ?? previousRenderData?.canvasRoot
 
@@ -129,7 +126,11 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     const isHovered =
       Boolean(relativeHover && hoveredAreas.some((area) => isPointInArea(relativeHover.x, relativeHover.y, area)))
 
-    updateHoverState(cell.data, Boolean(relativeHover))
+    const prevHovered = getHoverState(cell.data) ?? false
+    const nextHovered = Boolean(relativeHover)
+    if (nextHovered !== prevHovered) {
+      updateHoverState(cell.data, nextHovered)
+    }
 
     if (isHovered && !canvasRoot) {
       // Only use legacy hover detection if not using CellCanvasRoot

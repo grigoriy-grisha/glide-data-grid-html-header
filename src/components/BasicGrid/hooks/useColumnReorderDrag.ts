@@ -29,7 +29,6 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
   const dragStateRef = useRef<DragState | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const headerCellsRef = useRef<Map<number, HTMLElement>>(new Map())
-  const rafRef = useRef<number | null>(null)
   const previousClassesRef = useRef<Map<number, Set<string>>>(new Map())
   const previousTargetRef = useRef<number | null>(null)
 
@@ -200,10 +199,6 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
   }, [orderedColumns.length])
 
   const cleanup = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-    }
     cleanupRef.current?.()
     cleanupRef.current = null
   }, [])
@@ -232,13 +227,7 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
 
         if (dragStateRef.current.targetIndex !== nextTarget) {
           dragStateRef.current.targetIndex = nextTarget
-
-          if (rafRef.current === null) {
-            rafRef.current = requestAnimationFrame(() => {
-              rafRef.current = null
-              updateDragClasses()
-            })
-          }
+          updateDragClasses()
         }
       }
 

@@ -112,16 +112,37 @@ export const RootBridge = React.memo(function RootBridge({
     onRegistryChange
 }: RootBridgeProps) {
     const content = renderContent()
+    const lastCellIdRef = React.useRef<string | null>(null)
 
     useLayoutEffect(() => {
-        nodeRegistry.current.set(cellId, content)
-        onRegistryChange?.()
+        const registry = nodeRegistry.current
+        const previousCellId = lastCellIdRef.current
 
-        return () => {
-            nodeRegistry.current.delete(cellId)
+        if (previousCellId && previousCellId !== cellId) {
+            registry.delete(previousCellId)
+        }
+
+        const previousContent = registry.get(cellId)
+        const hasPrevious = previousContent !== undefined
+
+        registry.set(cellId, content)
+
+        if (hasPrevious && previousContent !== content) {
             onRegistryChange?.()
         }
-    })
+
+        lastCellIdRef.current = cellId
+    }, [cellId, content, nodeRegistry, onRegistryChange])
+
+    useLayoutEffect(() => {
+        return () => {
+            const registry = nodeRegistry.current
+            if (lastCellIdRef.current) {
+                registry.delete(lastCellIdRef.current)
+                lastCellIdRef.current = null
+            }
+        }
+    }, [nodeRegistry])
 
     return null
 })
@@ -198,7 +219,7 @@ function wrapEventHandler<T extends CanvasNode>(
     // Return a no-op function if handler is undefined
     return () => {}
   }
-  
+
   // Create a regular function that calls the handler with node as `this`
   // This allows the handler to access the node via `this` when bound
   // Note: Arrow functions will still ignore `this`, so use `event.currentTarget` instead
@@ -213,7 +234,7 @@ function wrapEventHandler<T extends CanvasNode>(
 
 /**
  * Convert JSX element tree to actual CanvasNode tree.
- * 
+ *
  * @example
  * ```tsx
  * const tree = buildCanvasTree(
@@ -253,7 +274,7 @@ function buildNode(
 
   const elementType = element.type as any
   const canvasType = elementType.__canvasType as string | undefined
-  
+
   if (!canvasType) {
     throw new Error(`Unknown canvas component. Use Canvas.* components. Got: ${elementType?.name || elementType}`)
   }
@@ -305,11 +326,11 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     case 'Text': {
       const { children, style: _style, id: _, font, color, wordWrap, lineHeight, portalHoverEnabled: _phe } = props
       const text = extractTextFromChildren(children)
-      const node = new CanvasText(id, text, { 
-          font: font ?? '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
-          color, 
-          wordWrap, 
-          lineHeight 
+      const node = new CanvasText(id, text, {
+          font: font ?? '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          color,
+          wordWrap,
+          lineHeight
       })
       return node
     }

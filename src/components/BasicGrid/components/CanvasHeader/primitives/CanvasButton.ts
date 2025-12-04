@@ -92,12 +92,10 @@ export class CanvasButton extends CanvasLeaf {
     }
 
     onMouseEnter() {
-        console.log('onMouseEnter')
         this.isHovered = true;
     }
 
     onMouseLeave() {
-        console.log('onMouseLeave')
         this.isHovered = false;
     }
 }

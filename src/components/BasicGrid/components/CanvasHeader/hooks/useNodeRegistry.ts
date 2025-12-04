@@ -26,25 +26,37 @@ export type SubscribeFn = (callback: () => void) => UnsubscribeFn
  * Hook that provides a node registry with pub/sub for changes.
  * Uses requestAnimationFrame for debouncing multiple rapid updates.
  */
+function scheduleMicrotask(callback: () => void) {
+    if (typeof queueMicrotask === 'function') {
+        queueMicrotask(callback)
+    } else {
+        Promise.resolve().then(callback).catch(() => {
+            // Ignore unhandled rejection if callback throws
+        })
+    }
+}
+
 export function useNodeRegistry() {
     // Internal storage
     const registryRef = useRef(new Map<string, ReactElement>())
-    
+
     // Subscribers for change notifications
     const subscribersRef = useRef(new Set<() => void>())
-    
-    // Pending notification frame ID
-    const pendingFrameRef = useRef<number | null>(null)
 
-    // Notify subscribers with debounce via rAF
+    const notificationPendingRef = useRef(false)
+
+    // Notify subscribers immediately (no debouncing)
     const notifyChange = useCallback(() => {
-        if (pendingFrameRef.current !== null) {
-            cancelAnimationFrame(pendingFrameRef.current)
+        if (notificationPendingRef.current) {
+            return
         }
-        
-        pendingFrameRef.current = requestAnimationFrame(() => {
-            pendingFrameRef.current = null
-            subscribersRef.current.forEach(fn => fn())
+
+        notificationPendingRef.current = true
+        scheduleMicrotask(() => {
+            notificationPendingRef.current = false
+            subscribersRef.current.forEach((fn) => {
+                fn()
+            })
         })
     }, [])
 

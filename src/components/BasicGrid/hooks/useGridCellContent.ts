@@ -17,6 +17,13 @@ const EMPTY_TEXT_CELL: GridCell = {
   allowOverlay: false,
 }
 
+type CanvasCacheKey = string | number | boolean | null
+
+interface CanvasCellCacheEntry {
+  cacheKey: CanvasCacheKey
+  canvasRoot: CellCanvasRoot
+}
+
 interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   orderedColumns: GridColumn<RowType>[]
   gridRows: RowType[]
@@ -51,6 +58,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 }: UseGridCellContentParams<RowType>) {
   // Cache for button/canvas cell handlers to avoid recreation
   const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, any>>(), [])
+  const canvasCellCache = useMemo(() => new WeakMap<RowType, Map<string, CanvasCellCacheEntry>>(), [])
 
   const getCachedHandler = useCallback(
     (row: RowType, handlerKey: string, handlerFactory: () => any) => {
@@ -180,7 +188,10 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 
       const renderCellContent = column.getRenderCellContent()
 
+      let cache: DOMRect | null = null;
+
       if (renderCellContent) {
+        const canvasOptions = column.getCanvasOptions()
         let cellCanvasRoot: CellCanvasRoot | null = null
         const cellPortalOriginId = `cell-${col}-${row}`
         const render = (
@@ -191,35 +202,85 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           _hoverY: number | undefined,
           renderArgs?: any
         ) => {
-          const jsxElement = renderCellContent(dataRow, row)
-          if (!jsxElement) {
-            return {}
+          const cacheKeyValue = canvasOptions?.getCacheKey?.(dataRow, row)
+          const isCacheable = cacheKeyValue !== undefined && cacheKeyValue !== null
+          const columnCacheId = column.id
+          let rowCache: Map<string, CanvasCellCacheEntry> | undefined
+          let cachedEntry: CanvasCellCacheEntry | undefined
+
+          if (isCacheable) {
+            rowCache = canvasCellCache.get(dataRow)
+            if (!rowCache) {
+              rowCache = new Map()
+              canvasCellCache.set(dataRow, rowCache)
+            }
+            const existing = rowCache.get(columnCacheId)
+            if (existing && existing.cacheKey === cacheKeyValue) {
+              cachedEntry = existing
+            }
           }
 
-          const node = buildCanvasTree(jsxElement, `cell-${col}-${row}`)
-
           let canvasRootInstance: CellCanvasRoot | null =
-            renderArgs?.canvasRoot instanceof CellCanvasRoot ? renderArgs.canvasRoot : cellCanvasRoot
+            cachedEntry?.canvasRoot ??
+            (renderArgs?.canvasRoot instanceof CellCanvasRoot ? renderArgs.canvasRoot : cellCanvasRoot)
+
+          let rebuilt = false
+
+          if (!cachedEntry) {
+            const jsxElement = renderCellContent(dataRow, row)
+            if (!jsxElement) {
+              if (isCacheable && rowCache) {
+                rowCache.delete(columnCacheId)
+              }
+              return {}
+            }
+
+            const node = buildCanvasTree(jsxElement, `cell-${col}-${row}`)
+
+            if (!canvasRootInstance) {
+              canvasRootInstance = new CellCanvasRoot(node, cellPortalOriginId)
+            } else {
+              canvasRootInstance.setRootNode(node)
+              canvasRootInstance.setOriginId(cellPortalOriginId)
+            }
+
+            if (isCacheable && rowCache && canvasRootInstance) {
+              const entry: CanvasCellCacheEntry = {
+                cacheKey: cacheKeyValue as CanvasCacheKey,
+                canvasRoot: canvasRootInstance,
+              }
+              rowCache.set(columnCacheId, entry)
+              cachedEntry = entry
+            } else {
+              cellCanvasRoot = canvasRootInstance
+            }
+            rebuilt = true
+          } else {
+            canvasRootInstance = cachedEntry.canvasRoot
+          }
 
           if (!canvasRootInstance) {
-            canvasRootInstance = new CellCanvasRoot(node, cellPortalOriginId)
-          } else {
-            canvasRootInstance.setRootNode(node)
-            canvasRootInstance.setOriginId(cellPortalOriginId)
+            return {}
           }
 
           const hoverPos = _hoverX !== undefined && _hoverY !== undefined ? { x: _hoverX, y: _hoverY } : undefined
           canvasRootInstance.rootNode.style = { width: rect.width, height: rect.height }
 
-          const canvasRect = ctx.canvas.getBoundingClientRect()
+          if (!cache) {
+            cache = ctx.canvas.getBoundingClientRect()
+          }
+
           const absoluteBounds = {
-            x: canvasRect.left + rect.x,
-            y: canvasRect.top + rect.y,
+            x: cache.left + rect.x,
+            y: cache.top + rect.y,
             width: rect.width,
             height: rect.height,
           }
           canvasRootInstance.render(ctx, rect, hoverPos, absoluteBounds)
-          cellCanvasRoot = canvasRootInstance
+
+          if (!isCacheable || rebuilt) {
+            cellCanvasRoot = canvasRootInstance
+          }
 
           return {
             canvasRoot: canvasRootInstance,
@@ -227,18 +288,17 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         }
 
         if (treeEnabled && nodesByRowIndex && treeColumnId && column.id === treeColumnId) {
-            const node = nodesByRowIndex[row];
-            if (node) {
-                // If there is a renderCellContent for the tree column, wrap it
-                const wrappedRenderContent = renderCellContent ? (r: RowType) => renderCellContent(r, row) : undefined;
-                return createTreeViewCanvasCell(
-                  "", 
-                  node, 
-                  () => onTreeToggle?.(row),
-                  wrappedRenderContent, 
-                  dataRow
-                );
-            }
+          const node = nodesByRowIndex[row]
+          if (node) {
+            const wrappedRenderContent = renderCellContent ? (r: RowType) => renderCellContent(r, row) : undefined
+            return createTreeViewCanvasCell(
+              '',
+              node,
+              () => onTreeToggle?.(row),
+              wrappedRenderContent,
+              dataRow
+            )
+          }
         }
 
         return createCanvasCell(render)

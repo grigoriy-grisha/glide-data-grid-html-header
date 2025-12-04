@@ -46,7 +46,11 @@ export interface CanvasCellOptions<RowType = Record<string, unknown>> {
     onMouseEnter?: (row: RowType, rowIndex: number) => void
     onMouseLeave?: (row: RowType, rowIndex: number) => void
     copyData?: string | ((row: RowType) => string)
-
+    /**
+     * Optional cache key factory to reuse rendered Canvas trees between frames.
+     * Return a primitive that changes whenever the visual content should update.
+     */
+    getCacheKey?: (row: RowType, rowIndex: number) => string | number | boolean | null | undefined
 }
 
 export interface BasicGridColumn<RowType = Record<string, unknown>> {

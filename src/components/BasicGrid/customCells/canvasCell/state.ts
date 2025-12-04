@@ -21,7 +21,6 @@ export function retrieveRenderData(cellId: string, cell: CanvasCell): CanvasRend
 }
 
 export function updateHoverState(cellData: CanvasCellData, isHovered: boolean): void {
-  console.log(isHovered)
   const wasHovered = hoverStateMap.get(cellData)?.hovered ?? false
   if (wasHovered === isHovered) {
     return
@@ -29,7 +28,6 @@ export function updateHoverState(cellData: CanvasCellData, isHovered: boolean): 
 
   hoverStateMap.set(cellData, { hovered: isHovered })
 
-  console.log(isHovered)
   if (isHovered) {
     cellData.onMouseEnter?.()
   } else {
@@ -39,5 +37,9 @@ export function updateHoverState(cellData: CanvasCellData, isHovered: boolean): 
       renderData.canvasRoot.forcePortalHide()
     }
   }
+}
+
+export function getHoverState(cellData: CanvasCellData): boolean | undefined {
+  return hoverStateMap.get(cellData)?.hovered
 }
 

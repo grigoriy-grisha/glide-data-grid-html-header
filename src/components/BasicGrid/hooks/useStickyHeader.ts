@@ -81,7 +81,6 @@ export function useStickyHeader({
   const [stickyState, setStickyState] = useState<StickyState>(INITIAL_STICKY_STATE)
   const [virtualOffset, setVirtualOffset] = useState(0)
 
-  const rafIdRef = useRef(0)
   const lastStickyRef = useRef<StickyState>(INITIAL_STICKY_STATE)
   const lastVirtualRef = useRef(0)
 
@@ -180,11 +179,7 @@ export function useStickyHeader({
     const targets = getScrollableAncestors(node)
 
     const onScroll = () => {
-      if (rafIdRef.current) return
-      rafIdRef.current = requestAnimationFrame(() => {
-        rafIdRef.current = 0
-        updateStickyMetrics()
-      })
+      updateStickyMetrics()
     }
 
     updateStickyMetrics()
@@ -194,10 +189,6 @@ export function useStickyHeader({
     window.addEventListener('resize', onScroll, opts)
 
     return () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current)
-        rafIdRef.current = 0
-      }
       targets.forEach((t) => t.removeEventListener('scroll', onScroll))
       window.removeEventListener('resize', onScroll)
     }
@@ -213,18 +204,12 @@ export function useStickyHeader({
     const node = gridRef.current
     if (!node) return
 
-    let rafId = 0
     const observer = new ResizeObserver(() => {
-      if (rafId) return
-      rafId = requestAnimationFrame(() => {
-        rafId = 0
-        updateStickyMetrics()
-      })
+      updateStickyMetrics()
     })
     observer.observe(node)
 
     return () => {
-      if (rafId) cancelAnimationFrame(rafId)
       observer.disconnect()
     }
   }, [enabled, gridRef, updateStickyMetrics])
