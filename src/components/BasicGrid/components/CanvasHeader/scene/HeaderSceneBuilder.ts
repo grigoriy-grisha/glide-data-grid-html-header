@@ -101,7 +101,7 @@ export class HeaderSceneBuilder {
 
         // Build wrapper
         const wrapper = this.createWrapper(cellId, cellX, cellY, cellWidth, cellHeight, normalColor, hoverColor)
-        
+
         // Build content containers
         const contentContainer = this.createContentContainer(cellId, cellX, cellY, cellWidth, cellHeight)
         const { left, right } = this.createContentSections(cellId)
@@ -248,12 +248,10 @@ export class HeaderSceneBuilder {
         cellWidth: number,
         cellHeight: number
     ): void {
-        // Grip icon
         if (config.enableColumnReorder && column) {
             this.insertGripIcon(left, cellId, cell, config, cellX, cellY, cellWidth, cellHeight, false)
         }
 
-        // Title text
         const textNode = new CanvasText(`${cellId}-text`, cell.title, {
             color: getHeaderTextColor(cell.level),
             font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
@@ -261,7 +259,6 @@ export class HeaderSceneBuilder {
         textNode.style = { flexGrow: 1 }
         left.addChild(textNode)
 
-        // Sort button
         if (column?.sortable) {
             this.addSortButton(right, cellId, column, config)
         }
@@ -333,19 +330,12 @@ export class HeaderSceneBuilder {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Custom Content Helper
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Creates a function that retrieves and builds custom content from registry
- */
 export function createCustomContentGetter(
     registryRef: React.MutableRefObject<Map<string, ReactElement>> | undefined
 ): (cellId: string) => CanvasNode | null {
     return (cellId: string) => {
         if (!registryRef) return null
-        
+
         const jsx = registryRef.current.get(cellId)
         if (!jsx) return null
 

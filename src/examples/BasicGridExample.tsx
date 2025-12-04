@@ -3,13 +3,16 @@ import { createPortal } from 'react-dom'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
 import { subscribeToCanvasPortalHover } from '../components/BasicGrid/components/CanvasHeader/utils/portalHoverEvents'
+import { IconBookOpenOutline } from '@salutejs/plasma-icons';
+import {renderToString} from "react-dom/server";
+// import {renderToString} from "react-dom/server";
 
-const svgIcon = `
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"/>
-</svg>
-`
+// console.log(renderToString(<Icon icon="apps"/>))
 
+// console.log()
+const svgIcon = renderToString(<IconBookOpenOutline />).match(/<svg[\s\S]*?<\/svg>/)![0]
+
+console.log(svgIcon)
 function CounterHeader() {
   const [count, setCount] = useState(0)
 
@@ -252,9 +255,8 @@ const columns: BasicGridColumn<DataRow>[] = [
             <Canvas.Text color="#666">Текст:</Canvas.Text>
             <Canvas.Icon
               icon={svgIcon}
-              size={20}
+              size={18}
               color="#1565c0"
-              style={{ width: 20, height: 20 }}
               onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
             />
             <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>

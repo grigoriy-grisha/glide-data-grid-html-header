@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@glideapps/glide-data-grid": "^6.0.3",
+    "@salutejs/plasma-icons": "^1.227.0",
     "canvas-hypertxt": "^1.0.3",
     "fabric": "^6.9.0",
     "handsontable": "^16.1.1",

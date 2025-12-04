@@ -1,23 +1,12 @@
-import { split } from "canvas-hypertxt";
-import { CanvasNode } from "../core/CanvasNode";
-import { DrawBatcher } from "../core/DrawBatcher";
+import {split} from "canvas-hypertxt";
+import {CanvasNode} from "../core/CanvasNode";
+import {DrawBatcher} from "../core/DrawBatcher";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Global caches
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Cache for font metrics: key = "font|lineHeight"
 const fontMetricsCache = new Map<string, { fontSize: number; lineHeightPx: number }>();
 
-// Cache for text width measurements: key = "font|text"
 const textWidthCache = new Map<string, number>();
 
-// Precompiled regex for font size extraction
 const FONT_SIZE_REGEX = /(\d+)px/;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper functions
-// ─────────────────────────────────────────────────────────────────────────────
 
 function getCachedFontMetrics(font: string, lineHeight: number): { fontSize: number; lineHeightPx: number } {
     const key = font + '|' + lineHeight;
@@ -66,7 +55,7 @@ export class CanvasText extends CanvasNode {
     /** Allow text to wrap to multiple lines when width is constrained */
     wordWrap: boolean = false;
     lineHeight: number = 1;
-    
+
     // Lightweight cache for measurement invalidation (only for non-wordWrap)
     private _lastMeasureKey: string = '';
     // Cache split lines per instance for wordWrap mode
@@ -89,14 +78,14 @@ export class CanvasText extends CanvasNode {
         const text = this.text;
         const wordWrap = this.wordWrap;
         const lineHeight = this.lineHeight;
-        
+
         const { lineHeightPx } = getCachedFontMetrics(font, lineHeight);
         const rect = this.rect;
 
         if (wordWrap) {
             // For wordWrap: use instance-level cache (not global)
             const wrapWidth = resolveWrapWidth(this.style.width, rect.width);
-            
+
             if (wrapWidth > 0) {
                 const linesKey = font + '|' + text + '|' + wrapWidth;
                 if (linesKey !== this._cachedLinesKey || this._cachedLines === null) {
@@ -134,7 +123,7 @@ export class CanvasText extends CanvasNode {
             const { lineHeightPx } = getCachedFontMetrics(font, this.lineHeight);
             const contentHeight = lines.length * lineHeightPx;
             let y = rect.y + Math.max(0, (rect.height - contentHeight) * 0.5);
-            
+
             for (let i = 0, len = lines.length; i < len; i++) {
                 batcher.fillText(lines[i], rect.x, y, font, color, "top");
                 y += lineHeightPx;

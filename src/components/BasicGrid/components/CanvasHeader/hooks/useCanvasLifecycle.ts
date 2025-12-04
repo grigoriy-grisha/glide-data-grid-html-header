@@ -70,7 +70,6 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = 
     }
   }, [isActive, renderLoop, stopLoop])
 
-  // Handle size updates
   useEffect(() => {
     if (!canvasRef.current || !rootRef.current) return
 
