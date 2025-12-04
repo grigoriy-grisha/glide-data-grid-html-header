@@ -73,10 +73,6 @@ export function useHeaderScene({
 }: UseHeaderSceneProps): void {
     // Scene builder instance
     const builderRef = useRef(new HeaderSceneBuilder())
-    
-    // Track previous values for optimization
-    const prevScrollLeftRef = useRef(scrollLeft)
-    const prevVisibleIndicesRef = useRef(visibleIndices)
 
     // Get visible cells using optimized hook
     const visibleCells = useVisibleCells(headerCells, visibleIndices)
@@ -138,10 +134,6 @@ export function useHeaderScene({
         })
 
         rootContainer.children = wrappers
-        
-        // Update tracking refs
-        prevScrollLeftRef.current = scrollLeft
-        prevVisibleIndicesRef.current = visibleIndices
     }, [
         columnPositions,
         columnWidths,
@@ -158,47 +150,11 @@ export function useHeaderScene({
         sortColumn,
         sortDirection,
         visibleCells,
-        visibleIndices,
     ])
 
-    // Fast scroll position update
-    const updateScrollPositions = useCallback(() => {
-        if (!isVisible || !rootRef.current) return
-
-        const builder = builderRef.current
-        builder.updatePositions(scrollLeft)
-        
-        // Trigger re-render
-        const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
-        rootContainer.children = [...rootContainer.children]
-        
-        prevScrollLeftRef.current = scrollLeft
-    }, [isVisible, rootRef, scrollLeft])
-
-    // Smart update: choose between fast scroll update or full rebuild
     useEffect(() => {
-        if (!isVisible || !rootRef.current) return
-
-        const prevIndices = prevVisibleIndicesRef.current
-        const builder = builderRef.current
-
-        // Check if visible range changed
-        const indicesChanged = 
-            prevIndices?.start !== visibleIndices?.start ||
-            prevIndices?.end !== visibleIndices?.end
-
-        // Fast path: only scroll changed and we have cached nodes
-        const canUseFastPath = 
-            !indicesChanged &&
-            prevScrollLeftRef.current !== scrollLeft &&
-            builder.hasCache()
-
-        if (canUseFastPath) {
-            updateScrollPositions()
-        } else {
-            rebuildScene()
-        }
-    }, [isVisible, rebuildScene, scrollLeft, updateScrollPositions, visibleIndices, rootRef])
+        rebuildScene()
+    }, [rebuildScene])
 
     // Subscribe to registry changes
     useEffect(() => {

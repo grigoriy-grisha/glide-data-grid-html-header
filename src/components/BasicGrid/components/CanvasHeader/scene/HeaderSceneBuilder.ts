@@ -15,20 +15,6 @@ import { buildCanvasTree } from '../CanvasComponents'
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface CachedCellData {
-    wrapper: CanvasAbsoluteContainer
-    contentContainer: CanvasContainer
-    leftContainer: CanvasContainer
-    rightContainer: CanvasContainer
-    cell: GridHeaderCell
-    baseX: number
-    cellWidth: number
-    cellHeight: number
-    // Track what was rendered to detect changes
-    sortDirection?: 'asc' | 'desc'
-    hasCustomContent: boolean
-}
-
 export interface GripIconHandlers {
     onMouseEnter: () => void
     onMouseLeave: () => void
@@ -58,140 +44,32 @@ export interface BuildSceneConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Maximum number of unused cells to keep in reserve */
-const MAX_UNUSED_CACHE_SIZE = 50
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────────────────────────────────────
 
-const hoverColorCache = new Map<string, string>()
-
 function getHoverColor(color: string): string {
-    let cached = hoverColorCache.get(color)
-    if (!cached) {
-        const colorMap: Record<string, string> = {
-            '#e3f2fd': '#bbdefb',
-            '#f5f5f5': '#e0e0e0',
-            '#fafafa': '#eeeeee',
-            '#ffffff': '#f5f5f5',
-        }
-        cached = colorMap[color] ?? color
-        hoverColorCache.set(color, cached)
+    const colorMap: Record<string, string> = {
+        '#e3f2fd': '#bbdefb',
+        '#f5f5f5': '#e0e0e0',
+        '#fafafa': '#eeeeee',
+        '#ffffff': '#f5f5f5',
     }
-    return cached
+    return colorMap[color] ?? color
 }
 
 function getCellId(cell: GridHeaderCell): string {
     return `cell-${cell.startIndex}-${cell.level}`
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Scene Builder with Cell Reuse
-// ─────────────────────────────────────────────────────────────────────────────
-
 export class HeaderSceneBuilder {
-    /** Active cells currently in viewport */
-    private cache = new Map<string, CachedCellData>()
-    
-    /** Recently removed cells kept for quick reuse */
-    private unusedCache = new Map<string, CachedCellData>()
-
     /**
-     * Build the complete header scene from cells.
-     * Reuses cached cells when possible.
+     * Build the complete header scene.
      */
     build(config: BuildSceneConfig): CanvasAbsoluteContainer[] {
-        const wrappers: CanvasAbsoluteContainer[] = []
-        const usedIds = new Set<string>()
-
-        for (const cell of config.cells) {
-            const cellId = getCellId(cell)
-            usedIds.add(cellId)
-
-            const wrapper = this.getOrBuildCell(cell, cellId, config)
-            wrappers.push(wrapper)
-        }
-
-        this.recycleUnusedCells(usedIds)
-        return wrappers
+        return config.cells.map((cell) => this.buildCell(cell, config))
     }
 
-    /**
-     * Fast update - only repositions existing nodes based on scroll
-     */
-    updatePositions(scrollLeft: number): void {
-        for (const cached of this.cache.values()) {
-            const newX = Math.round(cached.baseX - scrollLeft)
-            cached.wrapper.rect.x = newX
-            cached.contentContainer.rect.x = newX
-        }
-    }
-
-    /**
-     * Check if cache has any entries
-     */
-    hasCache(): boolean {
-        return this.cache.size > 0
-    }
-
-    /**
-     * Clear all cached data
-     */
-    clearCache(): void {
-        this.cache.clear()
-        this.unusedCache.clear()
-    }
-
-    /**
-     * Get cache statistics for debugging
-     */
-    getCacheStats(): { active: number; unused: number } {
-        return {
-            active: this.cache.size,
-            unused: this.unusedCache.size,
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Cell Reuse Logic
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Try to reuse an existing cell, otherwise build a new one
-     */
-    private getOrBuildCell(
-        cell: GridHeaderCell,
-        cellId: string,
-        config: BuildSceneConfig
-    ): CanvasAbsoluteContainer {
-        // 1. Check if cell is already in active cache
-        const existingActive = this.cache.get(cellId)
-        if (existingActive) {
-            return this.updateExistingCell(existingActive, cell, config)
-        }
-
-        // 2. Check if cell was recently removed (in unused cache)
-        const existingUnused = this.unusedCache.get(cellId)
-        if (existingUnused) {
-            this.unusedCache.delete(cellId)
-            const updated = this.updateExistingCell(existingUnused, cell, config)
-            this.cache.set(cellId, existingUnused)
-            return updated
-        }
-
-        // 3. Build new cell
-        return this.buildNewCell(cell, cellId, config)
-    }
-
-    /**
-     * Update an existing cached cell with new position/state
-     */
-    private updateExistingCell(
-        cached: CachedCellData,
+    private buildCell(
         cell: GridHeaderCell,
         config: BuildSceneConfig
     ): CanvasAbsoluteContainer {
@@ -201,102 +79,9 @@ export class HeaderSceneBuilder {
             scrollLeft,
             headerRowHeight,
             orderedColumns,
-            sortColumn,
-            sortDirection,
         } = config
 
-        // Calculate new dimensions
-        const absoluteX = columnPositions[cell.startIndex] ?? 0
-        const cellX = Math.round(absoluteX - scrollLeft)
-        const cellWidth = cell.getSpanWidth(columnWidths)
-        const cellY = Math.round(cell.level * headerRowHeight)
-        const cellHeight = cell.rowSpan * headerRowHeight
-
-        // Get column for sort state check
-        const column = cell.columnIndex !== undefined
-            ? orderedColumns[cell.columnIndex]
-            : undefined
-
-        // Determine current sort state for this column
-        const currentSortDirection = column && sortColumn === column.id
-            ? sortDirection
-            : undefined
-
-        // Check if we need full rebuild:
-        // - Sort state changed
-        // - Size changed
-        // - Has custom content (React component may have updated)
-        const needsRebuild = 
-            cached.sortDirection !== currentSortDirection ||
-            cached.cellWidth !== cellWidth ||
-            cached.cellHeight !== cellHeight ||
-            cached.hasCustomContent // Always rebuild custom content cells
-
-        if (needsRebuild) {
-            // Remove from cache and build fresh
-            this.cache.delete(getCellId(cell))
-            return this.buildNewCell(cell, getCellId(cell), config)
-        }
-
-        // Just update position
-        cached.wrapper.rect.x = cellX
-        cached.wrapper.rect.y = cellY
-        cached.contentContainer.rect.x = cellX
-        cached.contentContainer.rect.y = cellY
-        cached.baseX = absoluteX
-        cached.cell = cell
-
-        return cached.wrapper
-    }
-
-    /**
-     * Move cells that are no longer visible to unused cache
-     */
-    private recycleUnusedCells(usedIds: Set<string>): void {
-        for (const [cellId, data] of this.cache) {
-            if (!usedIds.has(cellId)) {
-                // Move to unused cache instead of deleting
-                this.unusedCache.set(cellId, data)
-                this.cache.delete(cellId)
-            }
-        }
-
-        // Limit unused cache size (FIFO eviction)
-        if (this.unusedCache.size > MAX_UNUSED_CACHE_SIZE) {
-            const keysToRemove: string[] = []
-            let count = 0
-            const excess = this.unusedCache.size - MAX_UNUSED_CACHE_SIZE
-
-            for (const key of this.unusedCache.keys()) {
-                if (count >= excess) break
-                keysToRemove.push(key)
-                count++
-            }
-
-            for (const key of keysToRemove) {
-                this.unusedCache.delete(key)
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Cell Building
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private buildNewCell(
-        cell: GridHeaderCell,
-        cellId: string,
-        config: BuildSceneConfig
-    ): CanvasAbsoluteContainer {
-        const {
-            columnPositions,
-            columnWidths,
-            scrollLeft,
-            headerRowHeight,
-            orderedColumns,
-            sortColumn,
-            sortDirection,
-        } = config
+        const cellId = getCellId(cell)
 
         // Calculate dimensions
         const absoluteX = columnPositions[cell.startIndex] ?? 0
@@ -334,26 +119,6 @@ export class HeaderSceneBuilder {
             contentContainer.addChild(right)
         }
         wrapper.addChild(contentContainer)
-
-        // Determine sort state for caching
-        const currentSortDirection = column && sortColumn === column.id
-            ? sortDirection
-            : undefined
-
-        // Cache for reuse
-        const cacheData: CachedCellData = {
-            wrapper,
-            contentContainer,
-            leftContainer: left,
-            rightContainer: right,
-            cell,
-            baseX: absoluteX,
-            cellWidth,
-            cellHeight,
-            sortDirection: currentSortDirection,
-            hasCustomContent,
-        }
-        this.cache.set(cellId, cacheData)
 
         return wrapper
     }
