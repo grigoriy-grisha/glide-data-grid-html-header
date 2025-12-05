@@ -5,6 +5,9 @@ import { CanvasLeaf } from "../core/CanvasLeaf";
 import { DrawBatcher } from "../core/DrawBatcher";
 
 const DEFAULT_HEIGHT = 28;
+const DEFAULT_VARIANT = 'primary' as const;
+const DEFAULT_CURSOR = 'pointer';
+const MAX_ICON_SIZE = 20;
 
 const BUTTON_THEME = {
     accentColor: '#1e88e5',
@@ -22,6 +25,13 @@ interface ButtonMetrics {
     iconSize: number;
 }
 
+export interface CanvasIconButtonOptions {
+    size?: number | 'auto';
+    variant?: 'primary' | 'secondary' | 'danger';
+    disabled?: boolean;
+    onClick?: (event: CanvasEvent) => void;
+}
+
 export class CanvasIconButton extends CanvasLeaf {
     icon: ButtonIcon;
     size: number | 'auto';
@@ -29,39 +39,26 @@ export class CanvasIconButton extends CanvasLeaf {
     disabled: boolean;
     isHovered: boolean = false;
 
-    constructor(
-        id: string,
-        icon: ButtonIcon,
-        options?: {
-            size?: number | 'auto',
-            variant?: 'primary' | 'secondary' | 'danger',
-            disabled?: boolean,
-            onClick?: (event: CanvasEvent) => void
-        },
-    ) {
+    constructor(id: string, icon: ButtonIcon, options?: CanvasIconButtonOptions) {
         super(id);
         this.icon = icon;
         this.size = options?.size ?? 'auto';
-        this.variant = options?.variant ?? 'primary';
+        this.variant = options?.variant ?? DEFAULT_VARIANT;
         this.disabled = options?.disabled ?? false;
-        // Initialize style with default cursor
-        super.style = { ...super.style, cursor: 'pointer' };
+        super.style = { ...super.style, cursor: DEFAULT_CURSOR };
         if (options?.onClick) {
             this.onClick = (event) => options.onClick!(event);
         }
     }
 
-    // Override style setter to ensure cursor defaults to 'pointer'
     override set style(value: CanvasFlexStyle) {
-        // Merge with existing style, but ensure cursor defaults to 'pointer'
-        super.style = { ...super.style, cursor: 'pointer', ...value };
+        super.style = { ...super.style, cursor: DEFAULT_CURSOR, ...value };
     }
 
     override get style(): CanvasFlexStyle {
         const baseStyle = super.style;
-        // Always ensure cursor is present
         if (!baseStyle.cursor) {
-            baseStyle.cursor = 'pointer';
+            baseStyle.cursor = DEFAULT_CURSOR;
         }
         return baseStyle;
     }
@@ -73,12 +70,13 @@ export class CanvasIconButton extends CanvasLeaf {
     }
 
     onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        const { x, y, width, height } = this.rect;
         drawIconButton(
             batcher,
-            this.rect.x,
-            this.rect.y,
-            this.rect.width,
-            this.rect.height,
+            x,
+            y,
+            width,
+            height,
             this.icon,
             BUTTON_THEME,
             this.variant,
@@ -99,12 +97,7 @@ export class CanvasIconButton extends CanvasLeaf {
         const metrics = resolveButtonMetrics(this.size, this.rect.height);
         const bounds = getInteractiveBounds(this.rect.x, this.rect.y, metrics);
 
-        if (
-            x >= bounds.x &&
-            x <= bounds.x + bounds.width &&
-            y >= bounds.y &&
-            y <= bounds.y + bounds.height
-        ) {
+        if (isPointInBounds(x, y, bounds)) {
             return [this];
         }
 
@@ -112,25 +105,30 @@ export class CanvasIconButton extends CanvasLeaf {
     }
 }
 
-const resolveButtonMetrics = (size: number | 'auto', currentHeight?: number): ButtonMetrics => {
+function resolveButtonMetrics(size: number | 'auto', currentHeight?: number): ButtonMetrics {
     const height = typeof size === 'number' ? size : currentHeight ?? DEFAULT_HEIGHT;
     const paddingX = 0;
     const paddingY = BUTTON_PADDING_Y;
-    const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, 20);
+    const iconSize = Math.min(height - paddingY * 2 - ICON_SIZE_ADJUSTMENT, MAX_ICON_SIZE);
     const width = typeof size === 'number' ? size : iconSize + paddingX * 2;
 
     return { height, width, paddingX, paddingY, iconSize };
-};
+}
 
-const getInteractiveBounds = (
-    x: number,
-    y: number,
-    metrics: ButtonMetrics,
-) => {
-    const buttonX = x + metrics.paddingX;
-    const buttonY = y + metrics.paddingY;
-    const buttonWidth = metrics.width - metrics.paddingX * 2;
-    const buttonHeight = metrics.height - metrics.paddingY * 2;
+function getInteractiveBounds(x: number, y: number, metrics: ButtonMetrics) {
+    return {
+        x: x + metrics.paddingX,
+        y: y + metrics.paddingY,
+        width: metrics.width - metrics.paddingX * 2,
+        height: metrics.height - metrics.paddingY * 2,
+    };
+}
 
-    return { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
-};
+function isPointInBounds(x: number, y: number, bounds: { x: number; y: number; width: number; height: number }): boolean {
+    return (
+        x >= bounds.x &&
+        x <= bounds.x + bounds.width &&
+        y >= bounds.y &&
+        y <= bounds.y + bounds.height
+    );
+}

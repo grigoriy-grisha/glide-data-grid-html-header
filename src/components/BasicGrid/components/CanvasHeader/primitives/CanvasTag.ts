@@ -4,7 +4,12 @@ import { DrawBatcher } from '../core/DrawBatcher';
 const DEFAULT_FONT = "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const DEFAULT_BACKGROUND = '#E3F2FD';
 const DEFAULT_TEXT_COLOR = '#1E88E5';
+const DEFAULT_PADDING_X = 8;
+const DEFAULT_PADDING_Y = 2;
+const DEFAULT_BORDER_RADIUS = 6;
+const DEFAULT_FONT_SIZE = 12;
 const FONT_SIZE_REGEX = /(\d+)px/;
+const CACHE_SEPARATOR = '|';
 
 const textWidthCache = new Map<string, number>();
 
@@ -22,9 +27,9 @@ export class CanvasTag extends CanvasLeaf {
     font: string = DEFAULT_FONT;
     textColor: string = DEFAULT_TEXT_COLOR;
     backgroundColor: string = DEFAULT_BACKGROUND;
-    paddingX = 8;
-    paddingY = 2;
-    borderRadius = 6;
+    paddingX = DEFAULT_PADDING_X;
+    paddingY = DEFAULT_PADDING_Y;
+    borderRadius = DEFAULT_BORDER_RADIUS;
 
     constructor(id: string, text: string, options?: CanvasTagOptions) {
         super(id);
@@ -40,22 +45,11 @@ export class CanvasTag extends CanvasLeaf {
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        const font = this.font;
-        const text = this.text;
-        const cacheKey = `${font}|${text}`;
+        const textWidth = getCachedTextWidth(ctx, this.font, this.text);
+        const fontSize = extractFontSize(this.font);
 
-        let width = textWidthCache.get(cacheKey);
-        if (width === undefined) {
-            ctx.font = font;
-            width = ctx.measureText(text).width;
-            textWidthCache.set(cacheKey, width);
-        }
-
-        const fontSize = extractFontSize(font);
-        const contentHeight = fontSize;
-
-        this.rect.width = width + this.paddingX * 2;
-        this.rect.height = contentHeight + this.paddingY * 2;
+        this.rect.width = textWidth + this.paddingX * 2;
+        this.rect.height = fontSize + this.paddingY * 2;
     }
 
     onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
@@ -76,9 +70,20 @@ export class CanvasTag extends CanvasLeaf {
     }
 }
 
+function getCachedTextWidth(ctx: CanvasRenderingContext2D, font: string, text: string): number {
+    const cacheKey = `${font}${CACHE_SEPARATOR}${text}`;
+    let width = textWidthCache.get(cacheKey);
+    if (width === undefined) {
+        ctx.font = font;
+        width = ctx.measureText(text).width;
+        textWidthCache.set(cacheKey, width);
+    }
+    return width;
+}
+
 function extractFontSize(font: string): number {
     const match = FONT_SIZE_REGEX.exec(font);
-    return match ? parseInt(match[1], 10) : 12;
+    return match ? parseInt(match[1], 10) : DEFAULT_FONT_SIZE;
 }
 
 

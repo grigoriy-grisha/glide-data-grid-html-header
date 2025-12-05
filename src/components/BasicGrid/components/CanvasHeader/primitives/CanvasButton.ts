@@ -3,12 +3,12 @@ import { CanvasLeaf } from "../core/CanvasLeaf";
 import { CanvasEvent, CanvasFlexStyle } from "../core/CanvasNode";
 import { DrawBatcher } from "../core/DrawBatcher";
 
-// Cached constants
 const BUTTON_FONT = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const BUTTON_HEIGHT = 24;
-const BUTTON_PADDING = 32; // paddingX * 2 + 8
+const BUTTON_PADDING = 32;
+const DEFAULT_VARIANT = 'primary' as const;
+const DEFAULT_CURSOR = 'pointer';
 
-// Shared theme object to avoid allocation on each paint
 const BUTTON_THEME = {
     accentColor: '#1e88e5',
     accentLight: 'rgba(30, 136, 229, 0.16)',
@@ -19,24 +19,24 @@ const BUTTON_THEME = {
     baseFontFull: BUTTON_FONT
 };
 
-// Global text width cache shared across all button instances
 const textWidthCache = new Map<string, number>();
+
+export interface CanvasButtonOptions {
+    variant?: 'primary' | 'secondary' | 'danger';
+    disabled?: boolean;
+    onClick?: (event: CanvasEvent) => void;
+}
 
 export class CanvasButton extends CanvasLeaf {
     text: string;
-    variant: 'primary' | 'secondary' | 'danger' = 'primary';
+    variant: 'primary' | 'secondary' | 'danger' = DEFAULT_VARIANT;
     disabled = false;
     isHovered = false;
 
-    constructor(id: string, text: string, options?: {
-        variant?: 'primary' | 'secondary' | 'danger';
-        disabled?: boolean;
-        onClick?: (event: CanvasEvent) => void;
-    }) {
+    constructor(id: string, text: string, options?: CanvasButtonOptions) {
         super(id);
         this.text = text;
-        // Initialize style with default cursor
-        super.style = { ...super.style, cursor: 'pointer' };
+        super.style = { ...super.style, cursor: DEFAULT_CURSOR };
         if (options) {
             if (options.variant !== undefined) this.variant = options.variant;
             if (options.disabled !== undefined) this.disabled = options.disabled;
@@ -45,49 +45,39 @@ export class CanvasButton extends CanvasLeaf {
     }
 
     set style(value: CanvasFlexStyle) {
-        // Merge with existing style, but ensure cursor defaults to 'pointer'
-        super.style = { ...super.style, cursor: 'pointer', ...value };
+        super.style = { ...super.style, cursor: DEFAULT_CURSOR, ...value };
     }
 
     get style(): CanvasFlexStyle {
         const baseStyle = super.style;
-        // Always ensure cursor is present
         if (!baseStyle.cursor) {
-            baseStyle.cursor = 'pointer';
+            baseStyle.cursor = DEFAULT_CURSOR;
         }
         return baseStyle;
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        const text = this.text;
-        let width = textWidthCache.get(text);
-
-        if (width === undefined) {
-            ctx.font = BUTTON_FONT;
-            width = ctx.measureText(text).width;
-            textWidthCache.set(text, width);
-        }
-
-        this.rect.width = width + BUTTON_PADDING;
+        const textWidth = getCachedTextWidth(ctx, this.text);
+        this.rect.width = textWidth + BUTTON_PADDING;
         this.rect.height = BUTTON_HEIGHT;
     }
 
     onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
-        const rect = this.rect;
+        const { x, y, width, height } = this.rect;
         drawButton(
             batcher,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
+            x,
+            y,
+            width,
+            height,
             this.text,
             BUTTON_THEME,
             this.variant,
             this.disabled,
             this.isHovered,
-            undefined, // leftIcon
-            undefined, // rightIcon
-            ctx // measureCtx
+            undefined,
+            undefined,
+            ctx
         );
     }
 
@@ -98,4 +88,14 @@ export class CanvasButton extends CanvasLeaf {
     onMouseLeave() {
         this.isHovered = false;
     }
+}
+
+function getCachedTextWidth(ctx: CanvasRenderingContext2D, text: string): number {
+    let width = textWidthCache.get(text);
+    if (width === undefined) {
+        ctx.font = BUTTON_FONT;
+        width = ctx.measureText(text).width;
+        textWidthCache.set(text, width);
+    }
+    return width;
 }

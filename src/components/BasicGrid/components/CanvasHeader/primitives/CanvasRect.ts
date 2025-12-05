@@ -2,11 +2,12 @@ import { CanvasLeaf } from '../core/CanvasLeaf';
 import { DrawBatcher } from '../core/DrawBatcher';
 
 const TRANSPARENT = "transparent";
+const DEFAULT_BORDER_WIDTH = 0;
 
 export class CanvasRect extends CanvasLeaf {
     color: string = TRANSPARENT;
     borderColor: string = TRANSPARENT;
-    borderWidth: number = 0;
+    borderWidth: number = DEFAULT_BORDER_WIDTH;
 
     constructor(id: string, color: string = TRANSPARENT) {
         super(id);
@@ -14,26 +15,22 @@ export class CanvasRect extends CanvasLeaf {
     }
 
     measure(_ctx: CanvasRenderingContext2D) {
-        // Rect has no intrinsic size; layout drives dimensions.
     }
 
     onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        const { x, y, width, height } = this.rect;
+
         if (this.color !== TRANSPARENT) {
-            batcher.fillRect(
-                this.rect.x,
-                this.rect.y,
-                this.rect.width,
-                this.rect.height,
-                this.color
-            );
+            batcher.fillRect(x, y, width, height, this.color);
         }
 
         if (this.borderWidth > 0 && this.borderColor !== TRANSPARENT) {
+            const halfBorder = this.borderWidth / 2;
             batcher.strokeRect(
-                this.rect.x + this.borderWidth / 2,
-                this.rect.y + this.borderWidth / 2,
-                this.rect.width - this.borderWidth,
-                this.rect.height - this.borderWidth,
+                x + halfBorder,
+                y + halfBorder,
+                width - this.borderWidth,
+                height - this.borderWidth,
                 this.borderColor,
                 this.borderWidth
             );
