@@ -1,29 +1,18 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react'
-import {
-  type CellClickedEventArgs,
-  type DataEditorProps,
-  type DataEditorRef,
-  type Item,
-} from '@glideapps/glide-data-grid'
+import { useMemo, useRef, type RefObject } from 'react'
+import type { DataEditorProps, DataEditorRef } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
 import type { BasicGridProps } from './types'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
-  DEFAULT_ROW_HEIGHT,
   DEFAULT_ROW_MARKER_WIDTH,
   DEFAULT_SCROLLBAR_RESERVE,
 } from './constants'
-import { CanvasHeader } from './components/CanvasHeader'
 import { DataEditorWithVirtualization } from './components/DataEditorWithVirtualization'
+import { VirtualResizeLine } from './components/VirtualResizeLine'
+import { RowOverlay } from './components/RowOverlay'
+import { GridHeader } from './components/GridHeader'
 import { useContainerWidth } from './hooks/useContainerWidth'
 import { useGridColumnsController } from './hooks/useGridColumnsController'
 import { useGridSorting } from './hooks/useGridSorting'
@@ -40,6 +29,9 @@ import { useRowOverlay } from './hooks/useRowOverlay'
 import { useCustomRenderers } from './hooks/useCustomRenderers'
 import { useGridTheme } from './hooks/useGridTheme'
 import { useColumnResize } from './hooks/useColumnResize'
+import { useVirtualResizeLine } from './hooks/useVirtualResizeLine'
+import { useRowHeight } from './hooks/useRowHeight'
+import { useGridEventHandlers } from './hooks/useGridEventHandlers'
 
 interface BasicGridContainerProps<RowType extends Record<string, unknown>>
   extends BasicGridProps<RowType> {
@@ -77,16 +69,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
 }: BasicGridContainerProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
   const gridBodyRef = useRef<HTMLDivElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
-
   const headerInnerRef = useRef<HTMLDivElement>(null)
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
-  const virtualResizeLineRef = useRef<HTMLDivElement>(null)
-
-  const [virtualResizeState, setVirtualResizeState] = useState<{
-    x: number
-    columnIndex: number
-  } | null>(null)
 
   const stickyHeaderEnabled = Boolean(stickyHeader)
   const scrollbarReserve = scrollbarReserveProp ?? DEFAULT_SCROLLBAR_RESERVE
@@ -103,7 +87,6 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     columnPositions,
     dataAreaWidth,
     selectionColumnId,
-    getColumnWidth,
     setColumnWidths,
     clearColumnWidths,
     reorderColumns,
@@ -175,25 +158,10 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
 
   const effectiveHeaderHeight = headerHeightPx - virtualOffset
 
-  const resolvedRowHeight = useMemo<
-    number | ((rowIndex: number) => number) | undefined
-  >(() => {
-    const baseNumber = typeof rowHeightProp === 'number' ? rowHeightProp : undefined
-    const baseFunction = typeof rowHeightProp === 'function' ? rowHeightProp : undefined
-
-    if (baseFunction) {
-      return (rowIndex: number) => {
-        const row = gridRows[rowIndex]
-        if (!row) {
-          return baseNumber ?? DEFAULT_ROW_HEIGHT
-        }
-        const value = baseFunction(row, rowIndex)
-        return typeof value === 'number' && !Number.isNaN(value) ? value : DEFAULT_ROW_HEIGHT
-      }
-    }
-
-    return baseNumber
-  }, [gridRows, rowHeightProp])
+  const { resolvedRowHeight, estimatedRowHeight } = useRowHeight({
+    rowHeight: rowHeightProp,
+    gridRows,
+  })
 
   const columnSelection = useColumnSelection(gridRows.length, orderedColumns.length)
   const { highlightRegions, clearSelection } = columnSelection
@@ -211,34 +179,34 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   const effectiveViewportWidth = Math.max(0, viewportWidth - scrollbarReserve)
   const effectiveDataViewportWidth = Math.max(0, dataViewportWidth - scrollbarReserve)
 
+  const {
+    virtualResizeState,
+    virtualResizeLineStyle,
+    handleVirtualResizeChange,
+    handleResizeProgress,
+    handleResizeEnd,
+  } = useVirtualResizeLine({
+    scrollLeft,
+    markerWidth,
+    effectiveDataViewportWidth,
+    columnPositions,
+    orderedColumns,
+    setColumnWidths,
+  })
+
+  const getColumnWidthByIndex = useMemo(() => {
+    return (columnIndex: number) => {
+      return columnWidths[columnIndex] ?? orderedColumns[columnIndex]?.baseWidth ?? 0
+    }
+  }, [columnWidths, orderedColumns])
+
   const { handleResizeMouseDown, handleResizeDoubleClick } = useColumnResize({
     columns: orderedColumns,
-    getColumnWidth,
+    getColumnWidth: getColumnWidthByIndex,
     setColumnWidths,
     clearColumnWidths,
-    onResizeProgress: (updates) => {
-      if (updates.length === 0) {
-        return
-      }
-
-      const firstColId = updates[0].columnId
-      const firstIndex = orderedColumns.findIndex((c) => c.id === firstColId)
-      if (firstIndex === -1) {
-        return
-      }
-
-      const startX = columnPositions[firstIndex] ?? 0
-      const totalWidth = updates.reduce((sum, u) => sum + u.width, 0)
-
-      setVirtualResizeState({
-        x: startX + totalWidth,
-        columnIndex: firstIndex,
-      })
-    },
-    onResizeEnd: (updates) => {
-      setColumnWidths(updates)
-      setVirtualResizeState(null)
-    },
+    onResizeProgress: handleResizeProgress,
+    onResizeEnd: handleResizeEnd,
   })
 
   const getCellContent = useGridCellContent({
@@ -278,50 +246,19 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     getRowId,
     gridBodyRef,
     dataEditorRef,
-    overlayRef,
+    overlayRef: useRef<HTMLDivElement>(null),
   })
 
-  const overlayVisibleRef = useRef(false)
-  useEffect(() => {
-    const hasOverlay = Boolean(overlayRow && overlayContent && overlayPosition)
-    if (overlayVisibleRef.current && !hasOverlay) {
-      onRowOverlayClose?.()
-    }
-    overlayVisibleRef.current = hasOverlay
-  }, [onRowOverlayClose, overlayContent, overlayPosition, overlayRow])
-
-  const handleCellClicked = useCallback(
-    (cell: Item, event?: CellClickedEventArgs) => {
-      const [colIndex, rowIndex] = cell
-      const column = orderedColumns[colIndex]
-      if (!column) {
-        return
-      }
-
-      if (rowSelectionEnabled && column.id === selectionColumnId) {
-        event?.preventDefault?.()
-        toggleRowSelection(rowIndex)
-        return
-      }
-
-      if (treeEnabled && treeColumnId && column.id === treeColumnId) {
-        return
-      }
-
-      if (treeEnabled) {
-        clearSelection()
-      }
-    },
-    [
-      clearSelection,
-      orderedColumns,
-      rowSelectionEnabled,
-      selectionColumnId,
-      toggleRowSelection,
-      treeColumnId,
-      treeEnabled,
-    ]
-  )
+  const { handleCellClicked, handleHeaderSort, handleDataEditorHeaderClick } = useGridEventHandlers({
+    orderedColumns,
+    rowSelectionEnabled,
+    selectionColumnId,
+    toggleRowSelection,
+    treeEnabled,
+    treeColumnId,
+    clearSelection,
+    handleColumnSort,
+  })
 
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
   const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
@@ -332,40 +269,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
         title: column.title,
         width: columnWidths[index] ?? column.baseWidth,
       })),
-    [orderedColumns, columnWidths]
+    [orderedColumns, columnWidths],
   )
-
-  const virtualResizeLineStyle = useMemo<React.CSSProperties | undefined>(() => {
-    if (!virtualResizeState) {
-      return { display: 'none' }
-    }
-
-    const relativeX = virtualResizeState.x - scrollLeft + markerWidth
-    const isVisible = relativeX >= 0 && relativeX <= effectiveDataViewportWidth + markerWidth
-
-    return {
-      left: `${relativeX}px`,
-      display: isVisible ? 'block' : 'none',
-    }
-  }, [effectiveDataViewportWidth, markerWidth, scrollLeft, virtualResizeState])
-
-  const handleVirtualResizeChange = useCallback((x: number | null, columnIndex: number | null) => {
-    if (x !== null && columnIndex !== null) {
-      setVirtualResizeState({ x, columnIndex })
-    } else {
-      setVirtualResizeState(null)
-    }
-  }, [])
-
-  const estimatedRowHeight = useMemo(() => {
-    if (typeof rowHeightProp === 'number' && Number.isFinite(rowHeightProp)) {
-      return rowHeightProp
-    }
-    if (typeof resolvedRowHeight === 'number' && Number.isFinite(resolvedRowHeight)) {
-      return resolvedRowHeight
-    }
-    return DEFAULT_ROW_HEIGHT
-  }, [resolvedRowHeight, rowHeightProp])
 
   const { handleVisibleRegionChangedWithOverlay, gridBodyStyle } = useGridBodyInteractions({
     estimatedRowHeight,
@@ -379,75 +284,45 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     updateStickyMetrics,
   })
 
-  const handleHeaderSort = useCallback(
-    (columnId: string, direction: 'asc' | 'desc' | undefined) => {
-      const index = orderedColumns.findIndex((c) => c.id === columnId)
-      if (index >= 0) {
-        handleColumnSort(index, direction ?? null)
-      }
-    },
-    [orderedColumns, handleColumnSort]
-  )
-
-  const handleDataEditorHeaderClick = useCallback<NonNullable<DataEditorProps['onHeaderClicked']>>(
-    (columnIndex, _event) => {
-      handleColumnSort(columnIndex)
-    },
-    [handleColumnSort]
-  )
-
   return (
     <HeaderVirtualizationProvider>
       <div className={containerClassName}>
         <div className="basic-grid-wrapper" ref={gridRef}>
-          {virtualResizeState && (
-            <div
-              ref={virtualResizeLineRef}
-              className="basic-grid-virtual-resize-line"
-              style={virtualResizeLineStyle}
-            />
+          {virtualResizeState && virtualResizeLineStyle && (
+            <VirtualResizeLine style={virtualResizeLineStyle} />
           )}
 
-          {columnPositions.length > 0 && levelCount > 0 && (
-            <div
-              className="basic-grid-header-overlay"
-              style={{
-                height: effectiveHeaderHeight,
-                ...headerLayerStyle,
-              }}
-            >
-              <CanvasHeader
-                width={effectiveDataViewportWidth}
-                height={headerHeightPx}
-                headerCells={headerCells}
-                orderedColumns={orderedColumns}
-                columnPositions={columnPositions}
-                columnWidths={columnWidths}
-                levelCount={levelCount}
-                headerRowHeight={headerRowHeight}
-                markerWidth={markerWidth}
-                showRowMarkers={showRowMarkers}
-                scrollLeft={scrollLeft}
-                canvasHeaderRef={canvasHeaderRef}
-                handleResizeMouseDown={handleResizeMouseDown}
-                handleResizeDoubleClick={handleResizeDoubleClick}
-                getColumnWidth={getColumnWidth}
-                setColumnWidths={setColumnWidths}
-                onVirtualResizeChange={handleVirtualResizeChange}
-                enableColumnReorder={enableColumnReorder}
-                onColumnReorder={reorderColumns}
-                dataAreaWidth={dataAreaWidth}
-                sortColumn={sortState?.columnId}
-                sortDirection={sortState?.direction}
-                onColumnSort={handleHeaderSort}
-                debugMode={false}
-                enableRowSelection={rowSelectionEnabled}
-                isAllRowsSelected={isAllRowsSelected}
-                hasPartialRowSelection={hasPartialRowSelection}
-                onSelectAllChange={handleSelectAllChange}
-              />
-            </div>
-          )}
+          <GridHeader
+            width={effectiveDataViewportWidth}
+            height={headerHeightPx}
+            effectiveHeight={effectiveHeaderHeight}
+            headerLayerStyle={headerLayerStyle ?? undefined}
+            headerCells={headerCells}
+            orderedColumns={orderedColumns}
+            columnPositions={columnPositions}
+            columnWidths={columnWidths}
+            levelCount={levelCount}
+            headerRowHeight={headerRowHeight}
+            markerWidth={markerWidth}
+            showRowMarkers={showRowMarkers}
+            scrollLeft={scrollLeft}
+            canvasHeaderRef={canvasHeaderRef}
+            handleResizeMouseDown={handleResizeMouseDown}
+            handleResizeDoubleClick={handleResizeDoubleClick}
+            getColumnWidth={getColumnWidthByIndex}
+            setColumnWidths={setColumnWidths}
+            onVirtualResizeChange={handleVirtualResizeChange}
+            enableColumnReorder={enableColumnReorder}
+            onColumnReorder={reorderColumns}
+            dataAreaWidth={dataAreaWidth}
+            sortColumn={sortState?.columnId}
+            sortDirection={sortState?.direction}
+            onColumnSort={handleHeaderSort}
+            enableRowSelection={rowSelectionEnabled}
+            isAllRowsSelected={isAllRowsSelected}
+            hasPartialRowSelection={hasPartialRowSelection}
+            onSelectAllChange={handleSelectAllChange}
+          />
 
           <div className="basic-grid-body" ref={gridBodyRef} style={gridBodyStyle}>
             <DataEditorWithVirtualization
@@ -474,11 +349,12 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
               smoothScrollY={true}
               headerHeight={effectiveHeaderHeight}
             />
-            {overlayRow && overlayContent && overlayPosition && (
-              <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
-                <div className="basic-grid-row-overlay-content">{overlayContent}</div>
-              </div>
-            )}
+            <RowOverlay
+              overlayRow={overlayRow}
+              overlayContent={overlayContent}
+              overlayPosition={overlayPosition}
+              onOverlayClose={onRowOverlayClose}
+            />
           </div>
         </div>
       </div>
