@@ -1,4 +1,5 @@
 import type { BasicGridTreeOptions } from '../types'
+import { resolveAccessorValue } from './utils'
 
 const DEFAULT_CHILDREN_KEY = 'items'
 
@@ -17,6 +18,14 @@ export interface GridTreeSnapshot<RowType> {
   hasTreeData: boolean
 }
 
+type VisitHandler<RowType> = (
+  row: RowType,
+  depth: number,
+  path: number[],
+  parentId: string | undefined,
+  parentVisible: boolean
+) => boolean | void
+
 export class GridTree<RowType extends Record<string, unknown>> {
   constructor(private readonly options: BasicGridTreeOptions<RowType>) {}
 
@@ -30,11 +39,7 @@ export class GridTree<RowType extends Record<string, unknown>> {
 
     this.visit(rows, (node, depth, path) => {
       const children = this.getChildren(node)
-      if (children.length === 0) {
-        return
-      }
-
-      if (depth < maxDepth) {
+      if (children.length > 0 && depth < maxDepth) {
         expanded.add(this.getRowId(node, path))
       }
     })
@@ -44,11 +49,7 @@ export class GridTree<RowType extends Record<string, unknown>> {
 
   compute(rows: RowType[], expandedRowIds: Set<string>): GridTreeSnapshot<RowType> {
     if (!rows || rows.length === 0) {
-      return {
-        visibleRows: rows,
-        nodes: [],
-        hasTreeData: false,
-      }
+      return { visibleRows: rows, nodes: [], hasTreeData: false }
     }
 
     const nodes: GridTreeNode<RowType>[] = []
@@ -65,25 +66,14 @@ export class GridTree<RowType extends Record<string, unknown>> {
       }
 
       if (parentVisible) {
-        nodes.push({
-          row,
-          rowId,
-          parentId,
-          depth,
-          hasChildren,
-          isExpanded,
-        })
+        nodes.push({ row, rowId, parentId, depth, hasChildren, isExpanded })
       }
 
       return isExpanded
     })
 
     if (!hasTreeData) {
-      return {
-        visibleRows: rows,
-        nodes: [],
-        hasTreeData: false,
-      }
+      return { visibleRows: rows, nodes: [], hasTreeData: false }
     }
 
     return {
@@ -95,19 +85,14 @@ export class GridTree<RowType extends Record<string, unknown>> {
 
   private visit(
     rows: RowType[],
-    handler: (
-      row: RowType,
-      depth: number,
-      path: number[],
-      parentId: string | undefined,
-      parentVisible: boolean
-    ) => boolean | void,
+    handler: VisitHandler<RowType>,
     depth = 0,
-    parentId: string | undefined = undefined,
+    parentId?: string,
     parentVisible = true,
     path: number[] = []
-  ) {
-    rows.forEach((row, index) => {
+  ): void {
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index]
       const nextPath = [...path, index]
       const isExpanded = handler(row, depth, nextPath, parentId, parentVisible) !== false
       const children = this.getChildren(row)
@@ -116,13 +101,13 @@ export class GridTree<RowType extends Record<string, unknown>> {
         const rowId = this.getRowId(row, nextPath)
         this.visit(children, handler, depth + 1, rowId, parentVisible && Boolean(isExpanded), nextPath)
       }
-    })
+    }
   }
 
   private getChildren(row: RowType): RowType[] {
     if (typeof this.options.getChildren === 'function') {
-      const customChildren = this.options.getChildren(row)
-      return Array.isArray(customChildren) ? customChildren : []
+      const children = this.options.getChildren(row)
+      return Array.isArray(children) ? children : []
     }
 
     const accessor = this.options.childrenKey ?? DEFAULT_CHILDREN_KEY
@@ -130,13 +115,7 @@ export class GridTree<RowType extends Record<string, unknown>> {
       return []
     }
 
-    const value = accessor.split('.').reduce<unknown>((acc, key) => {
-      if (!acc || typeof acc !== 'object') {
-        return undefined
-      }
-      return (acc as Record<string, unknown>)[key]
-    }, row)
-
+    const value = resolveAccessorValue(row as Record<string, unknown>, accessor)
     return Array.isArray(value) ? (value as RowType[]) : []
   }
 
@@ -145,7 +124,7 @@ export class GridTree<RowType extends Record<string, unknown>> {
       return this.options.getRowId(row, path)
     }
 
-    const candidate = (row as Record<string, unknown> | undefined)?.id
+    const candidate = (row as Record<string, unknown>)?.id
     if (typeof candidate === 'string' || typeof candidate === 'number') {
       return String(candidate)
     }
@@ -153,17 +132,3 @@ export class GridTree<RowType extends Record<string, unknown>> {
     return path.join('-')
   }
 }
-
-export function areSetsEqual(first: Set<string>, second: Set<string>): boolean {
-  if (first.size !== second.size) {
-    return false
-  }
-  for (const value of first) {
-    if (!second.has(value)) {
-      return false
-    }
-  }
-  return true
-}
-
-

@@ -25,7 +25,7 @@ function getRenderContent(
   cell: GridHeaderCell,
   column: GridColumn<any> | undefined
 ): (() => ReactElement) | null {
-  return cell.renderColumnContent ?? column?.getRenderColumnContent() ?? null
+  return cell.renderColumnContent ?? column?.renderColumnContent ?? null
 }
 
 export const HeadlessHeaderRenderer: React.FC<HeadlessHeaderRendererProps> = React.memo(({

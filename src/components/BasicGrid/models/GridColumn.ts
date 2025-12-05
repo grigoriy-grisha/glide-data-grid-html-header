@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import type { BasicGridDataType, BasicGridSelectOption, ButtonCellOptions, CanvasCellOptions, SortDirection } from '../types'
+import { resolveAccessorValue } from './utils'
 
 export interface GridHeaderSegment {
   title: string
@@ -7,7 +8,7 @@ export interface GridHeaderSegment {
   renderColumnContent?: () => ReactElement
 }
 
-interface GridColumnOptions<RowType extends Record<string, unknown>> {
+export interface GridColumnOptions<RowType extends Record<string, unknown>> {
   id: string
   title: string
   dataType: BasicGridDataType
@@ -30,6 +31,8 @@ interface GridColumnOptions<RowType extends Record<string, unknown>> {
   renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
 }
 
+const NUMERIC_DATA_TYPES: BasicGridDataType[] = ['number', 'percent']
+
 export class GridColumn<RowType extends Record<string, unknown>> {
   readonly id: string
   readonly title: string
@@ -47,6 +50,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly canvasOptions?: CanvasCellOptions<RowType>
   readonly renderColumnContent?: () => ReactElement
   readonly renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
+
   private readonly formatter?: (value: unknown, row: RowType) => string
   private readonly valueGetter: (row: RowType) => unknown
   private readonly sortValueGetter?: (row: RowType) => string | number | null | undefined
@@ -76,59 +80,7 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   }
 
   isNumeric(): boolean {
-    return this.dataType === 'number' || this.dataType === 'percent'
-  }
-
-  getValue(row: RowType): unknown {
-    return this.valueGetter(row)
-  }
-
-  formatValue(row: RowType, rawValue: unknown): string | undefined {
-    return this.formatter ? this.formatter(rawValue, row) : undefined
-  }
-
-  private getSortValue(row: RowType): string | number | null | undefined {
-    if (this.sortValueGetter) {
-      return this.sortValueGetter(row)
-    }
-    const value = this.getValue(row)
-    if (value === null || value === undefined) {
-      return value
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-      return value
-    }
-    return String(value)
-  }
-
-  private compareRows(a: RowType, b: RowType): number {
-    if (this.sortComparator) {
-      return this.sortComparator(a, b)
-    }
-
-    const aValue = this.getSortValue(a)
-    const bValue = this.getSortValue(b)
-
-    if (this.isNumeric()) {
-      const aNumber = typeof aValue === 'number' ? aValue : Number(aValue ?? 0)
-      const bNumber = typeof bValue === 'number' ? bValue : Number(bValue ?? 0)
-      return aNumber - bNumber
-    }
-
-    return String(aValue ?? '').localeCompare(String(bValue ?? ''), 'ru', { sensitivity: 'base' })
-  }
-
-  sortRows(rows: RowType[], direction: SortDirection): RowType[] {
-    if (!this.sortable) {
-      return rows
-    }
-
-    const multiplier = direction === 'asc' ? 1 : -1
-    return [...rows].sort((a, b) => this.compareRows(a, b) * multiplier)
-  }
-
-  getAccessorPath(): string | undefined {
-    return this.accessorPath
+    return NUMERIC_DATA_TYPES.includes(this.dataType)
   }
 
   isSelect(): boolean {
@@ -143,24 +95,21 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     return this.dataType === 'canvas'
   }
 
-  getButtonOptions(): ButtonCellOptions<RowType> | undefined {
-    return this.buttonOptions
+  getValue(row: RowType): unknown {
+    return this.valueGetter(row)
   }
 
-  getCanvasOptions(): CanvasCellOptions<RowType> | undefined {
-    return this.canvasOptions
+  formatValue(row: RowType, rawValue: unknown): string | undefined {
+    return this.formatter?.(rawValue, row)
   }
 
-  getRenderColumnContent(): (() => ReactElement) | undefined {
-    return this.renderColumnContent
-  }
+  sortRows(rows: RowType[], direction: SortDirection): RowType[] {
+    if (!this.sortable) {
+      return rows
+    }
 
-  hasRenderCellContent(): boolean {
-    return Boolean(this.renderCellContent)
-  }
-
-  getRenderCellContent(): ((row: RowType, rowIndex: number) => ReactElement) | undefined {
-    return this.renderCellContent
+    const multiplier = direction === 'asc' ? 1 : -1
+    return [...rows].sort((a, b) => this.compareRows(a, b) * multiplier)
   }
 
   getSelectOptions(row: RowType): BasicGridSelectOption[] | undefined {
@@ -180,21 +129,40 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     return undefined
   }
 
-  getSelectPlaceholder(): string | undefined {
-    return this.selectPlaceholder
-  }
-}
+  private getSortValue(row: RowType): string | number | null | undefined {
+    if (this.sortValueGetter) {
+      return this.sortValueGetter(row)
+    }
 
-function resolveAccessorValue(row: Record<string, unknown>, accessor: string | number | symbol): unknown {
-  if (typeof accessor === 'string' && accessor.includes('.')) {
-    return accessor.split('.').reduce<unknown>((acc, key) => {
-      if (acc == null || typeof acc !== 'object') {
-        return undefined
-      }
-      return (acc as Record<string, unknown>)[key]
-    }, row)
+    const value = this.getValue(row)
+
+    if (value === null || value === undefined) {
+      return value
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      return value
+    }
+
+    return String(value)
   }
-  return (row as Record<string, unknown>)[accessor as keyof typeof row]
+
+  private compareRows(a: RowType, b: RowType): number {
+    if (this.sortComparator) {
+      return this.sortComparator(a, b)
+    }
+
+    const aValue = this.getSortValue(a)
+    const bValue = this.getSortValue(b)
+
+    if (this.isNumeric()) {
+      const aNumber = typeof aValue === 'number' ? aValue : Number(aValue ?? 0)
+      const bNumber = typeof bValue === 'number' ? bValue : Number(bValue ?? 0)
+      return aNumber - bNumber
+    }
+
+    return String(aValue ?? '').localeCompare(String(bValue ?? ''), 'ru', { sensitivity: 'base' })
+  }
 }
 
 function normalizeSelectOptions(source: unknown): BasicGridSelectOption[] | undefined {
@@ -225,4 +193,3 @@ function normalizeSelectOptions(source: unknown): BasicGridSelectOption[] | unde
 
   return options.length > 0 ? options : undefined
 }
-

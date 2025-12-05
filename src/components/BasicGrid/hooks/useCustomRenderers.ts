@@ -28,7 +28,7 @@ export function useCustomRenderers<RowType extends Record<string, unknown>>({
   )
 
   const hasCanvasColumns = useMemo(
-    () => orderedColumns.some((column) => column.isCanvas() || column.hasRenderCellContent()),
+    () => orderedColumns.some((column) => column.isCanvas() || Boolean(column.renderCellContent)),
     [orderedColumns]
   )
 

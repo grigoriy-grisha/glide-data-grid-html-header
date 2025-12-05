@@ -30,7 +30,7 @@ export function useCellEditing<RowType extends Record<string, unknown>>({
       const [col, row] = cell
       const column = orderedColumns[col]
       const dataRow = gridRows[row]
-      const accessorPath = column?.getAccessorPath()
+      const accessorPath = column?.accessorPath
       if (!column || !dataRow || !accessorPath) {
         return
       }

@@ -199,7 +199,7 @@ export class HeaderSceneBuilder {
         config: BuildSceneConfig,
         dimensions: { x: number; y: number; width: number; height: number }
     ): boolean {
-        const renderContent = cell.renderColumnContent ?? column?.getRenderColumnContent()
+        const renderContent = cell.renderColumnContent ?? column?.renderColumnContent
 
         if (renderContent) {
             return this.populateCustomContent(cellId, column, left, config, dimensions, cell)

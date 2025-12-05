@@ -130,12 +130,12 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         if (options && options.length > 0) {
           const rawValue = column.getValue(dataRow)
           const stringValue = rawValue == null ? '' : String(rawValue)
-          return createSelectCell(stringValue, options, column.getSelectPlaceholder())
+          return createSelectCell(stringValue, options, column.selectPlaceholder)
         }
       }
 
       if (column.isButton()) {
-        const buttonOptions = column.getButtonOptions()
+        const buttonOptions = column.buttonOptions
         if (buttonOptions) {
           const resolveButtonValue = <Value,>(
             value: Value | ((row: RowType) => Value) | undefined,
@@ -182,12 +182,12 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         }
       }
 
-      const renderCellContent = column.getRenderCellContent()
+      const renderCellContent = column.renderCellContent
 
       let canvasBounds: DOMRect | null = null
 
       if (renderCellContent) {
-        const canvasOptions = column.getCanvasOptions()
+        const canvasOptions = column.canvasOptions
         let cellCanvasRoot: CellCanvasRoot | null = null
         const cellPortalOriginId = `cell-${col}-${row}`
         const render = (
@@ -304,7 +304,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       const decoratedCell = decorateCell(baseCell, column.id, row)
       const canEdit =
         editable &&
-        column.getAccessorPath() &&
+        column.accessorPath &&
         (decoratedCell.kind === GridCellKind.Text || decoratedCell.kind === GridCellKind.Number)
 
       if (canEdit) {
