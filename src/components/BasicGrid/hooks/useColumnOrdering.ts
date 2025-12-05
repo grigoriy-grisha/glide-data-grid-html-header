@@ -52,7 +52,6 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
   const isInitialMountRef = useRef(true)
 
   const columnIds = useMemo(() => {
-
     const ids = columns.map((column) => column.id).filter((id): id is string => Boolean(id))
     columnIdsRef.current = ids
     return ids
@@ -64,45 +63,39 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
     return ids
   })
 
-  // Обновляем internalOrder только если изменился набор колонок (добавились/удалились)
-  // но сохраняем пользовательский порядок, если набор колонок не изменился
   useEffect(() => {
+    const nextIdsSet = new Set(columnIds)
+    const previousIdsSet = previousColumnIdsSetRef.current
+
     if (columnIds.length === 0) {
+      if (!isInitialMountRef.current) {
+        setInternalOrder([])
+      }
+      previousColumnIdsSetRef.current = nextIdsSet
+      isInitialMountRef.current = false
       return
     }
 
-    const previousIdsSet = previousColumnIdsSetRef.current
-    const newIdsSet = new Set(columnIds)
+    const setsEqual =
+      previousIdsSet.size === nextIdsSet.size && columnIds.every((id) => previousIdsSet.has(id))
 
-    // Проверяем, изменился ли набор колонок (не порядок, а сам набор)
-    const setsEqual = previousIdsSet.size === newIdsSet.size &&
-                      [...previousIdsSet].every(id => newIdsSet.has(id))
-
-    if (!setsEqual || isInitialMountRef.current) {
-      // При первой инициализации или когда изменился набор колонок
-      if (isInitialMountRef.current) {
-        isInitialMountRef.current = false
-        previousColumnIdsSetRef.current = newIdsSet
-        return // Не обновляем, так как уже установлено в useState
-      }
-
-      // Объединяем: сохраняем порядок из internalOrder для существующих колонок,
-      // добавляем новые колонки в конец
-      const newColumns = columnIds.filter(id => !previousIdsSet.has(id))
-
-      if (newColumns.length > 0) {
-        // Если добавились новые колонки, добавляем их в конец
-        setInternalOrder((prev) => {
-          const preserved = prev.filter(id => newIdsSet.has(id))
-          return [...preserved, ...newColumns]
-        })
-      } else {
-        // Если только удалились колонки, просто фильтруем
-        setInternalOrder((prev) => prev.filter(id => newIdsSet.has(id)))
-      }
-
-      previousColumnIdsSetRef.current = newIdsSet
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      previousColumnIdsSetRef.current = nextIdsSet
+      return
     }
+
+    if (setsEqual) {
+      return
+    }
+
+    setInternalOrder((prev) => {
+      const preserved = prev.filter((id) => nextIdsSet.has(id))
+      const newColumns = columnIds.filter((id) => !previousIdsSet.has(id))
+      return [...preserved, ...newColumns]
+    })
+
+    previousColumnIdsSetRef.current = nextIdsSet
   }, [columnIds])
 
   const preferredOrder = columnOrder ?? internalOrder
@@ -134,7 +127,6 @@ export function useColumnOrdering<RowType extends Record<string, unknown>>({
         setInternalOrder(nextOrder)
       }
       onColumnOrderChange?.(nextOrder)
-
     },
     [columnOrder, onColumnOrderChange]
   )

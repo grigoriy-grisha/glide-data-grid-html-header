@@ -6,6 +6,7 @@ import { createButtonCell } from '../customCells/buttonCell'
 import { createCanvasCell } from '../customCells/canvasCell/index'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
+import type { GridTreeNode } from '../models/GridTree'
 import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
 import { buildCanvasTree } from '../components/CanvasHeader/CanvasComponents'
 import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
@@ -34,9 +35,8 @@ interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   decorateCell: (cell: GridCell, columnId: string | undefined, rowIndex: number) => GridCell
   selectionColumnId: string
   summaryRows?: RowType[]
-  // Tree props
   treeEnabled?: boolean
-  nodesByRowIndex?: any[] // GridTreeNode<RowType>[]
+  nodesByRowIndex?: GridTreeNode<RowType>[]
   treeColumnId?: string
   onTreeToggle?: (rowIndex: number) => void
 }
@@ -56,7 +56,6 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
   treeColumnId,
   onTreeToggle,
 }: UseGridCellContentParams<RowType>) {
-  // Cache for button/canvas cell handlers to avoid recreation
   const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, any>>(), [])
   const canvasCellCache = useMemo(() => new WeakMap<RowType, Map<string, CanvasCellCacheEntry>>(), [])
 
@@ -139,48 +138,46 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       if (column.isButton()) {
         const buttonOptions = column.getButtonOptions()
         if (buttonOptions) {
-          const label =
-            typeof buttonOptions.label === 'function'
-              ? buttonOptions.label(dataRow)
-              : buttonOptions.label ?? 'Кнопка'
-          const disabled =
-            typeof buttonOptions.disabled === 'function'
-              ? buttonOptions.disabled(dataRow)
-              : buttonOptions.disabled ?? false
+          const resolveButtonValue = <Value,>(
+            value: Value | ((row: RowType) => Value) | undefined,
+            fallback: Value
+          ): Value => {
+            if (typeof value === 'function') {
+              return (value as (row: RowType) => Value)(dataRow)
+            }
+            return value ?? fallback
+          }
 
-          // Cache handlers to avoid recreation
-          const onClick = buttonOptions.onClick
-            ? getCachedHandler(dataRow, `button-click-${col}`, () =>
-              () => buttonOptions.onClick?.(dataRow, row)
-            )
-            : undefined
-          const onMouseEnter = buttonOptions.onMouseEnter
-            ? getCachedHandler(dataRow, `button-mouseenter-${col}`, () =>
-              () => buttonOptions.onMouseEnter?.(dataRow, row)
-            )
-            : undefined
-          const onMouseLeave = buttonOptions.onMouseLeave
-            ? getCachedHandler(dataRow, `button-mouseleave-${col}`, () =>
-              () => buttonOptions.onMouseLeave?.(dataRow, row)
-            )
-            : undefined
-          const onMouseDown = buttonOptions.onMouseDown
-            ? getCachedHandler(dataRow, `button-mousedown-${col}`, () =>
-              () => buttonOptions.onMouseDown?.(dataRow, row)
-            )
-            : undefined
-          const onMouseUp = buttonOptions.onMouseUp
-            ? getCachedHandler(dataRow, `button-mouseup-${col}`, () =>
-              () => buttonOptions.onMouseUp?.(dataRow, row)
-            )
-            : undefined
+          const label = resolveButtonValue(buttonOptions.label, 'Кнопка')
+          const disabled = resolveButtonValue(buttonOptions.disabled, false)
+          const buildHandler = (
+            suffix: string,
+            handler?: (row: RowType, rowIndex: number) => void
+          ) =>
+            handler
+              ? getCachedHandler(dataRow, `button-${suffix}-${col}`, () => () => handler(dataRow, row))
+              : undefined
 
-          const buttonCell = createButtonCell(label, onClick, buttonOptions.variant ?? 'primary', disabled)
-          // Добавляем обработчики событий
-          if (onMouseEnter) buttonCell.data.onMouseEnter = onMouseEnter
-          if (onMouseLeave) buttonCell.data.onMouseLeave = onMouseLeave
-          if (onMouseDown) buttonCell.data.onMouseDown = onMouseDown
-          if (onMouseUp) buttonCell.data.onMouseUp = onMouseUp
+          const buttonCell = createButtonCell(
+            label,
+            buildHandler('click', buttonOptions.onClick),
+            buttonOptions.variant ?? 'primary',
+            disabled
+          )
+
+          const handlerMap = {
+            onMouseEnter: buildHandler('mouseenter', buttonOptions.onMouseEnter),
+            onMouseLeave: buildHandler('mouseleave', buttonOptions.onMouseLeave),
+            onMouseDown: buildHandler('mousedown', buttonOptions.onMouseDown),
+            onMouseUp: buildHandler('mouseup', buttonOptions.onMouseUp),
+          } as const
+
+          (Object.keys(handlerMap) as Array<keyof typeof handlerMap>).forEach((key) => {
+            const handler = handlerMap[key]
+            if (handler) {
+              buttonCell.data[key] = handler
+            }
+          })
 
           return buttonCell
         }
@@ -188,7 +185,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
 
       const renderCellContent = column.getRenderCellContent()
 
-      let cache: DOMRect | null = null;
+      let canvasBounds: DOMRect | null = null
 
       if (renderCellContent) {
         const canvasOptions = column.getCanvasOptions()
@@ -200,7 +197,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           _theme: any,
           _hoverX: number | undefined,
           _hoverY: number | undefined,
-          renderArgs?: any
+          renderArgs?: { canvasRoot?: CellCanvasRoot }
         ) => {
           const cacheKeyValue = canvasOptions?.getCacheKey?.(dataRow, row)
           const isCacheable = cacheKeyValue !== undefined && cacheKeyValue !== null
@@ -266,13 +263,13 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           const hoverPos = _hoverX !== undefined && _hoverY !== undefined ? { x: _hoverX, y: _hoverY } : undefined
           canvasRootInstance.rootNode.style = { width: rect.width, height: rect.height }
 
-          if (!cache) {
-            cache = ctx.canvas.getBoundingClientRect()
+          if (!canvasBounds) {
+            canvasBounds = ctx.canvas.getBoundingClientRect()
           }
 
           const absoluteBounds = {
-            x: cache.left + rect.x,
-            y: cache.top + rect.y,
+            x: canvasBounds.left + rect.x,
+            y: canvasBounds.top + rect.y,
             width: rect.width,
             height: rect.height,
           }
@@ -288,7 +285,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         }
 
         if (treeEnabled && nodesByRowIndex && treeColumnId && column.id === treeColumnId) {
-          const node = nodesByRowIndex[row]
+          const node = nodesByRowIndex?.[row]
           if (node) {
             const wrappedRenderContent = renderCellContent ? (r: RowType) => renderCellContent(r, row) : undefined
             return createTreeViewCanvasCell(

@@ -19,9 +19,6 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
   const onSortChange = options?.onSortChange
 
   const [internalSortState, setInternalSortState] = useState<GridSortModel | null>(null)
-  const [gridRows, setGridRows] = useState<RowType[]>(() => rows)
-
-  // Use external state if provided, otherwise internal
   const sortState = externalSortModel !== undefined ? externalSortModel : internalSortState
 
   const sortedColumnIndex = useMemo(() => {
@@ -31,15 +28,19 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
     return normalizedColumns.findIndex((column) => column.id === sortState.columnId)
   }, [normalizedColumns, sortState])
 
+  const clearSortState = useCallback(() => {
+    if (onSortChange) {
+      onSortChange(null)
+      return
+    }
+    setInternalSortState(null)
+  }, [onSortChange])
+
   useEffect(() => {
     if (sortState && sortedColumnIndex === -1) {
-      if (onSortChange) {
-        onSortChange(null)
-      } else {
-        setInternalSortState(null)
-      }
+      clearSortState()
     }
-  }, [sortState, sortedColumnIndex, onSortChange])
+  }, [clearSortState, sortState, sortedColumnIndex])
 
   const sortData = useCallback(
     (rowsToSort: RowType[], columnIndex: number, direction: SortDirection) => {
@@ -54,38 +55,32 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
   )
 
   useEffect(() => {
-    if (disabled) {
-      setGridRows(rows)
-      return
-    }
-
-    // If we have external sorting (onSortChange is present), we assume the parent handles sorting the data
-    // So we just return the rows as is (or maybe the parent passes sorted rows)
-    // BUT, if the user only passed onSortChange but NOT sortModel, it's a bit ambiguous.
-    // Usually external sorting means both are controlled.
-    // Let's assume if onSortChange is provided, we DON'T sort internally.
-    if (onSortChange) {
-      setGridRows(rows)
-      return
-    }
-
-    if (sortState && sortedColumnIndex >= 0) {
-      setGridRows(sortData(rows, sortedColumnIndex, sortState.direction))
-      return
-    }
-
-    setGridRows(rows)
-  }, [rows, sortData, sortState, sortedColumnIndex, disabled, onSortChange])
-
-  useEffect(() => {
     if (disabled && sortState) {
-      if (onSortChange) {
-        onSortChange(null)
-      } else {
-        setInternalSortState(null)
-      }
+      clearSortState()
     }
-  }, [disabled, sortState, onSortChange])
+  }, [clearSortState, disabled, sortState])
+
+  const shouldDelegateSorting = Boolean(onSortChange)
+  const gridRows = useMemo(() => {
+    if (disabled || shouldDelegateSorting) {
+      return rows
+    }
+    if (sortState && sortedColumnIndex >= 0) {
+      return sortData(rows, sortedColumnIndex, sortState.direction)
+    }
+    return rows
+  }, [disabled, rows, shouldDelegateSorting, sortData, sortState, sortedColumnIndex])
+
+  const applySortModel = useCallback(
+    (model: GridSortModel | null) => {
+      if (onSortChange) {
+        onSortChange(model)
+        return
+      }
+      setInternalSortState(model)
+    },
+    [onSortChange]
+  )
 
   const handleColumnSort = useCallback(
     (columnIndex: number, direction?: SortDirection | null) => {
@@ -104,30 +99,18 @@ export function useGridSorting<RowType extends Record<string, unknown>>(
       if (direction !== undefined) {
         nextDirection = direction ?? undefined
       } else {
-        // Default toggle behaviour (asc -> desc -> asc)
         nextDirection = isSameColumn && sortState?.direction === 'asc' ? 'desc' : 'asc'
       }
 
       if (nextDirection === undefined) {
-        if (onSortChange) {
-          onSortChange(null)
-        } else {
-          setInternalSortState(null)
-        }
+        applySortModel(null)
         return
       }
 
       const nextSortModel: GridSortModel = { columnId: column.id ?? '', direction: nextDirection }
-
-      if (onSortChange) {
-        onSortChange(nextSortModel)
-      } else {
-        setInternalSortState(nextSortModel)
-        // We still need to update rows for internal sorting immediately for better UX if possible,
-        // but the effect will handle it.
-      }
+      applySortModel(nextSortModel)
     },
-    [disabled, normalizedColumns, sortState, onSortChange]
+    [applySortModel, disabled, normalizedColumns, sortState]
   )
 
   return { gridRows, sortState, handleColumnSort }

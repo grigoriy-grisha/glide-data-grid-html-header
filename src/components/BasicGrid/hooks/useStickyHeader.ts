@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface UseStickyHeaderParams {
   enabled: boolean
   gridRef: React.RefObject<HTMLDivElement>
@@ -26,10 +22,6 @@ interface StickyState {
   translateY: number
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
 const STICKY_TOP_OFFSET = 0
 const STICKY_Z_INDEX = 30
 const SNAP_THRESHOLD = 8
@@ -43,9 +35,7 @@ const INITIAL_STICKY_STATE: StickyState = {
   translateY: 0,
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+const PASSIVE_LISTENER_OPTIONS: AddEventListenerOptions = { passive: true }
 
 function getScrollableAncestors(node: HTMLElement): (HTMLElement | Window)[] {
   const ancestors: (HTMLElement | Window)[] = []
@@ -69,10 +59,6 @@ function clampVirtualOffset(value: number, max: number): number {
   return Math.max(0, Math.min(max, value))
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function useStickyHeader({
   enabled,
   gridRef,
@@ -84,41 +70,45 @@ export function useStickyHeader({
   const lastStickyRef = useRef<StickyState>(INITIAL_STICKY_STATE)
   const lastVirtualRef = useRef(0)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Sticky metrics (page scroll)
-  // ─────────────────────────────────────────────────────────────────────────
+  const resetStickyState = useCallback(() => {
+    if (!lastStickyRef.current.isSticky) {
+      return
+    }
+    lastStickyRef.current = INITIAL_STICKY_STATE
+    setStickyState(INITIAL_STICKY_STATE)
+  }, [])
+
+  const resetVirtualOffset = useCallback(() => {
+    if (lastVirtualRef.current === 0) {
+      return
+    }
+    lastVirtualRef.current = 0
+    setVirtualOffset(0)
+  }, [])
 
   const updateStickyMetrics = useCallback(() => {
     const grid = gridRef.current
     if (!enabled || !grid || headerHeight <= 0) {
-      if (lastStickyRef.current.isSticky) {
-        lastStickyRef.current = INITIAL_STICKY_STATE
-        setStickyState(INITIAL_STICKY_STATE)
-      }
+      resetStickyState()
       return
     }
 
     const rect = grid.getBoundingClientRect()
     const shouldStick = rect.top <= STICKY_TOP_OFFSET && rect.bottom > STICKY_TOP_OFFSET
-
     if (!shouldStick) {
-      if (lastStickyRef.current.isSticky) {
-        lastStickyRef.current = INITIAL_STICKY_STATE
-        setStickyState(INITIAL_STICKY_STATE)
-      }
+      resetStickyState()
       return
     }
 
     const translateY = Math.min(0, rect.bottom - (STICKY_TOP_OFFSET + headerHeight))
     const prev = lastStickyRef.current
+    const hasMeaningfulChange =
+      !prev.isSticky ||
+      prev.width !== rect.width ||
+      prev.left !== rect.left ||
+      Math.abs(prev.translateY - translateY) > SNAP_THRESHOLD
 
-    // Skip if no significant change
-    if (
-      prev.isSticky &&
-      prev.width === rect.width &&
-      prev.left === rect.left &&
-      Math.abs(prev.translateY - translateY) <= SNAP_THRESHOLD
-    ) {
+    if (!hasMeaningfulChange) {
       return
     }
 
@@ -130,26 +120,16 @@ export function useStickyHeader({
     }
     lastStickyRef.current = next
     setStickyState(next)
-  }, [enabled, gridRef, headerHeight])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Virtual scroll (grid internal scroll, sticky disabled)
-  // ─────────────────────────────────────────────────────────────────────────
+  }, [enabled, gridRef, headerHeight, resetStickyState])
 
   const handleVirtualScroll = useCallback(
     (offset: number) => {
-      // Reset when sticky is enabled or invalid headerHeight
       if (enabled || headerHeight <= 0) {
-        if (lastVirtualRef.current !== 0) {
-          lastVirtualRef.current = 0
-          setVirtualOffset(0)
-        }
+        resetVirtualOffset()
         return
       }
 
       const clamped = clampVirtualOffset(offset, headerHeight)
-
-      // Skip if no significant change
       if (Math.abs(clamped - lastVirtualRef.current) < VIRTUAL_SNAP_THRESHOLD) {
         return
       }
@@ -157,46 +137,32 @@ export function useStickyHeader({
       lastVirtualRef.current = clamped
       setVirtualOffset(clamped)
     },
-    [enabled, headerHeight]
+    [enabled, headerHeight, resetVirtualOffset]
   )
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Scroll listeners (sticky mode only)
-  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!enabled) {
-      if (lastStickyRef.current.isSticky) {
-        lastStickyRef.current = INITIAL_STICKY_STATE
-        setStickyState(INITIAL_STICKY_STATE)
-      }
+      resetStickyState()
       return
     }
 
     const node = gridRef.current
-    if (!node) return
+    if (!node) {
+      return
+    }
 
     const targets = getScrollableAncestors(node)
-
-    const onScroll = () => {
-      updateStickyMetrics()
-    }
+    const handleScroll = () => updateStickyMetrics()
 
     updateStickyMetrics()
-
-    const opts: AddEventListenerOptions = { passive: true }
-    targets.forEach((t) => t.addEventListener('scroll', onScroll, opts))
-    window.addEventListener('resize', onScroll, opts)
+    targets.forEach((target) => target.addEventListener('scroll', handleScroll, PASSIVE_LISTENER_OPTIONS))
+    window.addEventListener('resize', handleScroll, PASSIVE_LISTENER_OPTIONS)
 
     return () => {
-      targets.forEach((t) => t.removeEventListener('scroll', onScroll))
-      window.removeEventListener('resize', onScroll)
+      targets.forEach((target) => target.removeEventListener('scroll', handleScroll))
+      window.removeEventListener('resize', handleScroll)
     }
-  }, [enabled, gridRef, updateStickyMetrics])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Resize observer (sticky mode only)
-  // ─────────────────────────────────────────────────────────────────────────
+  }, [enabled, gridRef, resetStickyState, updateStickyMetrics])
 
   useEffect(() => {
     if (!enabled || typeof ResizeObserver === 'undefined') return
@@ -213,10 +179,6 @@ export function useStickyHeader({
       observer.disconnect()
     }
   }, [enabled, gridRef, updateStickyMetrics])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Computed style
-  // ─────────────────────────────────────────────────────────────────────────
 
   const headerLayerStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (!enabled || !stickyState.isSticky) return undefined

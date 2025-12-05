@@ -106,39 +106,38 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
         return widths
       }
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        const delta = moveEvent.clientX - startX
-        const nextWidths = calculateWidths(delta)
-        
-        const updates = columnRange.map((item, index) => ({
-            columnId: item.column.id,
-            width: nextWidths[index],
+      const emitWidthUpdates = (widths: number[]) =>
+        columnRange.map((item, index) => ({
+          columnId: item.column.id,
+          width: widths[index],
         }))
 
+      const applyWidthUpdates = (widths: number[]) => {
+        const updates = emitWidthUpdates(widths)
         if (onResizeProgress) {
-            onResizeProgress(updates)
+          onResizeProgress(updates)
         } else {
-            setColumnWidths(updates)
+          setColumnWidths(updates)
         }
       }
 
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX
+        const nextWidths = calculateWidths(delta)
+        applyWidthUpdates(nextWidths)
+      }
+
       const handleMouseUp = (upEvent: MouseEvent) => {
-        // Calculate final widths one last time to ensure consistency
         const delta = upEvent.clientX - startX
         const nextWidths = calculateWidths(delta)
-        
-        const updates = columnRange.map((item, index) => ({
-            columnId: item.column.id,
-            width: nextWidths[index],
-        }))
 
+        const updates = emitWidthUpdates(nextWidths)
         if (onResizeEnd) {
-            onResizeEnd(updates)
-        } else if (!onResizeProgress) {
-             // If no custom progress handler, we already updated via setColumnWidths in mousemove.
-             // But good to ensure final state is set if needed, though setColumnWidths is state setter.
+          onResizeEnd(updates)
+        } else {
+          applyWidthUpdates(nextWidths)
         }
-        
+
         cleanup()
       }
 

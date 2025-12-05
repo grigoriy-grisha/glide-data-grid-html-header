@@ -2,6 +2,71 @@ import { useCallback, useEffect, useRef } from 'react'
 import type React from 'react'
 import type { GridColumn } from '../models/GridColumn'
 
+const BINARY_SEARCH_THRESHOLD = 20
+const binarySearchTarget = (dataX: number, positions: number[], widths: number[], length: number) => {
+  let left = 0
+  let right = length - 1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    const start = positions[mid] ?? 0
+    const width = widths[mid] ?? 0
+    const midpoint = start + width / 2
+
+    if (dataX < midpoint) {
+      right = mid - 1
+    } else {
+      left = mid + 1
+    }
+  }
+
+  return left
+}
+
+const linearSearchTarget = (dataX: number, positions: number[], widths: number[], length: number) => {
+  for (let i = 0; i < length; i++) {
+    const start = positions[i] ?? 0
+    const width = widths[i] ?? 0
+    const midpoint = start + width / 2
+    if (dataX < midpoint) {
+      return i
+    }
+  }
+  return length
+}
+
+const collectAffectedIndices = (
+  sourceIndex: number,
+  targetIndex: number,
+  previousTarget: number | null,
+  columnCount: number
+) => {
+  const affected = new Set<number>()
+  affected.add(sourceIndex)
+
+  if (previousTarget !== null && previousTarget !== targetIndex) {
+    affected.add(previousTarget)
+    if (previousTarget > 0) {
+      affected.add(previousTarget - 1)
+    }
+    if (previousTarget < columnCount) {
+      affected.add(previousTarget + 1)
+    }
+  }
+
+  if (targetIndex !== sourceIndex) {
+    affected.add(targetIndex)
+    if (targetIndex > 0) {
+      affected.add(targetIndex - 1)
+    }
+    if (targetIndex < columnCount) {
+      affected.add(targetIndex + 1)
+    }
+  }
+
+  return affected
+}
+
 interface DragState {
   sourceIndex: number
   targetIndex: number
@@ -52,39 +117,28 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
         return 0
       }
 
-      // Бинарный поиск для больших массивов
-      if (length > 20) {
-        let left = 0
-        let right = length - 1
-
-        while (left <= right) {
-          const mid = Math.floor((left + right) / 2)
-          const start = columnPositions[mid] ?? 0
-          const width = columnWidths[mid] ?? 0
-          const midpoint = start + width / 2
-
-          if (dataX < midpoint) {
-            right = mid - 1
-          } else {
-            left = mid + 1
-          }
-        }
-        return left
+      if (length > BINARY_SEARCH_THRESHOLD) {
+        return binarySearchTarget(dataX, columnPositions, columnWidths, length)
       }
 
-      // Линейный поиск для малых массивов (быстрее из-за меньших накладных расходов)
-      for (let i = 0; i < length; i++) {
-        const start = columnPositions[i] ?? 0
-        const width = columnWidths[i] ?? 0
-        const midpoint = start + width / 2
-        if (dataX < midpoint) {
-          return i
-        }
-      }
-      return length
+      return linearSearchTarget(dataX, columnPositions, columnWidths, length)
     },
     [columnPositions, columnWidths, orderedColumns.length]
   )
+
+  const resetDragClasses = useCallback(() => {
+    const cells = headerCellsRef.current
+    const previousClasses = previousClassesRef.current
+    previousClasses.forEach((classNames, columnIndex) => {
+      const element = cells.get(columnIndex)
+      if (!element) {
+        return
+      }
+      classNames.forEach((className) => element.classList.remove(className))
+    })
+    previousClasses.clear()
+    previousTargetRef.current = null
+  }, [])
 
   const updateDragClasses = useCallback(() => {
     const dragState = dragStateRef.current
@@ -92,68 +146,22 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
     const previousClasses = previousClassesRef.current
 
     if (!dragState) {
-      // Очистка всех drag-классов при завершении перетаскивания
-      const dragClasses = [
-        'basic-grid-header-cell--dragging',
-        'basic-grid-header-cell--drop-before',
-        'basic-grid-header-cell--drop-after',
-        'basic-grid-header-cell--drop-indicator',
-        'basic-grid-header-cell--drag-placeholder',
-      ]
-
-      // Очищаем только те ячейки, у которых были drag-классы
-      previousClasses.forEach((prevClasses, columnIndex) => {
-        const element = cells.get(columnIndex)
-        if (element && prevClasses) {
-          dragClasses.forEach((className) => {
-            if (prevClasses.has(className)) {
-              element.classList.remove(className)
-            }
-          })
-        }
-      })
-      previousClasses.clear()
-      previousTargetRef.current = null
+      resetDragClasses()
       return
     }
 
-    const sourceIndex = dragState.sourceIndex
-    const targetIndex = dragState.targetIndex
+    const { sourceIndex, targetIndex } = dragState
     const previousTarget = previousTargetRef.current
     const hasDropTarget = targetIndex !== sourceIndex
+    const affectedIndices = collectAffectedIndices(
+      sourceIndex,
+      targetIndex,
+      previousTarget,
+      orderedColumns.length
+    )
 
-    // Обновляем только затронутые ячейки: источник, предыдущий target, новый target и соседние
-    const affectedIndices = new Set<number>()
-
-    // Источник всегда обновляется
-    affectedIndices.add(sourceIndex)
-
-    // Предыдущий target и его соседи (нужно очистить)
-    if (previousTarget !== null && previousTarget !== targetIndex) {
-      affectedIndices.add(previousTarget)
-      if (previousTarget > 0) {
-        affectedIndices.add(previousTarget - 1)
-      }
-      if (previousTarget < orderedColumns.length) {
-        affectedIndices.add(previousTarget + 1)
-      }
-    }
-
-    // Новый target и соседние
-    if (hasDropTarget) {
-      affectedIndices.add(targetIndex)
-      if (targetIndex > 0) {
-        affectedIndices.add(targetIndex - 1)
-      }
-      if (targetIndex < orderedColumns.length) {
-        affectedIndices.add(targetIndex + 1)
-      }
-    }
-
-    // Сохраняем текущий target для следующего обновления
     previousTargetRef.current = targetIndex
 
-    // Обновляем только затронутые ячейки
     affectedIndices.forEach((columnIndex) => {
       const element = cells.get(columnIndex)
       if (!element) {
@@ -166,37 +174,34 @@ export function useColumnReorderDrag<RowType extends Record<string, unknown>>({
       const showDropIndicator = dropBefore || dropAfter
       const isGhosted = hasDropTarget && !isDragging
 
-      const newClasses = new Set<string>()
-      if (isDragging) newClasses.add('basic-grid-header-cell--dragging')
-      if (dropBefore) newClasses.add('basic-grid-header-cell--drop-before')
-      if (dropAfter) newClasses.add('basic-grid-header-cell--drop-after')
-      if (showDropIndicator) newClasses.add('basic-grid-header-cell--drop-indicator')
-      if (isGhosted) newClasses.add('basic-grid-header-cell--drag-placeholder')
+      const nextClasses = new Set<string>()
+      if (isDragging) nextClasses.add('basic-grid-header-cell--dragging')
+      if (dropBefore) nextClasses.add('basic-grid-header-cell--drop-before')
+      if (dropAfter) nextClasses.add('basic-grid-header-cell--drop-after')
+      if (showDropIndicator) nextClasses.add('basic-grid-header-cell--drop-indicator')
+      if (isGhosted) nextClasses.add('basic-grid-header-cell--drag-placeholder')
 
-      const prevClasses = previousClasses.get(columnIndex) || new Set<string>()
+      const prevClasses = previousClasses.get(columnIndex) ?? new Set<string>()
 
-      // Удаляем классы, которые были, но больше не нужны
       prevClasses.forEach((className) => {
-        if (!newClasses.has(className)) {
+        if (!nextClasses.has(className)) {
           element.classList.remove(className)
         }
       })
 
-      // Добавляем новые классы
-      newClasses.forEach((className) => {
+      nextClasses.forEach((className) => {
         if (!prevClasses.has(className)) {
           element.classList.add(className)
         }
       })
 
-      // Сохраняем текущее состояние
-      if (newClasses.size > 0) {
-        previousClasses.set(columnIndex, newClasses)
+      if (nextClasses.size > 0) {
+        previousClasses.set(columnIndex, nextClasses)
       } else {
         previousClasses.delete(columnIndex)
       }
     })
-  }, [orderedColumns.length])
+  }, [orderedColumns.length, resetDragClasses])
 
   const cleanup = useCallback(() => {
     cleanupRef.current?.()
