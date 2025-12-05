@@ -67,7 +67,6 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
     }
 
     onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
-        // Draw background
         if (this.backgroundColor && this.backgroundColor !== 'transparent') {
             batcher.fillRect(
                 this.rect.x,
@@ -78,7 +77,6 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
             );
         }
 
-        // Draw border
         if (this.borderWidth > 0 && this.borderColor && this.borderColor !== 'transparent') {
             batcher.strokeRect(
                 this.rect.x + this.borderWidth / 2,
@@ -90,7 +88,6 @@ export class CanvasAbsoluteContainer extends CanvasContainer {
             );
         }
 
-        // Paint children
         super.onPaint(batcher, ctx);
     }
 }

@@ -1,11 +1,17 @@
-import { GridCellKind, type CustomRenderer } from '@glideapps/glide-data-grid'
+import {type CustomRenderer, GridCellKind} from '@glideapps/glide-data-grid'
 
-import type { CanvasCell } from './types'
-import { CANVAS_CELL_KIND } from './types'
-import { buildCellId, getCellIndices, normalizeHoverPoint, resolveClickPoint, toRelativePoint, isPointInArea } from './helpers'
-import { getHoverState, retrieveRenderData, updateHoverState } from './state'
-import { CellCanvasRoot } from './CellCanvasRoot'
-import type { RectBounds } from './types'
+import type {CanvasCell, RectBounds} from './types'
+import {CANVAS_CELL_KIND} from './types'
+import {
+  buildCellId,
+  getCellIndices,
+  isPointInArea,
+  normalizeHoverPoint,
+  resolveClickPoint,
+  toRelativePoint
+} from './helpers'
+import {getHoverState, retrieveRenderData, storeRenderData, updateHoverState} from './state'
+import {CellCanvasRoot} from './CellCanvasRoot'
 
 const POINTER_CANDIDATE_KEYS: Array<['hoverX' | 'mouseX' | 'pointerX' | 'posX' | 'x', 'hoverY' | 'mouseY' | 'pointerY' | 'posY' | 'y']> = [
   ['hoverX', 'hoverY'],
@@ -104,7 +110,7 @@ export const canvasCellRenderer: CustomRenderer<CanvasCell> = {
     })
     const hoveredAreas = renderResult?.hoveredAreas ?? []
 
-    // storeRenderData(cellId, cell, renderResult)
+    storeRenderData(cellId, cell, renderResult)
 
     const canvasRoot = renderResult?.canvasRoot ?? previousRenderData?.canvasRoot
 

@@ -8,17 +8,11 @@ import {
     PaddingBox,
 } from '../../../miniflex';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
 const LAYOUT_EPSILON = 0.5;
 const MAX_LAYOUT_PASSES = 3;
 
-// Zero padding singleton to avoid allocations
 const ZERO_PADDING: PaddingBox = { top: 0, right: 0, bottom: 0, left: 0 };
 
-// Reusable style object for addChild calls to avoid object creation
 const _addChildStyle: {
     flexGrow: number;
     flexShrink: number;
@@ -35,23 +29,15 @@ const _addChildStyle: {
     height: undefined,
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Inlined Helper Functions (avoid function call overhead in hot paths)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Faster than optional chaining + nullish coalescing
 const isRowDirection = (direction: FlexBoxOptions['direction'] | undefined): boolean => {
-    // Direct comparison is faster than startsWith
     return direction === undefined || direction === 'row' || direction === 'row-reverse';
 };
 
-// Inline resolvePaddingBox to avoid function call and object creation
 const resolvePaddingBox = (padding: FlexBoxOptions['padding'] | undefined): PaddingBox => {
     if (padding === undefined) {
         return ZERO_PADDING;
     }
     if (typeof padding === 'number') {
-        // Only create new object when needed
         return { top: padding, right: padding, bottom: padding, left: padding };
     }
     return {
@@ -62,14 +48,50 @@ const resolvePaddingBox = (padding: FlexBoxOptions['padding'] | undefined): Padd
     };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CanvasContainer
-// ─────────────────────────────────────────────────────────────────────────────
+const computeIntrinsicSize = (
+    children: CanvasNode[],
+    isRow: boolean,
+    gap: number
+): { width: number; height: number } => {
+    let width = 0;
+    let height = 0;
+    const len = children.length;
+
+    if (len === 0) {
+        return { width, height };
+    }
+
+    if (isRow) {
+        for (let i = 0; i < len; i++) {
+            const childRect = children[i].rect;
+            width += childRect.width;
+            if (childRect.height > height) {
+                height = childRect.height;
+            }
+        }
+        if (len > 1) {
+            width += gap * (len - 1);
+        }
+        return { width, height };
+    }
+
+    for (let i = 0; i < len; i++) {
+        const childRect = children[i].rect;
+        height += childRect.height;
+        if (childRect.width > width) {
+            width = childRect.width;
+        }
+    }
+    if (len > 1) {
+        height += gap * (len - 1);
+    }
+
+    return { width, height };
+};
 
 export class CanvasContainer extends CanvasNode {
     private _flexOptions: FlexBoxOptions;
 
-    // Cached values to avoid recalculation
     private _cachedPadding: PaddingBox = ZERO_PADDING;
     private _cachedIsRow: boolean = true;
     private _cachedGap: number = 0;
@@ -111,68 +133,32 @@ export class CanvasContainer extends CanvasNode {
         this._optionsCacheValid = true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Measurement
-    // ─────────────────────────────────────────────────────────────────────────
-
     measure(ctx: CanvasRenderingContext2D) {
         const children = this.children;
         const len = children.length;
 
-        // Measure all children first
         for (let i = 0; i < len; i++) {
             children[i].measure(ctx);
         }
 
         this._ensureOptionsCache();
-        const isRow = this._cachedIsRow;
-        const gap = this._cachedGap;
+        const { width: contentWidth, height: contentHeight } = computeIntrinsicSize(
+            children,
+            this._cachedIsRow,
+            this._cachedGap
+        );
         const padding = this._cachedPadding;
-
-        // Compute intrinsic content size inline
-        let contentWidth = 0;
-        let contentHeight = 0;
-
-        if (len > 0) {
-            if (isRow) {
-                for (let i = 0; i < len; i++) {
-                    const childRect = children[i].rect;
-                    contentWidth += childRect.width;
-                    if (childRect.height > contentHeight) {
-                        contentHeight = childRect.height;
-                    }
-                }
-                // Add gaps (len - 1 gaps)
-                if (len > 1) {
-                    contentWidth += gap * (len - 1);
-                }
-            } else {
-                for (let i = 0; i < len; i++) {
-                    const childRect = children[i].rect;
-                    contentHeight += childRect.height;
-                    if (childRect.width > contentWidth) {
-                        contentWidth = childRect.width;
-                    }
-                }
-                if (len > 1) {
-                    contentHeight += gap * (len - 1);
-                }
-            }
-        }
 
         const intrinsicWidth = contentWidth + padding.left + padding.right;
         const intrinsicHeight = contentHeight + padding.top + padding.bottom;
 
-        // Cache intrinsic size
         this._intrinsicWidth = intrinsicWidth;
         this._intrinsicHeight = intrinsicHeight;
 
-        // Check explicit dimensions (inline for speed)
         const style = this.style;
         const styleWidth = style.width;
         const styleHeight = style.height;
 
-        // Combine typeof check with assignment to avoid double branching
         this.rect.width = typeof styleWidth === 'number' ? styleWidth : intrinsicWidth;
         this.rect.height = typeof styleHeight === 'number' ? styleHeight : intrinsicHeight;
 
@@ -182,21 +168,14 @@ export class CanvasContainer extends CanvasNode {
 
         this.clearMeasureDirty();
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Layout
-    // ─────────────────────────────────────────────────────────────────────────
-
     performLayout(ctx: CanvasRenderingContext2D) {
         this.measure(ctx);
 
-        // Early exit if no children
         if (this.children.length === 0) {
             this.clearLayoutDirty();
             return;
         }
 
-        // Create flex tree and compute layout using miniflex
         const root = new RootFlexBox(this.rect.width, this.rect.height, this._flexOptions);
         this._buildFlexTree(this, root);
 
@@ -224,7 +203,6 @@ export class CanvasContainer extends CanvasNode {
             availableWidth -= padding.left + padding.right;
         }
 
-        // Ensure we don't clamp to negative values
         availableWidth = Math.max(0, availableWidth);
 
         if (this.rect.width > availableWidth) {
@@ -235,7 +213,6 @@ export class CanvasContainer extends CanvasNode {
     private _buildFlexTree(cNode: CanvasNode, fBox: FlexBox) {
         const children = cNode.children;
         const len = children.length;
-        // Direct comparison is faster than startsWith
         const dir = fBox.direction;
         const isHorizontal = dir === 'row' || dir === 'row-reverse';
         const parentWidth = fBox.size.width;
@@ -245,7 +222,6 @@ export class CanvasContainer extends CanvasNode {
             const child = children[i];
             const childStyle = child.style;
 
-            // Extract style values with defaults inline
             const csWidth = childStyle.width;
             const csHeight = childStyle.height;
             let flexGrow = childStyle.flexGrow ?? 0;
@@ -255,7 +231,6 @@ export class CanvasContainer extends CanvasNode {
             let width: number | undefined = typeof csWidth === 'number' ? csWidth : undefined;
             let height: number | undefined = typeof csHeight === 'number' ? csHeight : undefined;
 
-            // Handle width: '100%'
             if (csWidth === '100%') {
                 if (isHorizontal) {
                     width = undefined;
@@ -265,7 +240,6 @@ export class CanvasContainer extends CanvasNode {
                 }
             }
 
-            // Handle height: '100%'
             if (csHeight === '100%') {
                 if (!isHorizontal) {
                     height = undefined;
@@ -275,12 +249,10 @@ export class CanvasContainer extends CanvasNode {
                 }
             }
 
-            // Set flexBasis from natural size if not set
             if (flexBasis === 0) {
                 flexBasis = isHorizontal ? child.rect.width : child.rect.height;
             }
 
-            // Write directly to reusable object
             _addChildStyle.flexGrow = flexGrow;
             _addChildStyle.flexShrink = flexShrink;
             _addChildStyle.flexBasis = flexBasis;
@@ -307,7 +279,6 @@ export class CanvasContainer extends CanvasNode {
     private _reconcileLayout(ctx: CanvasRenderingContext2D, cNode: CanvasNode, fNode: FlexElement | FlexBox): boolean {
         let dirty = false;
 
-        // Get parent rect - avoid ternary for hot path
         const parent = cNode.parent;
         const parentRect = parent !== null ? parent.rect : this.rect;
         const fPos = fNode.position;
@@ -321,7 +292,6 @@ export class CanvasContainer extends CanvasNode {
         cRect.width = fSize.width;
         cRect.height = fSize.height;
 
-        // Use children array length check instead of instanceof for containers
         const cChildren = cNode.children;
         const hasChildren = cChildren.length > 0;
         
@@ -339,7 +309,6 @@ export class CanvasContainer extends CanvasNode {
                 const heightDiff = fSize.height - cRect.height;
                 const widthDiff = fSize.width - cRect.width;
 
-                // Use Math.abs for cleaner comparison
                 if (Math.abs(heightDiff) > LAYOUT_EPSILON) {
                     fSize.height = cRect.height;
                     dirty = true;
@@ -411,19 +380,11 @@ export class CanvasContainer extends CanvasNode {
 
         return false;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Painting
-    // ─────────────────────────────────────────────────────────────────────────
-
     onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
-        // Paint all children
         for (let i = 0, children = this.children, len = children.length; i < len; i++) {
             children[i].paint(batcher, ctx);
         }
     }
 }
-
-// Re-export for convenience
 export { resolvePaddingBox };
 export type { PaddingBox };

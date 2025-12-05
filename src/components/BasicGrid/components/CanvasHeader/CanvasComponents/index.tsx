@@ -1,4 +1,4 @@
-import React, {ReactElement, ReactNode} from 'react'
+import React, {ReactElement, ReactNode, useLayoutEffect} from 'react'
 import {CanvasContainer} from '../core/CanvasContainer'
 import {CanvasEvent, CanvasFlexStyle, CanvasNode} from '../core/CanvasNode'
 import {CanvasText, CanvasTextOptions} from '../primitives/CanvasText'
@@ -9,28 +9,20 @@ import {CanvasRect} from '../primitives/CanvasRect'
 import {CanvasTag, CanvasTagOptions} from '../primitives/CanvasTag'
 import type {FlexBoxOptions} from '../../../miniflex'
 import type {ButtonIcon} from '../../../customCells/canvasCell/iconSprites'
-import { useLayoutEffect } from 'react'
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Component Props
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
   children?: ReactNode
   style?: Partial<CanvasFlexStyle>
   id?: string
-  /** Universal gap between items (sets both columnGap and rowGap) */
   gap?: number
-  /** Gap between columns (horizontal spacing in row direction) */
   columnGap?: number
-  /** Gap between rows (vertical spacing in column direction) */
   rowGap?: number
-  /** Enables hover portal feedback for this node */
   portalHoverEnabled?: boolean
 }
 
-interface TextProps extends Omit<CanvasTextOptions, 'font' | 'color'> {
+interface TextProps
+  extends Omit<CanvasTextOptions, 'font' | 'color'> {
   children?: ReactNode
   font?: string
   color?: string
@@ -89,9 +81,27 @@ interface TagProps extends CanvasTagOptions {
   portalHoverEnabled?: boolean
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RootBridge - Connects React components to Canvas rendering
-// ─────────────────────────────────────────────────────────────────────────────
+type CanvasComponentType =
+  | 'Container'
+  | 'Text'
+  | 'Icon'
+  | 'Button'
+  | 'IconButton'
+  | 'Rect'
+  | 'Tag'
+
+type CanvasComponentMarker = {__canvasType: CanvasComponentType}
+
+type CanvasComponent<P> = ((props: P) => ReactElement | null) &
+  CanvasComponentMarker
+
+const createCanvasComponent = <P extends object>(
+  type: CanvasComponentType
+): CanvasComponent<P> => {
+  const Component = (_props: P) => null
+  ;(Component as CanvasComponent<P>).__canvasType = type
+  return Component as CanvasComponent<P>
+}
 
 export interface RootBridgeProps {
     cellId: string
@@ -100,11 +110,6 @@ export interface RootBridgeProps {
     onRegistryChange?: () => void
 }
 
-/**
- * Bridge component that captures JSX from renderContent and stores it
- * in the registry for Canvas rendering. Triggers onRegistryChange when
- * content is added or removed.
- */
 export const RootBridge = React.memo(function RootBridge({
     cellId,
     renderContent,
@@ -147,50 +152,14 @@ export const RootBridge = React.memo(function RootBridge({
     return null
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
-// JSX Component Functions
-// Return null (valid React element) but attach descriptor for buildCanvasTree
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ContainerComponent(_props: ContainerProps): ReactElement | null {
-  return null
-}
-// Attach descriptor factory
-(ContainerComponent as any).__canvasType = 'Container'
-
-function TextComponent(_props: TextProps): ReactElement | null {
-  return null
-}
-(TextComponent as any).__canvasType = 'Text'
-
-function IconComponent(_props: IconProps): ReactElement | null {
-  return null
-}
-(IconComponent as any).__canvasType = 'Icon'
-
-function ButtonComponent(_props: ButtonProps): ReactElement | null {
-  return null
-}
-(ButtonComponent as any).__canvasType = 'Button'
-
-function IconButtonComponent(_props: IconButtonProps): ReactElement | null {
-  return null
-}
-(IconButtonComponent as any).__canvasType = 'IconButton'
-
-function RectComponent(_props: RectProps): ReactElement | null {
-  return null
-}
-(RectComponent as any).__canvasType = 'Rect'
-
-function TagComponent(_props: TagProps): ReactElement | null {
-  return null
-}
-(TagComponent as any).__canvasType = 'Tag'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Canvas Namespace
-// ─────────────────────────────────────────────────────────────────────────────
+const ContainerComponent = createCanvasComponent<ContainerProps>('Container')
+const TextComponent = createCanvasComponent<TextProps>('Text')
+const IconComponent = createCanvasComponent<IconProps>('Icon')
+const ButtonComponent = createCanvasComponent<ButtonProps>('Button')
+const IconButtonComponent =
+  createCanvasComponent<IconButtonProps>('IconButton')
+const RectComponent = createCanvasComponent<RectProps>('Rect')
+const TagComponent = createCanvasComponent<TagProps>('Tag')
 
 export const Canvas = {
   Container: ContainerComponent,
@@ -202,50 +171,19 @@ export const Canvas = {
   Tag: TagComponent,
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper to wrap event handlers and preserve node context
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Wraps an event handler to ensure it receives the node as `this` context.
- * Arrow functions ignore `.bind()`, so this wrapper creates a regular function
- * that can be properly bound to the node.
- */
 function wrapEventHandler<T extends CanvasNode>(
   handler: ((event: CanvasEvent<T>) => void) | undefined,
   _node: T
-): (event: CanvasEvent<T>) => void {
+): ((event: CanvasEvent<T>) => void) | undefined {
   if (!handler) {
-    // Return a no-op function if handler is undefined
-    return () => {}
+    return undefined
   }
 
-  // Create a regular function that calls the handler with node as `this`
-  // This allows the handler to access the node via `this` when bound
-  // Note: Arrow functions will still ignore `this`, so use `event.currentTarget` instead
   return function(this: T, event: CanvasEvent<T>) {
     handler.call(this, event)
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Build Canvas Tree from JSX
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Convert JSX element tree to actual CanvasNode tree.
- *
- * @example
- * ```tsx
- * const tree = buildCanvasTree(
- *   <Canvas.Container direction="row" columnGap={8}>
- *     <Canvas.Text color="#333">Hello</Canvas.Text>
- *     <Canvas.Button variant="primary" onClick={() => {}}>Click</Canvas.Button>
- *   </Canvas.Container>,
- *   'my-cell'
- * )
- * ```
- */
 export function buildCanvasTree(
   element: ReactElement,
   idPrefix = 'root'
@@ -259,7 +197,7 @@ function extractTextFromChildren(children: ReactNode): string {
     if (Array.isArray(children)) {
         return children.map(extractTextFromChildren).join('')
     }
-    // React Element (not supported inside Text, but return empty string to be safe)
+
     return ''
 }
 
@@ -273,7 +211,7 @@ function buildNode(
   }
 
   const elementType = element.type as any
-  const canvasType = elementType.__canvasType as string | undefined
+  const canvasType = elementType.__canvasType as CanvasComponentType | undefined
 
   if (!canvasType) {
     throw new Error(`Unknown canvas component. Use Canvas.* components. Got: ${elementType?.name || elementType}`)
@@ -290,12 +228,10 @@ function buildNode(
     node.portalHoverEnabled = true
   }
 
-  // Apply style if provided - let the node's setter handle defaults (like cursor)
   if (props.style) {
     node.style = props.style
   }
 
-  // Process children for containers
   const children = props.children
   if (children && node instanceof CanvasContainer) {
     const childArray = React.Children.toArray(children)
@@ -314,7 +250,6 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
   switch (type) {
     case 'Container': {
       const { children, style, id: _, gap, columnGap, rowGap, portalHoverEnabled: _phe, ...restFlexOptions } = props
-      // Universal gap: if gap is set, use it for both axes unless specific gap is provided
       const flexOptions = {
         ...restFlexOptions,
         columnGap: columnGap ?? gap ?? 0,
@@ -327,10 +262,10 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       const { children, style: _style, id: _, font, color, wordWrap, lineHeight, portalHoverEnabled: _phe } = props
       const text = extractTextFromChildren(children)
       const node = new CanvasText(id, text, {
-          font: font ?? '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color,
-          wordWrap,
-          lineHeight
+        font: font ?? '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color,
+        wordWrap,
+        lineHeight
       })
       return node
     }
@@ -386,7 +321,6 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
   }
 }
 
-// Re-export types for convenience
 export type {
   ContainerProps as CanvasContainerProps,
   TextProps as CanvasTextProps,
