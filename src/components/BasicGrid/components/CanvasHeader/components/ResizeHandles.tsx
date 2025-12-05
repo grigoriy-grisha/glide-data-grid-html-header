@@ -2,6 +2,10 @@ import React from 'react'
 import { GridColumn } from '../../../models/GridColumn'
 import { SELECTION_COLUMN_ID } from '../../../constants'
 
+const HANDLE_BUFFER = 2
+const HANDLE_OFFSET = 5
+const VISIBILITY_THRESHOLD = 10
+
 interface ResizeHandlesProps {
   visibleIndices: { start: number; end: number } | null
   orderedColumns: GridColumn<any>[]
@@ -11,6 +15,48 @@ interface ResizeHandlesProps {
   width: number
   handleResizeMouseDown: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
+}
+
+interface ResizeHandleData {
+  columnIndex: number
+  columnId: string
+  position: number
+}
+
+function calculateVisibleRange(
+  visibleIndices: { start: number; end: number },
+  totalColumns: number
+): { start: number; end: number } {
+  return {
+    start: Math.max(0, visibleIndices.start - HANDLE_BUFFER),
+    end: Math.min(totalColumns, visibleIndices.end + HANDLE_BUFFER),
+  }
+}
+
+function isHandleVisible(relativeX: number, containerWidth: number): boolean {
+  return relativeX >= -VISIBILITY_THRESHOLD && relativeX <= containerWidth + VISIBILITY_THRESHOLD
+}
+
+function createResizeHandleData(
+  columnIndex: number,
+  column: GridColumn<any>,
+  columnWidths: number[],
+  columnPositions: number[],
+  scrollLeft: number
+): ResizeHandleData | null {
+  if (column.id === SELECTION_COLUMN_ID) {
+    return null
+  }
+
+  const colWidth = columnWidths[columnIndex] ?? column.baseWidth ?? 0
+  const x = (columnPositions[columnIndex] ?? 0) + colWidth
+  const relativeX = x - scrollLeft
+
+  return {
+    columnIndex,
+    columnId: column.id,
+    position: relativeX - HANDLE_OFFSET,
+  }
 }
 
 export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
@@ -23,41 +69,41 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
   handleResizeMouseDown,
   handleResizeDoubleClick,
 }) => {
-  if (!visibleIndices) return null
+  if (!visibleIndices) {
+    return null
+  }
 
-  const { start, end } = visibleIndices
-  // Buffer handles slightly to ensure edges are reachable
-  const buffer = 2
-  const safeStart = Math.max(0, start - buffer)
-  const safeEnd = Math.min(orderedColumns.length, end + buffer)
-
+  const { start, end } = calculateVisibleRange(visibleIndices, orderedColumns.length)
   const handles: React.ReactNode[] = []
 
-  for (let i = safeStart; i < safeEnd; i++) {
-    const col = orderedColumns[i]
-    if (col.id === SELECTION_COLUMN_ID) continue
+  for (let i = start; i < end; i++) {
+    const column = orderedColumns[i]
+    if (!column) continue
 
-    const colWidth = columnWidths[i] ?? col.baseWidth ?? 0
-    const x = (columnPositions[i] ?? 0) + colWidth
-    const relativeX = x - scrollLeft
+    const handleData = createResizeHandleData(
+      i,
+      column,
+      columnWidths,
+      columnPositions,
+      scrollLeft
+    )
 
-    // Only show handle if it's within the visible area (roughly)
-    if (relativeX < -10 || relativeX > width + 10) continue
+    if (!handleData) continue
+
+    const relativeX = handleData.position + HANDLE_OFFSET
+    if (!isHandleVisible(relativeX, width)) continue
 
     handles.push(
       <div
-        key={`resize-${col.id}-${i}`}
+        key={`resize-${handleData.columnId}-${handleData.columnIndex}`}
         className="resize-handle"
-        style={{ left: `${relativeX - 5}px` }}
-        onMouseDown={(e) => {
-          handleResizeMouseDown(e, i, 1)
-        }}
-        onDoubleClick={(e) => {
-          handleResizeDoubleClick?.(e, i, 1)
-        }}
+        style={{ left: `${handleData.position}px` }}
+        onMouseDown={(e) => handleResizeMouseDown(e, handleData.columnIndex, 1)}
+        onDoubleClick={(e) => handleResizeDoubleClick?.(e, handleData.columnIndex, 1)}
       />
     )
   }
+
   return <>{handles}</>
 })
 

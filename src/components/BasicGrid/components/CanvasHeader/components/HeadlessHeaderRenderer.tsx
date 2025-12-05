@@ -1,63 +1,76 @@
-import React, { ReactElement } from 'react'
+import React, { ReactElement, useMemo } from 'react'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
 import { RootBridge } from '../CanvasComponents'
 import { useVisibleCells } from '../hooks/useVisibleCells'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface HeadlessHeaderRendererProps {
-    visibleIndices: { start: number; end: number } | null
-    headerCells: GridHeaderCell[]
-    orderedColumns: GridColumn<any>[]
-    nodeRegistry: React.MutableRefObject<Map<string, ReactElement>>
-    onRegistryChange?: () => void
+  visibleIndices: { start: number; end: number } | null
+  headerCells: GridHeaderCell[]
+  orderedColumns: GridColumn<any>[]
+  nodeRegistry: React.MutableRefObject<Map<string, ReactElement>>
+  onRegistryChange?: () => void
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────────────────────
+interface CellRenderData {
+  cellId: string
+  renderContent: () => ReactElement
+}
 
-/**
- * Headless renderer that captures React component output from header cells
- * and stores the JSX in a registry for Canvas rendering.
- * 
- * This component renders nothing visible - it only executes renderColumnContent
- * functions and stores their output.
- */
-export const HeadlessHeaderRenderer: React.FC<HeadlessHeaderRendererProps> = ({
-    visibleIndices,
-    headerCells,
-    orderedColumns,
-    nodeRegistry,
-    onRegistryChange,
+function createCellId(startIndex: number, level: number): string {
+  return `cell-${startIndex}-${level}`
+}
+
+function getRenderContent(
+  cell: GridHeaderCell,
+  column: GridColumn<any> | undefined
+): (() => ReactElement) | null {
+  return cell.renderColumnContent ?? column?.getRenderColumnContent() ?? null
+}
+
+export const HeadlessHeaderRenderer: React.FC<HeadlessHeaderRendererProps> = React.memo(({
+  visibleIndices,
+  headerCells,
+  orderedColumns,
+  nodeRegistry,
+  onRegistryChange,
 }) => {
-    // Get visible cells using shared hook
-    const visibleCells = useVisibleCells(headerCells, visibleIndices)
+  const visibleCells = useVisibleCells(headerCells, visibleIndices)
 
-    return (
-        <>
-            {visibleCells.map((cell) => {
-                const cellId = `cell-${cell.startIndex}-${cell.level}`
-                const column = cell.columnIndex !== undefined 
-                    ? orderedColumns[cell.columnIndex] 
-                    : undefined
-                const renderContent = cell.renderColumnContent ?? column?.getRenderColumnContent()
+  const renderData = useMemo<CellRenderData[]>(() => {
+    return visibleCells
+      .map((cell) => {
+        const cellId = createCellId(cell.startIndex, cell.level)
+        const column = cell.columnIndex !== undefined 
+          ? orderedColumns[cell.columnIndex] 
+          : undefined
+        const renderContent = getRenderContent(cell, column)
 
-                if (!renderContent) return null
+        if (!renderContent) {
+          return null
+        }
 
-                return (
-                    <RootBridge 
-                        key={cellId}
-                        cellId={cellId}
-                        nodeRegistry={nodeRegistry}
-                        renderContent={renderContent}
-                        onRegistryChange={onRegistryChange}
-                    />
-                )
-            })}
-        </>
-    )
-}
+        return {
+          cellId,
+          renderContent,
+        }
+      })
+      .filter((data): data is CellRenderData => data !== null)
+  }, [visibleCells, orderedColumns])
+
+  return (
+    <>
+      {renderData.map(({ cellId, renderContent }) => (
+        <RootBridge 
+          key={cellId}
+          cellId={cellId}
+          nodeRegistry={nodeRegistry}
+          renderContent={renderContent}
+          onRegistryChange={onRegistryChange}
+        />
+      ))}
+    </>
+  )
+})
+
+HeadlessHeaderRenderer.displayName = 'HeadlessHeaderRenderer'
