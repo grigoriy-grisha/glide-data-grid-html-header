@@ -1,14 +1,4 @@
-import { createContext, useContext } from 'react';
-import { CanvasRegistry } from '../lib/canvas';
+import { CanvasRegistry } from '../lib/canvas'
+import { createSafeContext } from './createSafeContext'
 
-export const CanvasRegistryContext = createContext<CanvasRegistry | null>(null);
-
-export function useCanvasRegistry() {
-  const context = useContext(CanvasRegistryContext);
-  if (!context) {
-    throw new Error('useCanvasRegistry must be used within a CanvasRegistryProvider');
-  }
-  return context;
-}
-
-
+export const [CanvasRegistryContext, useCanvasRegistry] = createSafeContext<CanvasRegistry>('CanvasRegistry')
