@@ -11,9 +11,21 @@ import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWei
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
 import { buildCanvasTree } from '../CanvasComponents'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
+const DEFAULT_BORDER_COLOR = '#e0e0e0'
+const DEFAULT_BORDER_WIDTH = 1
+const CONTENT_COLUMN_GAP = 6
+const CONTENT_PADDING = 12
+const GRIP_ICON_SIZE = 12
+const SORT_BUTTON_SIZE = 20
+const CONTENT_WIDTH_MULTIPLIER = 2
+const CELL_ID_PREFIX = 'cell'
+
+const HOVER_COLOR_MAP: Record<string, string> = {
+    '#e3f2fd': '#bbdefb',
+    '#f5f5f5': '#e0e0e0',
+    '#fafafa': '#eeeeee',
+    '#ffffff': '#f5f5f5',
+};
 
 export interface GripIconHandlers {
     onMouseEnter: () => void
@@ -43,128 +55,117 @@ export interface BuildSceneConfig {
     ) => GripIconHandlers
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
-
 function getHoverColor(color: string): string {
-    const colorMap: Record<string, string> = {
-        '#e3f2fd': '#bbdefb',
-        '#f5f5f5': '#e0e0e0',
-        '#fafafa': '#eeeeee',
-        '#ffffff': '#f5f5f5',
-    }
-    return colorMap[color] ?? color
+    return HOVER_COLOR_MAP[color] ?? color
 }
 
 function getCellId(cell: GridHeaderCell): string {
-    return `cell-${cell.startIndex}-${cell.level}`
+    return `${CELL_ID_PREFIX}-${cell.startIndex}-${cell.level}`
 }
 
 export class HeaderSceneBuilder {
-    /**
-     * Build the complete header scene.
-     */
     build(config: BuildSceneConfig): CanvasAbsoluteContainer[] {
         return config.cells.map((cell) => this.buildCell(cell, config))
     }
 
-    private buildCell(
-        cell: GridHeaderCell,
-        config: BuildSceneConfig
-    ): CanvasAbsoluteContainer {
-        const {
-            columnPositions,
-            columnWidths,
-            scrollLeft,
-            headerRowHeight,
-            orderedColumns,
-        } = config
-
+    private buildCell(cell: GridHeaderCell, config: BuildSceneConfig): CanvasAbsoluteContainer {
+        const { columnPositions, columnWidths, scrollLeft, headerRowHeight, orderedColumns } = config
         const cellId = getCellId(cell)
 
-        // Calculate dimensions
-        const absoluteX = columnPositions[cell.startIndex] ?? 0
-        const cellX = Math.round(absoluteX - scrollLeft)
-        const cellWidth = cell.getSpanWidth(columnWidths)
-        const cellY = Math.round(cell.level * headerRowHeight)
-        const cellHeight = cell.rowSpan * headerRowHeight
+        const dimensions = this.calculateCellDimensions(cell, columnPositions, columnWidths, scrollLeft, headerRowHeight)
+        const colors = this.getCellColors(cell.level)
+        const column = this.getColumn(cell, orderedColumns)
 
-        // Colors
-        const normalColor = getHeaderColor(cell.level)
-        const hoverColor = getHoverColor(normalColor)
-
-        // Column reference
-        const column = cell.columnIndex !== undefined
-            ? orderedColumns[cell.columnIndex]
-            : undefined
-
-        // Build wrapper
-        const wrapper = this.createWrapper(cellId, cellX, cellY, cellWidth, cellHeight, normalColor, hoverColor)
-
-        // Build content containers
-        const contentContainer = this.createContentContainer(cellId, cellX, cellY, cellWidth, cellHeight)
+        const wrapper = this.createWrapper(cellId, dimensions, colors)
+        const contentContainer = this.createContentContainer(cellId, dimensions)
         const { left, right } = this.createContentSections(cellId)
 
-        // Populate content
         const hasCustomContent = this.populateContent(
-            cell, cellId, column, left, right, config, cellX, cellY, cellWidth, cellHeight
+            cell, cellId, column, left, right, config, dimensions
         )
 
-        // Assemble hierarchy
-        if (hasCustomContent) {
-            contentContainer.addChild(left)
-        } else {
-            contentContainer.addChild(left)
-            contentContainer.addChild(right)
-        }
-        wrapper.addChild(contentContainer)
+        this.assembleHierarchy(contentContainer, wrapper, left, right, hasCustomContent)
 
         return wrapper
     }
 
+    private calculateCellDimensions(
+        cell: GridHeaderCell,
+        columnPositions: number[],
+        columnWidths: number[],
+        scrollLeft: number,
+        headerRowHeight: number
+    ) {
+        const absoluteX = columnPositions[cell.startIndex] ?? 0
+        return {
+            x: Math.round(absoluteX - scrollLeft),
+            y: Math.round(cell.level * headerRowHeight),
+            width: cell.getSpanWidth(columnWidths),
+            height: cell.rowSpan * headerRowHeight,
+        }
+    }
+
+    private getCellColors(level: number) {
+        const normalColor = getHeaderColor(level)
+        return {
+            normal: normalColor,
+            hover: getHoverColor(normalColor),
+        }
+    }
+
+    private getColumn(cell: GridHeaderCell, orderedColumns: GridColumn<any>[]): GridColumn<any> | undefined {
+        return cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
+    }
+
+    private assembleHierarchy(
+        contentContainer: CanvasContainer,
+        wrapper: CanvasAbsoluteContainer,
+        left: CanvasContainer,
+        right: CanvasContainer,
+        hasCustomContent: boolean
+    ): void {
+        contentContainer.addChild(left)
+        if (!hasCustomContent) {
+            contentContainer.addChild(right)
+        }
+        wrapper.addChild(contentContainer)
+    }
+
     private createWrapper(
         cellId: string,
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        normalColor: string,
-        hoverColor: string
+        dimensions: { x: number; y: number; width: number; height: number },
+        colors: { normal: string; hover: string }
     ): CanvasAbsoluteContainer {
         const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
-        wrapper.rect.x = x
-        wrapper.rect.y = y
-        wrapper.rect.width = width
-        wrapper.rect.height = height
-        wrapper.backgroundColor = normalColor
-        wrapper.borderColor = '#e0e0e0'
-        wrapper.borderWidth = 1
-        wrapper.onMouseEnter = () => { wrapper.backgroundColor = hoverColor }
-        wrapper.onMouseLeave = () => { wrapper.backgroundColor = normalColor }
+        wrapper.rect.x = dimensions.x
+        wrapper.rect.y = dimensions.y
+        wrapper.rect.width = dimensions.width
+        wrapper.rect.height = dimensions.height
+        wrapper.backgroundColor = colors.normal
+        wrapper.borderColor = DEFAULT_BORDER_COLOR
+        wrapper.borderWidth = DEFAULT_BORDER_WIDTH
+        wrapper.onMouseEnter = () => { wrapper.backgroundColor = colors.hover }
+        wrapper.onMouseLeave = () => { wrapper.backgroundColor = colors.normal }
         return wrapper
     }
 
     private createContentContainer(
         cellId: string,
-        x: number,
-        y: number,
-        width: number,
-        height: number
+        dimensions: { x: number; y: number; width: number; height: number }
     ): CanvasContainer {
         const container = new CanvasContainer(`${cellId}-content`, {
             direction: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            columnGap: 6,
-            padding: 12,
+            columnGap: CONTENT_COLUMN_GAP,
+            padding: CONTENT_PADDING,
         })
-        container.style.height = height
-        container.style.width = width
-        container.rect.x = x
-        container.rect.y = y
-        container.rect.width = Math.max(0, width * 2)
-        container.rect.height = height
+        container.style.height = dimensions.height
+        container.style.width = dimensions.width
+        container.rect.x = dimensions.x
+        container.rect.y = dimensions.y
+        container.rect.width = Math.max(0, dimensions.width * CONTENT_WIDTH_MULTIPLIER)
+        container.rect.height = dimensions.height
         return container
     }
 
@@ -173,14 +174,14 @@ export class HeaderSceneBuilder {
             direction: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            columnGap: 6,
+            columnGap: CONTENT_COLUMN_GAP,
         })
 
         const right = new CanvasContainer(`${cellId}-right`, {
             direction: 'row-reverse',
             alignItems: 'center',
             justifyContent: 'space-between',
-            columnGap: 6,
+            columnGap: CONTENT_COLUMN_GAP,
         })
         right.style.width = '100%'
 
@@ -194,21 +195,14 @@ export class HeaderSceneBuilder {
         left: CanvasContainer,
         right: CanvasContainer,
         config: BuildSceneConfig,
-        cellX: number,
-        cellY: number,
-        cellWidth: number,
-        cellHeight: number
+        dimensions: { x: number; y: number; width: number; height: number }
     ): boolean {
         const renderContent = cell.renderColumnContent ?? column?.getRenderColumnContent()
 
         if (renderContent) {
-            return this.populateCustomContent(
-                cellId, column, left, config, cellX, cellY, cellWidth, cellHeight, cell
-            )
+            return this.populateCustomContent(cellId, column, left, config, dimensions, cell)
         } else {
-            this.populateDefaultContent(
-                cell, cellId, column, left, right, config, cellX, cellY, cellWidth, cellHeight
-            )
+            this.populateDefaultContent(cell, cellId, column, left, right, config, dimensions)
             return false
         }
     }
@@ -218,10 +212,7 @@ export class HeaderSceneBuilder {
         column: GridColumn<any> | undefined,
         left: CanvasContainer,
         config: BuildSceneConfig,
-        cellX: number,
-        cellY: number,
-        cellWidth: number,
-        cellHeight: number,
+        dimensions: { x: number; y: number; width: number; height: number },
         cell: GridHeaderCell
     ): boolean {
         const customContent = config.getCustomContent(cellId)
@@ -230,7 +221,7 @@ export class HeaderSceneBuilder {
         left.addChild(customContent)
 
         if (config.enableColumnReorder && column && customContent instanceof CanvasContainer) {
-            this.insertGripIcon(left, cellId, cell, config, cellX, cellY, cellWidth, cellHeight, true)
+            this.insertGripIcon(left, cellId, cell, config, dimensions, true)
         }
 
         return true
@@ -243,25 +234,32 @@ export class HeaderSceneBuilder {
         left: CanvasContainer,
         right: CanvasContainer,
         config: BuildSceneConfig,
-        cellX: number,
-        cellY: number,
-        cellWidth: number,
-        cellHeight: number
+        dimensions: { x: number; y: number; width: number; height: number }
     ): void {
         if (config.enableColumnReorder && column) {
-            this.insertGripIcon(left, cellId, cell, config, cellX, cellY, cellWidth, cellHeight, false)
+            this.insertGripIcon(left, cellId, cell, config, dimensions, false)
         }
 
-        const textNode = new CanvasText(`${cellId}-text`, cell.title, {
-            color: getHeaderTextColor(cell.level),
-            font: `${getHeaderFontWeight(cell.level)} ${getHeaderFontSize(cell.level)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        })
-        textNode.style = { flexGrow: 1 }
-        left.addChild(textNode)
-
+        this.addTextNode(left, cellId, cell)
+        
         if (column?.sortable) {
             this.addSortButton(right, cellId, column, config)
         }
+    }
+
+    private addTextNode(container: CanvasContainer, cellId: string, cell: GridHeaderCell): void {
+        const textNode = new CanvasText(`${cellId}-text`, cell.title, {
+            color: getHeaderTextColor(cell.level),
+            font: this.buildHeaderFont(cell.level),
+        })
+        textNode.style = { flexGrow: 1 }
+        container.addChild(textNode)
+    }
+
+    private buildHeaderFont(level: number): string {
+        const fontWeight = getHeaderFontWeight(level)
+        const fontSize = getHeaderFontSize(level)
+        return `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
     }
 
     private insertGripIcon(
@@ -269,19 +267,21 @@ export class HeaderSceneBuilder {
         cellId: string,
         cell: GridHeaderCell,
         config: BuildSceneConfig,
-        cellX: number,
-        cellY: number,
-        cellWidth: number,
-        cellHeight: number,
+        dimensions: { x: number; y: number; width: number; height: number },
         atStart: boolean
     ): void {
         if (cell.columnIndex === undefined) return
 
-        const gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: 12 })
+        const gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: GRIP_ICON_SIZE })
         gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
 
         const handlers = config.createGripHandlers(
-            cell.columnIndex, cell.title, cellX, cellY, cellWidth, cellHeight
+            cell.columnIndex,
+            cell.title,
+            dimensions.x,
+            dimensions.y,
+            dimensions.width,
+            dimensions.height
         )
         gripIcon.onMouseEnter = handlers.onMouseEnter
         gripIcon.onMouseLeave = handlers.onMouseLeave
@@ -301,32 +301,48 @@ export class HeaderSceneBuilder {
         config: BuildSceneConfig
     ): void {
         const { sortColumn, sortDirection, onColumnSort } = config
-
-        let icon = SORT_DEFAULT_ICON
-        if (sortColumn === column.id) {
-            icon = sortDirection === 'asc' ? SORT_ASC_ICON
-                 : sortDirection === 'desc' ? SORT_DESC_ICON
-                 : SORT_DEFAULT_ICON
-        }
+        const icon = this.getSortIcon(sortColumn, column.id, sortDirection)
 
         const sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
-            size: 20,
+            size: SORT_BUTTON_SIZE,
             variant: 'secondary',
         })
         sortButton.style = { flexShrink: 0, alignSelf: 'center' }
 
-        sortButton.onClick = () => {
-            if (!onColumnSort) return
-
-            let newDirection: 'asc' | 'desc' | undefined = 'asc'
-            if (sortColumn === column.id) {
-                if (sortDirection === 'asc') newDirection = 'desc'
-                else if (sortDirection === 'desc') newDirection = undefined
+        if (onColumnSort) {
+            sortButton.onClick = () => {
+                const newDirection = this.calculateNextSortDirection(sortColumn, column.id, sortDirection)
+                onColumnSort(column.id, newDirection)
             }
-            onColumnSort(column.id, newDirection)
         }
 
         container.addChild(sortButton)
+    }
+
+    private getSortIcon(sortColumn: string | undefined, columnId: string, sortDirection: 'asc' | 'desc' | undefined): string {
+        if (sortColumn !== columnId) {
+            return SORT_DEFAULT_ICON
+        }
+        return sortDirection === 'asc' ? SORT_ASC_ICON
+             : sortDirection === 'desc' ? SORT_DESC_ICON
+             : SORT_DEFAULT_ICON
+    }
+
+    private calculateNextSortDirection(
+        sortColumn: string | undefined,
+        columnId: string,
+        currentDirection: 'asc' | 'desc' | undefined
+    ): 'asc' | 'desc' | undefined {
+        if (sortColumn !== columnId) {
+            return 'asc'
+        }
+        if (currentDirection === 'asc') {
+            return 'desc'
+        }
+        if (currentDirection === 'desc') {
+            return undefined
+        }
+        return 'asc'
     }
 }
 
