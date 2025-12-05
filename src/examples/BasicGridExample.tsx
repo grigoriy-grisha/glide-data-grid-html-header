@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import React, {useMemo, useState, useEffect, useRef} from 'react'
 import { createPortal } from 'react-dom'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
@@ -6,7 +6,7 @@ import { subscribeToCanvasPortalHover } from '../components/BasicGrid/components
 import { IconBookOpenOutline } from '@salutejs/plasma-icons';
 import {renderToString} from "react-dom/server";
 // import {renderToString} from "react-dom/server";
-
+import {Tooltip} from '@salutejs/sdds-finai'
 // console.log(renderToString(<Icon icon="apps"/>))
 
 // console.log()
@@ -51,59 +51,84 @@ function SimpleHeader() {
 }
 
 function HeaderHoverPortal() {
-  const [state, setState] = useState({
-    visible: false,
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    nodeId: '',
-  })
+    const ref = useRef<any>();
 
-  useEffect(() => {
-    return subscribeToCanvasPortalHover((detail) => {
-      setState({
-        visible: detail.visible,
-        x: detail.x,
-        y: detail.y,
-        width: detail.width,
-        height: detail.height,
-        nodeId: detail.nodeId ?? '',
-      })
+    const [state, setState] = useState({
+        visible: false,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        nodeId: '',
     })
-  }, [])
 
-  if (!state.visible || typeof document === 'undefined') {
-    return null
-  }
+    useEffect(() => {
+        return subscribeToCanvasPortalHover((detail) => {
+            setState({
+                visible: detail.visible,
+                x: detail.x,
+                y: detail.y,
+                width: detail.width,
+                height: detail.height,
+                nodeId: detail.nodeId ?? '',
+            })
+        })
+    }, [])
 
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        left: `${state.x}px`,
-        top: `${state.y}px`,
-        width: `${Math.max(0, state.width)}px`,
-        height: `${Math.max(0, state.height)}px`,
-        pointerEvents: 'none',
-        boxSizing: 'border-box',
-        borderRadius: 8,
-        border: '1px solid rgba(21, 101, 192, 0.8)',
-        background: 'rgba(21, 101, 192, 0.12)',
-        color: '#0f172a',
-        fontSize: 11,
-        fontWeight: 600,
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'flex-end',
-        padding: '4px 6px',
-        zIndex: 2147483601,
-      }}
-    >
-      {state.nodeId}
-    </div>,
-    document.body
-  )
+    useEffect(() => {
+        if (state.visible) {
+            ref.current!.parentNode.style.position = 'relative'
+            ref.current!.parentNode.style.top = '4px'
+        }
+    }, [state.visible]);
+
+    return createPortal(
+        <div style={{
+            position: 'fixed',
+            left: `${state.x}px`,
+            top: `${state.y}px`,
+            width: `${Math.max(0, state.width)}px`,
+            height: `${Math.max(0, state.height)}px`,
+            pointerEvents: 'none',
+            boxSizing: 'border-box',
+            borderRadius: 8,
+            border: '1px solid rgba(21, 101, 192, 0.8)',
+            background: 'rgba(21, 101, 192, 0.12)',
+            color: '#0f172a',
+            fontSize: 11,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-end',
+        }}>
+            <Tooltip
+                opened={state.visible}
+                placement="top"
+                text={state.nodeId ? `Ховер: ${state.nodeId}` : 'Элемент канваса'}
+                view="default"
+                style={{
+                    position: 'relative',
+                    top: 4,
+                }}
+                target={
+                    <div
+                        ref={ref}
+                        className="1231412412414"
+                        style={{
+                            width: `${Math.max(0, state.width)}px`,
+                            height: `${Math.max(0, state.height)}px`,
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            justifyContent: 'flex-end',
+                        }}
+                    >
+                    </div>
+                }
+            />
+        </div>
+        ,
+        document.body
+    )
 }
 
 const columns: BasicGridColumn<DataRow>[] = [
@@ -134,7 +159,7 @@ const columns: BasicGridColumn<DataRow>[] = [
               </Canvas.Text>
             </Canvas.Container>
             <Canvas.Button
-            portalHoverEnabled
+              portalHoverEnabled
               variant="secondary"
               onClick={() => console.log('Подробнее по сотруднику', row.employeeId)}
             >
@@ -183,7 +208,7 @@ const columns: BasicGridColumn<DataRow>[] = [
                   <Canvas.Container direction="column" justifyContent="flex-start" >
                     <Canvas.Container direction="row" justifyContent="space-between" alignItems="center" gap={6}>
                       <Canvas.Text font="bold 12px sans-serif" color="#333">{row.role}</Canvas.Text>
-                      <Canvas.Tag backgroundColor="#E8F5E9" textColor="#2E7D32">
+                      <Canvas.Tag portalHoverEnabled backgroundColor="#E8F5E9" textColor="#2E7D32">
                         {row.status.name}
                       </Canvas.Tag>
                     </Canvas.Container>

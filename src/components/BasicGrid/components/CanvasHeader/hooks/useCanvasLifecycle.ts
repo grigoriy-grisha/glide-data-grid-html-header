@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CanvasRoot } from '../core/CanvasRoot'
 import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
 
@@ -9,11 +9,33 @@ interface UseCanvasLifecycleProps {
   isActive?: boolean
 }
 
-export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = true }: UseCanvasLifecycleProps) => {
+export const useCanvasLifecycle = ({
+  width,
+  height,
+  canvasHeaderRef,
+  isActive = true,
+}: UseCanvasLifecycleProps) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null)
-  const canvasRef = canvasHeaderRef || internalCanvasRef
+  const canvasRef = canvasHeaderRef ?? internalCanvasRef
   const rootRef = useRef<CanvasRoot | null>(null)
   const rafRef = useRef<number | null>(null)
+  const [rootReady, setRootReady] = useState(false)
+  const sizeRef = useRef({ width, height })
+
+  sizeRef.current = { width, height }
+
+  const syncCanvasSize = useCallback((canvas: HTMLCanvasElement, w: number, h: number) => {
+    const dpr = window.devicePixelRatio || 1
+    const nextWidth = w * dpr
+    const nextHeight = h * dpr
+
+    if (canvas.width !== nextWidth) {
+      canvas.width = nextWidth
+    }
+    if (canvas.height !== nextHeight) {
+      canvas.height = nextHeight
+    }
+  }, [])
 
   const stopLoop = useCallback(() => {
     if (rafRef.current !== null) {
@@ -30,33 +52,35 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = 
     rafRef.current = requestAnimationFrame(renderLoop)
   }, [])
 
-  // Initialize CanvasRoot and Render Loop
   useEffect(() => {
-    if (!canvasRef.current) return
-
     const canvas = canvasRef.current
-    const dpr = window.devicePixelRatio || 1
+    if (!canvas) return
 
-    // Set initial size
-    canvas.width = width * dpr
-    canvas.height = height * dpr
+    const { width: currentWidth, height: currentHeight } = sizeRef.current
+    syncCanvasSize(canvas, currentWidth, currentHeight)
 
-    const rootContainer = new CanvasAbsoluteContainer('root')
-    const root = new CanvasRoot(canvas, rootContainer)
-
+    const root = new CanvasRoot(canvas, new CanvasAbsoluteContainer('root'))
     root.onCursorChange = (cursor) => {
       canvas.style.cursor = cursor
     }
 
     rootRef.current = root
+    setRootReady(true)
     return () => {
       stopLoop()
       rootRef.current = null
+      setRootReady(false)
     }
-  }, [stopLoop])
+  }, [canvasRef, stopLoop, syncCanvasSize])
 
   useEffect(() => {
-    if (!rootRef.current) {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    syncCanvasSize(canvas, width, height)
+  }, [canvasRef, height, syncCanvasSize, width])
+
+  useEffect(() => {
+    if (!rootReady || !rootRef.current) {
       stopLoop()
       return
     }
@@ -65,26 +89,12 @@ export const useCanvasLifecycle = ({ width, height, canvasHeaderRef, isActive = 
       return
     }
     renderLoop()
-    return () => {
-      stopLoop()
-    }
-  }, [isActive, renderLoop, stopLoop])
-
-  useEffect(() => {
-    if (!canvasRef.current || !rootRef.current) return
-
-    const canvas = canvasRef.current
-    const dpr = window.devicePixelRatio || 1
-
-    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-      canvas.width = width * dpr
-      canvas.height = height * dpr
-    }
-  }, [width, height])
+    return stopLoop
+  }, [isActive, renderLoop, rootReady, stopLoop])
 
   return {
     canvasRef,
-    rootRef
+    rootRef,
   }
 }
 

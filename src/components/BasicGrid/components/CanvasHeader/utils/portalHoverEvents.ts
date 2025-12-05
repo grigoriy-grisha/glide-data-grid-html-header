@@ -1,3 +1,5 @@
+import type { CanvasNode } from '../core/CanvasNode'
+
 export const CANVAS_PORTAL_EVENT = 'basic-grid-canvas-portal-hover'
 
 export type CanvasPortalSource = 'header' | 'cell'
@@ -8,6 +10,7 @@ export interface CanvasPortalHoverDetail {
   y: number
   width: number
   height: number
+  node?: CanvasNode | null
   nodeId?: string
   source?: CanvasPortalSource
   originId?: string

@@ -62,7 +62,7 @@ function useIntersectionVisibility(
 
   React.useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return
-    
+
     const target = targetRef.current
     if (!target) return
 
@@ -76,7 +76,7 @@ function useIntersectionVisibility(
       },
       { root: null, threshold: 0, rootMargin: '100px 0px 100px 0px' }
     )
-    
+
     observer.observe(target)
     return () => observer.disconnect()
   }, [targetRef])
@@ -209,6 +209,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     const handlePortalHoverChange = (node: CanvasNode | null, _event: CanvasEvent | null) => {
       if (!node) {
         dispatchCanvasPortalHover({
+          node,
           visible: false,
           x: 0,
           y: 0,
@@ -223,6 +224,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
       const canvasBounds = canvasElement.getBoundingClientRect()
       lastOriginId = node.id
       dispatchCanvasPortalHover({
+        node,
         visible: true,
         x: canvasBounds.left + node.rect.x,
         y: canvasBounds.top + node.rect.y,
@@ -241,6 +243,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         rootInstance.onPortalHoverTargetChange = undefined
       }
       dispatchCanvasPortalHover({
+        node: null,
         visible: false,
         x: 0,
         y: 0,

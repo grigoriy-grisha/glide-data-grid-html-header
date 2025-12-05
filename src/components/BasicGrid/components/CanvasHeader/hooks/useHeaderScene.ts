@@ -9,10 +9,6 @@ import { useVisibleCells } from './useVisibleCells'
 import { HeaderSceneBuilder, createCustomContentGetter } from '../scene/HeaderSceneBuilder'
 import type { SubscribeFn } from './useNodeRegistry'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface VisibleIndices {
     start: number
     end: number
@@ -47,10 +43,6 @@ export interface UseHeaderSceneProps {
     subscribeToRegistryChange?: SubscribeFn
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function useHeaderScene({
     rootRef,
     canvasRef,
@@ -71,19 +63,18 @@ export function useHeaderScene({
     nodeRegistry,
     subscribeToRegistryChange,
 }: UseHeaderSceneProps): void {
-    // Scene builder instance
-    const builderRef = useRef(new HeaderSceneBuilder())
+    const builderRef = useRef<HeaderSceneBuilder>()
+    if (!builderRef.current) {
+        builderRef.current = new HeaderSceneBuilder()
+    }
 
-    // Get visible cells using optimized hook
     const visibleCells = useVisibleCells(headerCells, visibleIndices)
 
-    // Debug mode effect
     useEffect(() => {
         CanvasNode.DEBUG = debugMode
         rootRef.current?.render()
     }, [debugMode, rootRef])
 
-    // Create grip icon handlers
     const createGripHandlers = useCallback((
         columnIndex: number,
         title: string,
@@ -105,21 +96,16 @@ export function useHeaderScene({
         }
     }), [canvasRef, handleDragStart])
 
-    // Full scene rebuild
     const rebuildScene = useCallback(() => {
-        if (!isVisible || !rootRef.current) return
+        const root = rootRef.current
+        if (!isVisible || !root) return
 
-        const rootContainer = rootRef.current.rootNode as CanvasAbsoluteContainer
-        const builder = builderRef.current
+        const rootContainer = root.rootNode as CanvasAbsoluteContainer
+        const builder = builderRef.current!
+        const cells = visibleCells.length > 0 ? visibleCells : headerCells
 
-        // Determine cells to render
-        const cellsToRender = visibleCells.length > 0
-            ? visibleCells
-            : headerCells
-
-        // Build scene
-        const wrappers = builder.build({
-            cells: cellsToRender,
+        rootContainer.children = builder.build({
+            cells,
             columnPositions,
             columnWidths,
             scrollLeft,
@@ -132,8 +118,6 @@ export function useHeaderScene({
             getCustomContent: createCustomContentGetter(nodeRegistry),
             createGripHandlers,
         })
-
-        rootContainer.children = wrappers
     }, [
         columnPositions,
         columnWidths,
@@ -156,12 +140,8 @@ export function useHeaderScene({
         rebuildScene()
     }, [rebuildScene])
 
-    // Subscribe to registry changes
     useEffect(() => {
         if (!subscribeToRegistryChange) return
-        return subscribeToRegistryChange( () => {
-            console.log('123')
-            rebuildScene()
-        })
+        return subscribeToRegistryChange(rebuildScene)
     }, [subscribeToRegistryChange, rebuildScene])
 }

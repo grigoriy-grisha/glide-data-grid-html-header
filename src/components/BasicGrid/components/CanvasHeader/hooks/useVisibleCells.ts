@@ -6,9 +6,6 @@ interface VisibleIndices {
     end: number
 }
 
-/**
- * Groups header cells by their level for efficient lookup
- */
 function groupCellsByLevel(headerCells: GridHeaderCell[]): GridHeaderCell[][] {
     const groups: GridHeaderCell[][] = []
     for (const cell of headerCells) {
@@ -20,9 +17,6 @@ function groupCellsByLevel(headerCells: GridHeaderCell[]): GridHeaderCell[][] {
     return groups
 }
 
-/**
- * Binary search to find first visible cell in a sorted array
- */
 function findFirstVisibleIndex(cells: GridHeaderCell[], start: number): number {
     let left = 0
     let right = cells.length - 1
@@ -42,9 +36,6 @@ function findFirstVisibleIndex(cells: GridHeaderCell[], start: number): number {
     return result
 }
 
-/**
- * Filters cells to only include those visible in the current viewport
- */
 function filterVisibleCells(
     cellsByLevel: GridHeaderCell[][],
     visibleIndices: VisibleIndices
@@ -68,21 +59,15 @@ function filterVisibleCells(
     return result
 }
 
-/**
- * Hook that computes visible cells based on current viewport.
- * Uses binary search for efficient lookup in large datasets.
- */
 export function useVisibleCells(
     headerCells: GridHeaderCell[],
     visibleIndices: VisibleIndices | null
 ): GridHeaderCell[] {
-    // Group cells by level for efficient lookup
     const cellsByLevel = useMemo(
         () => groupCellsByLevel(headerCells),
         [headerCells]
     )
 
-    // Filter to visible cells only
     return useMemo(() => {
         if (!visibleIndices) return headerCells
         return filterVisibleCells(cellsByLevel, visibleIndices)
