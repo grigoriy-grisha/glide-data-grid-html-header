@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { CanvasRoot } from '../components/BasicGrid/components/CanvasHeader/core/CanvasRoot'
-import { CanvasContainer } from '../components/BasicGrid/components/CanvasHeader/core/CanvasContainer'
-import { CanvasText } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasText'
-import { CanvasButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasButton'
-import { CanvasIconButton } from '../components/BasicGrid/components/CanvasHeader/primitives/CanvasIconButton'
+import {
+  CanvasRoot,
+  CanvasContainer,
+  CanvasText,
+  CanvasButton,
+  CanvasIconButton,
+} from '../components/BasicGrid/lib/canvas'
 
 export function StandaloneCanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null)

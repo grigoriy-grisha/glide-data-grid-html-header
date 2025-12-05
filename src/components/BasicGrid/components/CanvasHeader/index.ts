@@ -1,22 +1,82 @@
-// Core exports
+// CanvasHeader component
 export { CanvasHeader } from './CanvasHeader'
-export { CanvasNode } from './core/CanvasNode'
-export { CanvasLeaf } from './core/CanvasLeaf'
-export { CanvasContainer } from './core/CanvasContainer'
-export { CanvasAbsoluteContainer } from './core/CanvasAbsoluteContainer'
 
-// Primitives
-export { CanvasButton } from './primitives/CanvasButton'
-export { CanvasText } from './primitives/CanvasText'
-export { CanvasRect } from './primitives/CanvasRect'
-export { CanvasIcon } from './primitives/CanvasIcon'
-export { CanvasFlex } from './primitives/CanvasFlex'
-export { CanvasIconButton } from './primitives/CanvasIconButton'
-export { CanvasTag } from './primitives/CanvasTag'
+// Re-export from the canvas library
+export {
+  // Core
+  CanvasNode,
+  CanvasLeaf,
+  CanvasContainer,
+  CanvasAbsoluteContainer,
+  CanvasRoot,
+  DrawBatcher,
+  defaultBatcher,
+  CanvasHoverController,
+  CanvasRegistry,
+  resolvePaddingBox,
+  
+  // Primitives
+  CanvasButton,
+  CanvasText,
+  CanvasRect,
+  CanvasIcon,
+  CanvasFlex,
+  CanvasIconButton,
+  CanvasTag,
+  CanvasChevron,
+  
+  // JSX Components
+  Canvas,
+  buildCanvasTree,
+  RootBridge,
+  
+  // Cells
+  CANVAS_CELL_KIND,
+  createCanvasCell,
+  isCanvasCell,
+  canvasCellRenderer,
+  drawButton,
+  drawIconButton,
+  drawTag,
+  drawIcon,
+  CellCanvasRoot,
+  preloadIconSprites,
+  registerIconDefinitions,
+  
+  // Utils
+  CANVAS_PORTAL_EVENT,
+  dispatchCanvasPortalHover,
+  subscribeToCanvasPortalHover,
+  
+  // Miniflex
+  FlexBox,
+  FlexElement,
+  RootFlexBox,
+  flexBoxLayout,
+} from '../../lib/canvas'
 
-// JSX Components
-export { Canvas, buildCanvasTree, RootBridge } from './CanvasComponents'
 export type {
+  // Core types
+  CanvasFlexStyle,
+  DimensionValue,
+  Rect,
+  CanvasEvent,
+  PaddingBox,
+  CanvasHoverControllerOptions,
+  RegistryListener,
+  DrawCommand,
+  TextBaseline,
+  TextAlign,
+  
+  // Primitive types
+  CanvasTextOptions,
+  CanvasButtonOptions,
+  CanvasIconOptions,
+  CanvasIconButtonOptions,
+  CanvasTagOptions,
+  CanvasChevronOptions,
+  
+  // Component types
   CanvasContainerProps,
   CanvasTextProps,
   CanvasIconProps,
@@ -24,7 +84,30 @@ export type {
   CanvasIconButtonProps,
   CanvasRectProps,
   RootBridgeProps,
-} from './CanvasComponents'
+  
+  // Cell types
+  CanvasCell,
+  CanvasCellData,
+  CanvasRenderResult,
+  RectBounds,
+  ButtonIcon,
+  IconSpriteOptions,
+  IconDefinition,
+  HoverState,
+  
+  // Miniflex types
+  FlexStyle,
+  FlexBoxOptions,
+  Size,
+  Position,
+  Direction,
+  FlexBoxItem,
+  
+  // Portal types
+  CanvasPortalSource,
+  CanvasPortalHoverDetail,
+  CanvasPortalHoverListener,
+} from '../../lib/canvas'
 
 // Hooks
 export { useNodeRegistry } from './hooks/useNodeRegistry'
@@ -35,4 +118,4 @@ export type { UseHeaderSceneProps } from './hooks/useHeaderScene'
 
 // Scene Builder
 export { HeaderSceneBuilder, createCustomContentGetter } from './scene/HeaderSceneBuilder'
-export type { CachedCellData, GripIconHandlers, BuildSceneConfig } from './scene/HeaderSceneBuilder'
+export type { GripIconHandlers, BuildSceneConfig } from './scene/HeaderSceneBuilder'

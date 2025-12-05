@@ -1,5 +1,5 @@
 import React from 'react'
-import { subscribeToCanvasPortalHover, type CanvasPortalSource, type CanvasPortalHoverDetail } from '../utils/portalHoverEvents'
+import { subscribeToCanvasPortalHover, type CanvasPortalSource, type CanvasPortalHoverDetail } from '../../../lib/canvas'
 
 const PORTAL_ROOT_ID = 'basic-grid-canvas-portal-root'
 const PORTAL_CLASS_NAME = 'canvas-header-portal-overlay'

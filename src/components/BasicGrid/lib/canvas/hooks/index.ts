@@ -1,0 +1,2 @@
+export { useCanvasRegistry } from './useCanvasRegistry'
+

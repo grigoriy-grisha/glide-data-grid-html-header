@@ -1,4 +1,3 @@
-import type React from 'react'
 import type { BasicGridSelectOption } from '../components'
 
 export interface DataRow extends Record<string, unknown> {

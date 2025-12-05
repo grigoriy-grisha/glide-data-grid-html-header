@@ -1,8 +1,8 @@
-import React, {useMemo, useState, useEffect, useRef} from 'react'
+import {useMemo, useState, useEffect, useRef} from 'react'
 import { createPortal } from 'react-dom'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
-import { subscribeToCanvasPortalHover } from '../components/BasicGrid/components/CanvasHeader/utils/portalHoverEvents'
+import { subscribeToCanvasPortalHover, type CanvasPortalHoverDetail } from '../components/BasicGrid/lib/canvas'
 import { IconBookOpenOutline } from '@salutejs/plasma-icons';
 import {renderToString} from "react-dom/server";
 // import {renderToString} from "react-dom/server";
@@ -63,7 +63,7 @@ function HeaderHoverPortal() {
     })
 
     useEffect(() => {
-        return subscribeToCanvasPortalHover((detail) => {
+        return subscribeToCanvasPortalHover((detail: CanvasPortalHoverDetail) => {
             setState({
                 visible: detail.visible,
                 x: detail.x,

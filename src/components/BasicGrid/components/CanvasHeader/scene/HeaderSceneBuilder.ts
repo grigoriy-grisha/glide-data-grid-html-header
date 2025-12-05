@@ -1,15 +1,17 @@
 import { ReactElement } from 'react'
-import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
-import { CanvasContainer } from '../core/CanvasContainer'
-import { CanvasNode } from '../core/CanvasNode'
-import { CanvasText } from '../primitives/CanvasText'
-import { CanvasIcon } from '../primitives/CanvasIcon'
-import { CanvasIconButton } from '../primitives/CanvasIconButton'
+import {
+  CanvasAbsoluteContainer,
+  CanvasContainer,
+  CanvasNode,
+  CanvasText,
+  CanvasIcon,
+  CanvasIconButton,
+  buildCanvasTree,
+} from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
-import { buildCanvasTree } from '../CanvasComponents'
 
 const DEFAULT_BORDER_COLOR = '#e0e0e0'
 const DEFAULT_BORDER_WIDTH = 1

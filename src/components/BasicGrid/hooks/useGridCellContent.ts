@@ -3,12 +3,11 @@ import { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-gr
 
 import { createSelectCell } from '../customCells/selectCell'
 import { createButtonCell } from '../customCells/buttonCell'
-import { createCanvasCell } from '../customCells/canvasCell/index'
+import { createCanvasCell, CellCanvasRoot } from '../lib/canvas'
+import { buildCanvasTree } from '../lib/canvas'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 import type { GridTreeNode } from '../models/GridTree'
-import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
-import { buildCanvasTree } from '../components/CanvasHeader/CanvasComponents'
 import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
 
 const EMPTY_TEXT_CELL: GridCell = {

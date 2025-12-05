@@ -3,7 +3,7 @@ import type { GridCell, CustomRenderer } from '@glideapps/glide-data-grid'
 
 import type { BasicGridTreeOptions } from '../types'
 import { GridTree, type GridTreeNode, areSetsEqual } from '../models/GridTree'
-import { canvasCellRenderer } from '../customCells/canvasCell'
+import { canvasCellRenderer } from '../lib/canvas'
 import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
 import { getGridCellDisplayText } from '../utils/gridCell'
 

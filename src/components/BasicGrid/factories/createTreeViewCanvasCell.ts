@@ -1,13 +1,15 @@
 import type { GridCell } from '@glideapps/glide-data-grid'
-import { createCanvasCell } from '../customCells/canvasCell/factory'
-import { CellCanvasRoot } from '../customCells/canvasCell/CellCanvasRoot'
-import { CanvasContainer } from '../components/CanvasHeader/core/CanvasContainer'
-import { CanvasText } from '../components/CanvasHeader/primitives/CanvasText'
-import { CanvasChevron } from '../components/CanvasHeader/primitives/CanvasChevron'
-import { CanvasRect } from '../components/CanvasHeader/primitives/CanvasRect'
+import {
+  createCanvasCell,
+  CellCanvasRoot,
+  CanvasContainer,
+  CanvasText,
+  CanvasChevron,
+  CanvasRect,
+  buildCanvasTree,
+} from '../lib/canvas'
 import { animateNumericValue, easeInOutCubic } from '../utils/cellAnimations'
 import type { GridTreeNode } from '../models/GridTree'
-import { buildCanvasTree } from '../components/CanvasHeader/CanvasComponents'
 
 export function createTreeViewCanvasCell<RowType>(
   text: string,

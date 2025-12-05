@@ -4,7 +4,7 @@ import type { CustomRenderer } from '@glideapps/glide-data-grid'
 import type { GridColumn } from '../models/GridColumn'
 import { selectCellRenderer } from '../customCells/selectCell'
 import { buttonCellRenderer } from '../customCells/buttonCell'
-import { canvasCellRenderer } from '../customCells/canvasCell/index'
+import { canvasCellRenderer } from '../lib/canvas'
 
 interface UseCustomRenderersParams<RowType extends Record<string, unknown>> {
   orderedColumns: GridColumn<RowType>[]

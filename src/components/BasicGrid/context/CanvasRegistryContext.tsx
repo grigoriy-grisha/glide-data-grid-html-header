@@ -1,5 +1,5 @@
-import React, { createContext, useContext } from 'react';
-import { CanvasRegistry } from '../canvas/CanvasRegistry';
+import { createContext, useContext } from 'react';
+import { CanvasRegistry } from '../lib/canvas';
 
 export const CanvasRegistryContext = createContext<CanvasRegistry | null>(null);
 

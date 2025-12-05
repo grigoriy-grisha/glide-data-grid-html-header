@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CanvasRoot } from '../core/CanvasRoot'
-import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
+import { CanvasRoot, CanvasAbsoluteContainer } from '../../../lib/canvas'
 
 interface UseCanvasLifecycleProps {
   width: number

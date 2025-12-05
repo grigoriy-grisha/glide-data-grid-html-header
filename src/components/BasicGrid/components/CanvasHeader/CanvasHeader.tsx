@@ -11,9 +11,9 @@ import { useNodeRegistry } from './hooks/useNodeRegistry'
 import { ResizeHandles } from './components/ResizeHandles'
 import { DragOverlays } from './components/DragOverlays'
 import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
-import type { CanvasEvent, CanvasNode } from './core/CanvasNode'
 import { CanvasPortalOverlay } from './components/CanvasPortalOverlay'
-import { dispatchCanvasPortalHover } from './utils/portalHoverEvents'
+import type { CanvasEvent, CanvasNode } from '../../lib/canvas'
+import { dispatchCanvasPortalHover } from '../../lib/canvas'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

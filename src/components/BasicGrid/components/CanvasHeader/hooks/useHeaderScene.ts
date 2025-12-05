@@ -1,7 +1,5 @@
 import { useEffect, useCallback, useRef, ReactElement } from 'react'
-import { CanvasRoot } from '../core/CanvasRoot'
-import { CanvasAbsoluteContainer } from '../core/CanvasAbsoluteContainer'
-import { CanvasNode } from '../core/CanvasNode'
+import { CanvasRoot, CanvasAbsoluteContainer, CanvasNode } from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
 import { DragState } from './useHeaderDragDrop'

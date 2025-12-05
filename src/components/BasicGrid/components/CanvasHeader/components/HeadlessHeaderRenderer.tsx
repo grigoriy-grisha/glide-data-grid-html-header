@@ -1,7 +1,7 @@
 import React, { ReactElement, useMemo } from 'react'
+import { RootBridge } from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
-import { RootBridge } from '../CanvasComponents'
 import { useVisibleCells } from '../hooks/useVisibleCells'
 
 interface HeadlessHeaderRendererProps {
