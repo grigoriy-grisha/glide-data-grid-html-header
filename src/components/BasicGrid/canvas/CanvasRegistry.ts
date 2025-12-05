@@ -1,35 +1,32 @@
 import { CanvasNode } from '../components/CanvasHeader/core/CanvasNode';
 
+export type RegistryListener = (id: string) => void;
+
 export class CanvasRegistry {
   private nodes: Map<string, CanvasNode> = new Map();
-  private listeners: Set<(id: string) => void> = new Set();
+  private listeners: Set<RegistryListener> = new Set();
 
-  constructor() {}
-
-  register(id: string, node: CanvasNode) {
+  register(id: string, node: CanvasNode): void {
     this.nodes.set(id, node);
     this.notify(id);
   }
 
-  unregister(id: string) {
+  unregister(id: string): void {
     this.nodes.delete(id);
-    // We might want to notify here too if needed, 
-    // but unregister usually happens when React unmounts, 
-    // so the cell is likely no longer visible anyway.
   }
 
   get(id: string): CanvasNode | undefined {
     return this.nodes.get(id);
   }
 
-  subscribe(listener: (id: string) => void): () => void {
+  subscribe(listener: RegistryListener): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
   }
 
-  private notify(id: string) {
+  private notify(id: string): void {
     this.listeners.forEach((listener) => listener(id));
   }
 }
