@@ -1,14 +1,3 @@
-// minimal-flexbox.ts – single‑file flexbox engine with direction, gap, nesting & alignment
-// -------------------------------------------------------------
-// Public API summary
-//   • new RootFlexBox(width, height, options?)
-//       options = { direction, columnGap, rowGap, justifyContent, alignItems, wrap, alignContent }
-//   • root.addChild(style?)                 // add leaf element
-//   • root.addChild(childBox, style?)       // nest another flex container
-//   • root.build()                          // compute the layout
-//   • Every element (leaf or container) exposes `.position` & `.size`
-// -------------------------------------------------------------
-
 import type {
   FlexStyle,
   Size,
@@ -19,10 +8,6 @@ import type {
   AlignContent,
   FlexBoxOptions,
 } from "./types"
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants & Reusable Objects
-// ─────────────────────────────────────────────────────────────────────────────
 
 const defaultStyle: FlexStyle = {
   flexGrow: 0,
@@ -42,21 +27,21 @@ export interface PaddingBox {
 
 const ZERO_PADDING: PaddingBox = { top: 0, right: 0, bottom: 0, left: 0 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Core Classes
-// ─────────────────────────────────────────────────────────────────────────────
+interface ContainerMetrics {
+  main: number
+  cross: number
+  mainGap: number
+  crossGap: number
+}
 
 abstract class FlexNode {
   id?: string
   metadata?: unknown
-  /** Computed layout values */
   public readonly size: Size = { width: 0, height: 0 }
   public readonly position: Position = { x: 0, y: 0 }
-  /** Incoming flex style (grow / shrink / basis / alignSelf) */
   public style: FlexStyle
 
   constructor(style: Partial<FlexStyle> = defaultStyle) {
-    // Inline object creation instead of spread
     this.style = {
       flexGrow: style.flexGrow ?? 0,
       flexShrink: style.flexShrink ?? 1,
@@ -71,21 +56,15 @@ abstract class FlexNode {
     this.metadata = style.metadata
   }
 
-  /** Recursively lay out the subtree. */
   abstract build(): void
 }
 
-// --- Leaf element -------------------------------------------
 export class FlexElement extends FlexNode {
-  build(): void {
-    /* nothing to recurse into */
-  }
+  build(): void {}
 }
 
 export class FlexBox extends FlexNode {
   public readonly children: FlexNode[] = []
-
-  // Container‑level layout options (with sensible defaults)
   public direction: Direction = "row"
   public wrap: "nowrap" | "wrap" | "wrap-reverse" = "nowrap"
   public columnGap = 0
@@ -101,7 +80,6 @@ export class FlexBox extends FlexNode {
     this.size.height = height
     this.id = opts.id
 
-    // Inline property assignment instead of Object.assign
     if (opts.direction !== undefined) this.direction = opts.direction
     if (opts.wrap !== undefined) this.wrap = opts.wrap
     if (opts.columnGap !== undefined) this.columnGap = opts.columnGap
@@ -113,17 +91,12 @@ export class FlexBox extends FlexNode {
     this.padding = resolvePaddingBox(opts.padding)
   }
 
-  /**
-   * addChild(style?) → FlexElement        (leaf)
-   * addChild(childBox, style?) → FlexBox  (nest another container)
-   */
   addChild(style: Partial<FlexStyle>): FlexElement
   addChild(box: FlexBox, style?: Partial<FlexStyle>): FlexBox
-  addChild(arg1: any, arg2?: any): any {
+  addChild(arg1: Partial<FlexStyle> | FlexBox, arg2?: Partial<FlexStyle>): FlexElement | FlexBox {
     if (arg1 instanceof FlexBox) {
-      const box = arg1 as FlexBox
+      const box = arg1
       if (arg2) {
-        // Inline style merge with literal defaults
         const boxStyle = box.style
         boxStyle.flexGrow = arg2.flexGrow ?? 0
         boxStyle.flexShrink = arg2.flexShrink ?? 1
@@ -135,326 +108,428 @@ export class FlexBox extends FlexNode {
       this.children.push(box)
       return box
     }
-    const elem = new FlexElement(arg1 as Partial<FlexStyle>)
+    const elem = new FlexElement(arg1)
     this.children.push(elem)
     return elem
   }
 
-  // --------------- Layout algorithm ------------------------
-  build(): void {
-    const children = this.children
-    const childCount = children.length
-
-    if (childCount === 0) {
-      return
-    }
-
-    // Inline axis resolution
-    const dir = this.direction
-    const horizontal = dir === "row" || dir === "row-reverse"
-
-    // Get inner container size
-    const padding = this.padding
-    const pLeft = padding.left
-    const pRight = padding.right
-    const pTop = padding.top
-    const pBottom = padding.bottom
-    
-    const size = this.size
-    let containerMain: number
-    let containerCross: number
-    let mainGap: number
-    let crossGap: number
+  private getContainerMetrics(): ContainerMetrics {
+    const horizontal = this.direction === "row" || this.direction === "row-reverse"
+    const { left, right, top, bottom } = this.padding
+    const { width, height } = this.size
 
     if (horizontal) {
-      containerMain = size.width - pLeft - pRight
-      containerCross = size.height - pTop - pBottom
-      mainGap = this.columnGap
-      crossGap = this.rowGap
-    } else {
-      containerMain = size.height - pTop - pBottom
-      containerCross = size.width - pLeft - pRight
-      mainGap = this.rowGap
-      crossGap = this.columnGap
+      return {
+        main: width - left - right,
+        cross: height - top - bottom,
+        mainGap: this.columnGap,
+        crossGap: this.rowGap,
+      }
+    }
+    return {
+      main: height - top - bottom,
+      cross: width - left - right,
+      mainGap: this.rowGap,
+      crossGap: this.columnGap,
+    }
+  }
+
+  private buildFlexLines(children: FlexNode[], metrics: ContainerMetrics): FlexNode[][] {
+    if (this.wrap === "nowrap") {
+      return [children]
     }
 
-    // Build flex lines
-    const wrap = this.wrap
-    let lines: FlexNode[][]
+    const lines: FlexNode[][] = []
+    let currentLine: FlexNode[] = []
+    let currentMainSize = 0
 
-    if (wrap === "nowrap") {
-      lines = [children]
-    } else {
-      lines = []
-      let currentLine: FlexNode[] = []
-      let currentMainSize = 0
+    for (const child of children) {
+      const childBasis = child.style.flexBasis
+      const gap = currentLine.length > 0 ? metrics.mainGap : 0
+      const exceeds = currentLine.length > 0 && currentMainSize + gap + childBasis > metrics.main
 
-      for (let i = 0; i < childCount; i++) {
-        const child = children[i]
-        const childBasis = child.style.flexBasis
-        const gap = currentLine.length > 0 ? mainGap : 0
-        const exceeds = currentLine.length > 0 && currentMainSize + gap + childBasis > containerMain
-
-        if (exceeds) {
-          lines.push(currentLine)
-          currentLine = []
-          currentMainSize = 0
-        }
-
-        currentLine.push(child)
-        currentMainSize += (currentLine.length > 1 ? mainGap : 0) + childBasis
-      }
-
-      if (currentLine.length > 0) {
+      if (exceeds) {
         lines.push(currentLine)
+        currentLine = []
+        currentMainSize = 0
       }
 
-      if (wrap === "wrap-reverse") {
-        lines.reverse()
-      }
+      currentLine.push(child)
+      currentMainSize += (currentLine.length > 1 ? metrics.mainGap : 0) + childBasis
     }
 
-    const lineCount = lines.length
-    if (lineCount === 0) {
-      return
+    if (currentLine.length > 0) {
+      lines.push(currentLine)
     }
 
-    // Measure line cross sizes
-    const lineHeights: number[] = new Array(lineCount)
-    let totalCross = 0
+    if (this.wrap === "wrap-reverse") {
+      lines.reverse()
+    }
 
-    for (let li = 0; li < lineCount; li++) {
-      const line = lines[li]
-      const lineLen = line.length
+    return lines
+  }
+
+  private measureLineCrossSizes(
+    lines: FlexNode[][],
+    horizontal: boolean,
+  ): number[] {
+    const lineHeights: number[] = []
+
+    for (const line of lines) {
       let maxCross = 0
 
-      for (let ci = 0; ci < lineLen; ci++) {
-        const child = line[ci]
-        const childStyle = child.style
-        const childSize = child.size
-        const explicit = horizontal ? childStyle.height : childStyle.width
-        const cross = explicit !== undefined ? explicit : (horizontal ? childSize.height : childSize.width)
+      for (const child of line) {
+        const explicit = horizontal ? child.style.height : child.style.width
+        const cross =
+          explicit !== undefined
+            ? explicit
+            : horizontal
+              ? child.size.height
+              : child.size.width
         if (cross > maxCross) maxCross = cross
       }
 
-      lineHeights[li] = maxCross
-      totalCross += maxCross
+      lineHeights.push(maxCross)
     }
 
-    // Resolve cross axis layout
-    const crossGapTotal = crossGap * (lineCount > 1 ? lineCount - 1 : 0)
-    let availableCross = containerCross - totalCross - crossGapTotal
+    return lineHeights
+  }
 
+  private resolveCrossAxisLayout(
+    lineHeights: number[],
+    metrics: ContainerMetrics,
+  ): { crossStart: number; crossBetween: number } {
+    const lineCount = lineHeights.length
+    const totalCross = lineHeights.reduce((sum, h) => sum + h, 0)
+    const crossGapTotal = metrics.crossGap * (lineCount > 1 ? lineCount - 1 : 0)
+    let availableCross = metrics.cross - totalCross - crossGapTotal
+
+    let crossStart = 0
+    let crossBetween = metrics.crossGap
+
+    if (this.wrap === "nowrap" && lineCount === 1) {
+      lineHeights[0] = metrics.cross
+    } else if (this.wrap !== "nowrap") {
+      const { crossStart: start, crossBetween: between } = this.calculateAlignContent(
+        availableCross,
+        lineCount,
+        metrics.crossGap,
+      )
+      crossStart = start
+      crossBetween = between
+
+      if (this.alignContent === "stretch" && availableCross > 0) {
+        const extra = availableCross / lineCount
+        for (let i = 0; i < lineCount; i++) {
+          lineHeights[i] += extra
+        }
+      }
+    }
+
+    return { crossStart, crossBetween }
+  }
+
+  private calculateAlignContent(
+    availableCross: number,
+    lineCount: number,
+    crossGap: number,
+  ): { crossStart: number; crossBetween: number } {
     let crossStart = 0
     let crossBetween = crossGap
 
-    if (wrap === "nowrap" && lineCount === 1) {
-      lineHeights[0] = containerCross
-    } else if (wrap !== "nowrap") {
-      const alignContent = this.alignContent
-      switch (alignContent) {
+    switch (this.alignContent) {
+      case "flex-end":
+        crossStart = availableCross
+        break
+      case "center":
+        crossStart = availableCross / 2
+        break
+      case "space-between":
+        crossBetween = lineCount > 1 ? crossGap + availableCross / (lineCount - 1) : 0
+        break
+      case "space-around":
+        crossBetween = crossGap + availableCross / lineCount
+        crossStart = crossBetween / 2
+        break
+      case "space-evenly":
+        crossBetween = crossGap + availableCross / (lineCount + 1)
+        crossStart = crossBetween
+        break
+    }
+
+    return { crossStart, crossBetween }
+  }
+
+  private distributeMainAxisSizes(
+    line: FlexNode[],
+    metrics: ContainerMetrics,
+    horizontal: boolean,
+  ): { lineMainUsed: number; totalGrow: number } {
+    let totalBasis = 0
+    let totalGrow = 0
+    let totalWeightedShrink = 0
+
+    for (const child of line) {
+      const basis = child.style.flexBasis
+      totalBasis += basis
+      totalGrow += child.style.flexGrow
+      totalWeightedShrink += child.style.flexShrink * basis
+    }
+
+    const lineGapSum = line.length > 1 ? metrics.mainGap * (line.length - 1) : 0
+    const lineFreeSpace = metrics.main - totalBasis - lineGapSum
+    let lineMainUsed = 0
+
+    for (const child of line) {
+      const style = child.style
+      let main = style.flexBasis
+
+      if (lineFreeSpace > 0 && totalGrow > 0) {
+        main += (lineFreeSpace * style.flexGrow) / totalGrow
+      } else if (lineFreeSpace < 0 && totalWeightedShrink > 0) {
+        main += (lineFreeSpace * style.flexShrink * main) / totalWeightedShrink
+      }
+
+      if (main < 0) main = 0
+
+      if (horizontal) {
+        child.size.width = main
+      } else {
+        child.size.height = main
+      }
+
+      lineMainUsed += main
+    }
+
+    return { lineMainUsed, totalGrow }
+  }
+
+  private calculateJustifySpacing(
+    lineLen: number,
+    lineMainUsed: number,
+    metrics: ContainerMetrics,
+    totalGrow: number,
+  ): { leading: number; between: number } {
+    let leading = 0
+    let between = metrics.mainGap
+
+    if (totalGrow === 0) {
+      const lineGapSum = lineLen > 1 ? metrics.mainGap * (lineLen - 1) : 0
+      let justifySpace = metrics.main - lineMainUsed - lineGapSum
+      if (justifySpace < 0) justifySpace = 0
+
+      switch (this.justifyContent) {
         case "flex-end":
-          crossStart = availableCross
+          leading = justifySpace
           break
         case "center":
-          crossStart = availableCross / 2
+          leading = justifySpace / 2
           break
         case "space-between":
-          crossBetween = lineCount > 1 ? crossGap + availableCross / (lineCount - 1) : 0
+          between = lineLen > 1 ? metrics.mainGap + justifySpace / (lineLen - 1) : 0
           break
         case "space-around":
-          crossBetween = crossGap + availableCross / lineCount
-          crossStart = crossBetween / 2
+          between = metrics.mainGap + justifySpace / lineLen
+          leading = between / 2
           break
         case "space-evenly":
-          crossBetween = crossGap + availableCross / (lineCount + 1)
-          crossStart = crossBetween
-          break
-        case "stretch":
-          if (availableCross > 0) {
-            const extra = availableCross / lineCount
-            for (let i = 0; i < lineCount; i++) {
-              lineHeights[i] += extra
-            }
-          }
+          between = metrics.mainGap + justifySpace / (lineLen + 1)
+          leading = between
           break
       }
     }
 
-    const offsetX = pLeft
-    const offsetY = pTop
+    return { leading, between }
+  }
+
+  private getFinalLineHeight(
+    line: FlexNode[],
+    initialHeight: number,
+    horizontal: boolean,
+  ): number {
+    if (this.wrap !== "nowrap") {
+      return initialHeight
+    }
+
+    let finalLineHeight = initialHeight
+
+    for (const child of line) {
+      const explicit = horizontal ? child.style.height : child.style.width
+      const cross =
+        explicit !== undefined
+          ? explicit
+          : horizontal
+            ? child.size.height
+            : child.size.width
+      if (cross > finalLineHeight) finalLineHeight = cross
+    }
+
+    return finalLineHeight
+  }
+
+  private getCrossSize(
+    child: FlexNode,
+    finalLineHeight: number,
+    horizontal: boolean,
+  ): number {
+    const explicitCross = horizontal ? child.style.height : child.style.width
+    const alignSelf =
+      child.style.alignSelf !== "auto"
+        ? (child.style.alignSelf as Align)
+        : this.alignItems
+
+    if (explicitCross !== undefined) {
+      if (horizontal) {
+        child.size.height = explicitCross
+      } else {
+        child.size.width = explicitCross
+      }
+      return explicitCross
+    }
+
+    if (alignSelf === "stretch") {
+      if (horizontal) {
+        child.size.height = finalLineHeight
+      } else {
+        child.size.width = finalLineHeight
+      }
+      return finalLineHeight
+    }
+
+    return horizontal ? child.size.height : child.size.width
+  }
+
+  private positionChildren(
+    line: FlexNode[],
+    metrics: ContainerMetrics,
+    horizontal: boolean,
+    finalLineHeight: number,
+    leading: number,
+    between: number,
+    offsetX: number,
+    offsetY: number,
+    currentCrossPos: number,
+  ): void {
+    const isReverse =
+      this.direction === "row-reverse" || this.direction === "column-reverse"
+    const startIdx = isReverse ? line.length - 1 : 0
+    const endIdx = isReverse ? -1 : line.length
+    const step = isReverse ? -1 : 1
+    let mainCursor = leading
+
+    for (let ci = startIdx; ci !== endIdx; ci += step) {
+      const child = line[ci]
+      const childStyle = child.style
+      const childSize = child.size
+      const childPos = child.position
+
+      if (horizontal) {
+        const x =
+          this.direction === "row"
+            ? mainCursor
+            : metrics.main - mainCursor - childSize.width
+        childPos.x = offsetX + x
+      } else {
+        const y =
+          this.direction === "column"
+            ? mainCursor
+            : metrics.main - mainCursor - childSize.height
+        childPos.y = offsetY + y
+      }
+
+      const alignSelf =
+        childStyle.alignSelf !== "auto"
+          ? (childStyle.alignSelf as Align)
+          : this.alignItems
+
+      const crossSize = this.getCrossSize(child, finalLineHeight, horizontal)
+
+      let crossOffset = 0
+      if (alignSelf === "flex-end") {
+        crossOffset = finalLineHeight - crossSize
+      } else if (alignSelf === "center") {
+        crossOffset = (finalLineHeight - crossSize) * 0.5
+      }
+
+      if (horizontal) {
+        childPos.y = offsetY + currentCrossPos + crossOffset
+        mainCursor += childSize.width + between
+      } else {
+        childPos.x = offsetX + currentCrossPos + crossOffset
+        mainCursor += childSize.height + between
+      }
+    }
+  }
+
+  build(): void {
+    const children = this.children
+    if (children.length === 0) {
+      return
+    }
+
+    const horizontal = this.direction === "row" || this.direction === "row-reverse"
+    const metrics = this.getContainerMetrics()
+    const lines = this.buildFlexLines(children, metrics)
+
+    if (lines.length === 0) {
+      return
+    }
+
+    const lineHeights = this.measureLineCrossSizes(lines, horizontal)
+    const { crossStart, crossBetween } = this.resolveCrossAxisLayout(
+      lineHeights,
+      metrics,
+    )
+
+    const offsetX = this.padding.left
+    const offsetY = this.padding.top
     let currentCrossPos = crossStart
-    const isReverse = dir === "row-reverse" || dir === "column-reverse"
-    const alignItems = this.alignItems
-    const justifyContent = this.justifyContent
 
-    for (let li = 0; li < lineCount; li++) {
+    for (let li = 0; li < lines.length; li++) {
       const line = lines[li]
-      const lineLen = line.length
-      if (lineLen === 0) continue
+      if (line.length === 0) continue
 
-      // Distribute main axis sizes
-      let totalBasis = 0
-      let totalGrow = 0
-      let totalWeightedShrink = 0
+      const { lineMainUsed, totalGrow } = this.distributeMainAxisSizes(
+        line,
+        metrics,
+        horizontal,
+      )
 
-      for (let ci = 0; ci < lineLen; ci++) {
-        const style = line[ci].style
-        const basis = style.flexBasis
-        totalBasis += basis
-        totalGrow += style.flexGrow
-        totalWeightedShrink += style.flexShrink * basis
-      }
+      const { leading, between } = this.calculateJustifySpacing(
+        line.length,
+        lineMainUsed,
+        metrics,
+        totalGrow,
+      )
 
-      const lineGapSum = lineLen > 1 ? mainGap * (lineLen - 1) : 0
-      const lineFreeSpace = containerMain - totalBasis - lineGapSum
-      let lineMainUsed = 0
+      const finalLineHeight = this.getFinalLineHeight(
+        line,
+        lineHeights[li],
+        horizontal,
+      )
 
-      for (let ci = 0; ci < lineLen; ci++) {
-        const child = line[ci]
-        const style = child.style
-        const childSize = child.size
-        let main = style.flexBasis
-
-        if (lineFreeSpace > 0 && totalGrow > 0) {
-          main += (lineFreeSpace * style.flexGrow) / totalGrow
-        } else if (lineFreeSpace < 0 && totalWeightedShrink > 0) {
-          main += (lineFreeSpace * style.flexShrink * main) / totalWeightedShrink
-        }
-
-        if (main < 0) main = 0
-        if (horizontal) {
-          childSize.width = main
-        } else {
-          childSize.height = main
-        }
-        lineMainUsed += main
-      }
-
-      // Calculate justify spacing
-      let leading = 0
-      let between = mainGap
-
-      if (totalGrow === 0) {
-        let justifySpace = containerMain - lineMainUsed - lineGapSum
-        if (justifySpace < 0) justifySpace = 0
-
-        switch (justifyContent) {
-          case "flex-end":
-            leading = justifySpace
-            break
-          case "center":
-            leading = justifySpace / 2
-            break
-          case "space-between":
-            between = lineLen > 1 ? mainGap + justifySpace / (lineLen - 1) : 0
-            break
-          case "space-around":
-            between = mainGap + justifySpace / lineLen
-            leading = between / 2
-            break
-          case "space-evenly":
-            between = mainGap + justifySpace / (lineLen + 1)
-            leading = between
-            break
-        }
-      }
-
-      // Finalize line height for nowrap
-      let finalLineHeight = lineHeights[li]
-      if (wrap === "nowrap") {
-        for (let ci = 0; ci < lineLen; ci++) {
-          const child = line[ci]
-          const childStyle = child.style
-          const childSize = child.size
-          const explicit = horizontal ? childStyle.height : childStyle.width
-          const cross = explicit !== undefined ? explicit : (horizontal ? childSize.height : childSize.width)
-          if (cross > finalLineHeight) finalLineHeight = cross
-        }
-      }
-
-      // Position children
-      let mainCursor = leading
-      const startIdx = isReverse ? lineLen - 1 : 0
-      const endIdx = isReverse ? -1 : lineLen
-      const step = isReverse ? -1 : 1
-
-      for (let ci = startIdx; ci !== endIdx; ci += step) {
-        const child = line[ci]
-        const childStyle = child.style
-        const childSize = child.size
-        const childPos = child.position
-
-        // Main axis position
-        if (horizontal) {
-          const x = dir === "row"
-            ? mainCursor
-            : containerMain - mainCursor - childSize.width
-          childPos.x = offsetX + x
-        } else {
-          const y = dir === "column"
-            ? mainCursor
-            : containerMain - mainCursor - childSize.height
-          childPos.y = offsetY + y
-        }
-
-        // Cross axis alignment
-        const selfAlign = childStyle.alignSelf
-        const alignSelf = selfAlign !== "auto" ? (selfAlign as Align) : alignItems
-
-        const explicitCross = horizontal ? childStyle.height : childStyle.width
-        let crossSize: number
-        if (explicitCross !== undefined) {
-          crossSize = explicitCross
-          if (horizontal) {
-            childSize.height = crossSize
-          } else {
-            childSize.width = crossSize
-          }
-        } else if (alignSelf === "stretch") {
-          crossSize = finalLineHeight
-          if (horizontal) {
-            childSize.height = crossSize
-          } else {
-            childSize.width = crossSize
-          }
-        } else {
-          crossSize = horizontal ? childSize.height : childSize.width
-        }
-
-        let crossOffset = 0
-        if (alignSelf === "flex-end") {
-          crossOffset = finalLineHeight - crossSize
-        } else if (alignSelf === "center") {
-          crossOffset = (finalLineHeight - crossSize) * 0.5
-        }
-
-        if (horizontal) {
-          childPos.y = offsetY + currentCrossPos + crossOffset
-          mainCursor += childSize.width + between
-        } else {
-          childPos.x = offsetX + currentCrossPos + crossOffset
-          mainCursor += childSize.height + between
-        }
-      }
+      this.positionChildren(
+        line,
+        metrics,
+        horizontal,
+        finalLineHeight,
+        leading,
+        between,
+        offsetX,
+        offsetY,
+        currentCrossPos,
+      )
 
       currentCrossPos += finalLineHeight + crossBetween
     }
 
-    // Recursively build nested containers
-    for (let i = 0; i < childCount; i++) {
-      const child = children[i]
-      // Check for children array presence instead of instanceof
-      if ((child as FlexBox).children !== undefined) {
-        (child as FlexBox).build()
+    for (const child of children) {
+      if (child instanceof FlexBox) {
+        child.build()
       }
     }
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper Functions
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function resolvePaddingBox(padding?: FlexBoxOptions["padding"]): PaddingBox {
   if (padding === undefined) {
@@ -471,7 +546,6 @@ export function resolvePaddingBox(padding?: FlexBoxOptions["padding"]): PaddingB
   }
 }
 
-// Export types for external use
 export type {
   FlexStyle,
   Size,
@@ -483,7 +557,6 @@ export type {
   FlexBoxOptions,
 } from "./types"
 
-// Root container (same as FlexBox but semantically distinct)
 export class RootFlexBox extends FlexBox {
   constructor(width: number, height: number, opts: FlexBoxOptions = {}) {
     super(width, height, opts)
@@ -501,10 +574,7 @@ export class RootFlexBox extends FlexBox {
     map: Record<string, { position: Position; size: Size }>,
     counterRef: { counter: number },
   ): void {
-    const children = box.children
-    const len = children.length
-    for (let i = 0; i < len; i++) {
-      const child = children[i]
+    for (const child of box.children) {
       const id = child.id ?? `_$$${counterRef.counter++}`
       map[id] = { position: child.position, size: child.size }
       if (child instanceof FlexBox) {

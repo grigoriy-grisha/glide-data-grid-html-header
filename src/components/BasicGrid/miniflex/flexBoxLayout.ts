@@ -27,7 +27,6 @@ function extractFlexBoxOptions(item: FlexBoxItem): FlexBoxOptions {
   }
 }
 
-// Recursively converts a FlexBoxItem tree into actual FlexBox instances.
 function populateFlexTree(container: FlexBox, items?: FlexBoxItem[]): void {
   if (!items?.length) {
     return
@@ -50,20 +49,14 @@ function populateFlexTree(container: FlexBox, items?: FlexBoxItem[]): void {
 }
 
 export const flexBoxLayout = (
-  parent: FlexBoxItem, // This 'parent' FlexBoxItem describes the root flex container
+  parent: FlexBoxItem,
 ): Record<string, { position: Position; size: Size }> => {
-  // Use parent.width/height for RootFlexBox dimensions, defaulting to 0 if undefined.
   const rootWidth = parent.width ?? 0
   const rootHeight = parent.height ?? 0
-
-  // Extract FlexBoxOptions for the root container from the 'parent' item.
   const rootOpts = extractFlexBoxOptions(parent)
-
   const root = new RootFlexBox(rootWidth, rootHeight, rootOpts)
 
-  // Recursively populate the 'root' FlexBox based on 'parent.children'.
   populateFlexTree(root, parent.children)
 
-  // Compute the layout and return the map.
   return root.getLayout()
 }
