@@ -1,6 +1,4 @@
-import type React from 'react'
 import type { ReactElement } from 'react'
-
 import type { BasicGridColumn } from '../types'
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMN_WIDTH } from '../constants'
 import { GridColumn, type GridHeaderSegment } from './GridColumn'
@@ -70,16 +68,13 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
             ? (row: RowType) => resolveAccessorValue(row as Record<string, unknown>, accessorPath)
             : undefined)
 
-        // Button ячейки не требуют valueGetter, так как данные берутся из buttonOptions
-        // Колонки с renderColumnContent тоже могут не иметь accessor
         const isButton = column.dataType === 'button'
         const hasRenderColumnContent = Boolean(column.renderColumnContent)
         const hasRenderCellContent = Boolean(column.renderCellContent)
-        // Groups should not be considered leaves, even if they have renderColumnContent (which is for header)
-        const canRenderLeaf = (Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent) && !hasChildren
+        const canRenderLeaf =
+          (Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent) && !hasChildren
 
         if (canRenderLeaf) {
-          // Для button ячеек и колонок с renderColumnContent создаем пустой valueGetter, если его нет
           const finalValueGetter = valueGetter ?? (() => null)
           const minWidth = column.minWidth ?? DEFAULT_MIN_COLUMN_WIDTH
           const baseWidth = Math.max(minWidth, column.width ?? DEFAULT_COLUMN_WIDTH)
@@ -135,19 +130,23 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
     })
   }
 
-  getColumn(index: number) {
+  getColumn(index: number): GridColumn<RowType> | undefined {
     return this.leafColumns[index]
   }
 
-  get length() {
+  get length(): number {
     return this.leafColumns.length
   }
 
-  static buildHeaderLayout<RowType extends Record<string, unknown>>(columns: GridColumn<RowType>[]) {
+  static buildHeaderLayout<RowType extends Record<string, unknown>>(
+    columns: GridColumn<RowType>[],
+  ): { levelCount: number; cells: GridHeaderCell[] } {
     return GridColumnCollection.createHeaderLayout(columns)
   }
 
-  private static createHeaderLayout<RowType extends Record<string, unknown>>(columns: GridColumn<RowType>[]) {
+  private static createHeaderLayout<RowType extends Record<string, unknown>>(
+    columns: GridColumn<RowType>[],
+  ): { levelCount: number; cells: GridHeaderCell[] } {
     if (columns.length === 0) {
       return { levelCount: 0, cells: [] as GridHeaderCell[] }
     }
@@ -157,8 +156,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
       Array(columns.length).fill(null)
     )
 
-    columns.forEach((column, columnIndex) => {
-      column.headerPath.forEach((segment, level) => {
+    for (const [columnIndex, column] of columns.entries()) {
+      for (const [level, segment] of column.headerPath.entries()) {
         const isLeaf = level === column.headerPath.length - 1
         const remainingLevels = levelCount - (level + 1)
 
@@ -173,8 +172,8 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
           columnIndex: isLeaf ? columnIndex : undefined,
           isLeaf,
         }
-      })
-    })
+      }
+    }
 
     const cells: GridHeaderCell[] = []
 
@@ -193,14 +192,15 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
           continue
         }
 
-        if (
-          current &&
+        const canMerge =
+          current !== null &&
           !stub.isLeaf &&
           !current.isLeaf &&
           current.title === stub.title &&
           current.rowSpan === stub.rowSpan &&
           current.startIndex + current.colSpan === columnIndex
-        ) {
+
+        if (canMerge && current !== null) {
           current.colSpan += 1
           continue
         }
@@ -220,7 +220,7 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
     return { levelCount, cells }
   }
 
-  private static createHeaderCell(descriptor: HeaderCellDescriptor) {
+  private static createHeaderCell(descriptor: HeaderCellDescriptor): GridHeaderCell {
     return new GridHeaderCell(
       descriptor.title,
       descriptor.level,
@@ -230,12 +230,12 @@ export class GridColumnCollection<RowType extends Record<string, unknown>> {
       descriptor.columnIndex,
       descriptor.isLeaf,
       descriptor.content,
-      descriptor.renderColumnContent
+      descriptor.renderColumnContent,
     )
   }
 }
 
-const resolveAccessorValue = (row: Record<string, unknown>, accessor: string | number | symbol) => {
+function resolveAccessorValue(row: Record<string, unknown>, accessor: string | number | symbol): unknown {
   if (typeof accessor === 'string' && accessor.includes('.')) {
     return accessor.split('.').reduce<unknown>((acc, key) => {
       if (acc == null || typeof acc !== 'object') {
@@ -244,6 +244,5 @@ const resolveAccessorValue = (row: Record<string, unknown>, accessor: string | n
       return (acc as Record<string, unknown>)[key]
     }, row)
   }
-
   return (row as Record<string, unknown>)[accessor as keyof typeof row]
 }

@@ -1,5 +1,5 @@
-import type React from 'react'
 import type { ReactElement } from 'react'
+import type React from 'react'
 
 export class GridHeaderCell {
   constructor(
@@ -11,10 +11,10 @@ export class GridHeaderCell {
     public readonly columnIndex: number | undefined,
     public readonly isLeaf: boolean,
     public readonly content?: React.ReactNode,
-    public readonly renderColumnContent?: () => ReactElement
+    public readonly renderColumnContent?: () => ReactElement,
   ) {}
 
-  getSpanWidth(columnWidths: number[]) {
+  getSpanWidth(columnWidths: number[]): number {
     let total = 0
     for (let offset = 0; offset < this.colSpan; offset++) {
       total += columnWidths[this.startIndex + offset] ?? 0

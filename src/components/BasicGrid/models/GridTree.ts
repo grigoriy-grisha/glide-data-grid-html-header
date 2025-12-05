@@ -154,7 +154,7 @@ export class GridTree<RowType extends Record<string, unknown>> {
   }
 }
 
-export function areSetsEqual(first: Set<string>, second: Set<string>) {
+export function areSetsEqual(first: Set<string>, second: Set<string>): boolean {
   if (first.size !== second.size) {
     return false
   }

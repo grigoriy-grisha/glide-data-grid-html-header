@@ -13,23 +13,31 @@ export class GridCellState<RowType extends Record<string, unknown>> {
     const formatted = this.column.formatValue(this.row, rawValue)
 
     if (this.column.isNumeric()) {
-      const numericValue = typeof rawValue === 'number' ? rawValue : Number(rawValue ?? 0)
-      const safeNumber = Number.isFinite(numericValue) ? numericValue : 0
-      const displayValue =
-        formatted != null
-          ? String(formatted)
-          : this.column.dataType === 'percent'
+      return this.createNumericCell(rawValue, formatted)
+    }
+
+    return this.createTextCell(rawValue, formatted)
+  }
+
+  private createNumericCell(rawValue: unknown, formatted: string | undefined): GridCell {
+    const numericValue = typeof rawValue === 'number' ? rawValue : Number(rawValue ?? 0)
+    const safeNumber = Number.isFinite(numericValue) ? numericValue : 0
+    const displayValue =
+      formatted != null
+        ? String(formatted)
+        : this.column.dataType === 'percent'
           ? `${safeNumber}%`
           : safeNumber.toString()
 
-      return {
-        kind: GridCellKind.Number,
-        data: safeNumber,
-        displayData: displayValue,
-        allowOverlay: false,
-      }
+    return {
+      kind: GridCellKind.Number,
+      data: safeNumber,
+      displayData: displayValue,
+      allowOverlay: false,
     }
+  }
 
+  private createTextCell(rawValue: unknown, formatted: string | undefined): GridCell {
     const text = formatted != null ? String(formatted) : rawValue == null ? '' : String(rawValue)
 
     return {
