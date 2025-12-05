@@ -9,12 +9,8 @@ export class CanvasRoot {
     rootNode: CanvasNode;
     private hoverController: CanvasHoverController;
 
-    /** Draw batcher for optimized rendering */
     private batcher: DrawBatcher = new DrawBatcher();
-
-    /** Callback fired when cursor should change based on hovered element */
     onCursorChange?: (cursor: string) => void;
-    /** Callback fired when portal-aware hover target changes */
     onPortalHoverTargetChange?: (node: CanvasNode | null, event: CanvasEvent | null) => void;
 
     constructor(canvas: HTMLCanvasElement, rootNode: CanvasNode) {
@@ -78,29 +74,12 @@ export class CanvasRoot {
             return;
         }
 
-        for (const node of hits) {
-            if (isStopped()) {
-                break;
-            }
-
-            // Set currentTarget to the node handling the event
-            const nodeEvent: CanvasEvent = { ...event, currentTarget: node };
-
-            switch (type) {
-                case 'click':
-                    node.onClick.bind(node)(nodeEvent);
-                    break;
-                case 'mousedown':
-                    node.onMouseDown.bind(node)(nodeEvent);
-                    break;
-                case 'mouseup':
-                    node.onMouseUp.bind(node)(nodeEvent);
-                    break;
-                case 'dblclick':
-                    node.onDoubleClick.bind(node)(nodeEvent);
-                    break;
-            }
-        }
+        this.dispatchToNodes(
+            hits,
+            event,
+            (node, nodeEvent) => this.invokePointerHandler(node, type, nodeEvent),
+            isStopped,
+        );
     }
 
     private dispatchMouseMove(
@@ -108,13 +87,37 @@ export class CanvasRoot {
         event: CanvasEvent,
         isStopped: () => boolean,
     ) {
+        this.dispatchToNodes(hits, event, (node, nodeEvent) => node.onMouseMove(nodeEvent), isStopped);
+    }
+
+    private dispatchToNodes(
+        hits: CanvasNode[],
+        event: CanvasEvent,
+        handler: (node: CanvasNode, nodeEvent: CanvasEvent) => void,
+        isStopped: () => boolean,
+    ) {
         for (const node of hits) {
             if (isStopped()) {
                 break;
             }
-            // Set currentTarget to the node handling the event
-            const nodeEvent: CanvasEvent = { ...event, currentTarget: node };
-            node.onMouseMove.bind(node)(nodeEvent);
+            handler(node, { ...event, currentTarget: node });
+        }
+    }
+
+    private invokePointerHandler(node: CanvasNode, type: CanvasEvent['type'], event: CanvasEvent) {
+        switch (type) {
+            case 'click':
+                node.onClick(event);
+                break;
+            case 'mousedown':
+                node.onMouseDown(event);
+                break;
+            case 'mouseup':
+                node.onMouseUp(event);
+                break;
+            case 'dblclick':
+                node.onDoubleClick(event);
+                break;
         }
     }
 
@@ -127,7 +130,6 @@ export class CanvasRoot {
         this.updateRootRect(rect);
         this.layoutRoot();
 
-        // Batched rendering: collect commands, then flush
         this.batcher.clear();
         this.rootNode.paint(this.batcher, this.ctx);
         this.batcher.flush(this.ctx);

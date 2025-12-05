@@ -7,7 +7,7 @@ export type CanvasFlexStyle = Omit<Partial<FlexStyle>, 'width' | 'height'> & {
     width?: DimensionValue;
     height?: DimensionValue;
     cursor?: string;
-    marginRight?: number; // Temporary support for margin
+    marginRight?: number;
 };
 
 export interface Rect {
@@ -23,7 +23,6 @@ export interface CanvasEvent<T extends CanvasNode = CanvasNode> {
     y: number;
     originalEvent: MouseEvent | React.MouseEvent;
     target?: CanvasNode;
-    /** The node that the event handler is attached to (current element) */
     currentTarget?: T;
     stopPropagation: () => void;
     preventDefault: () => void;
@@ -35,19 +34,14 @@ export abstract class CanvasNode {
     parent: CanvasNode | null = null;
     children: CanvasNode[] = [];
     rect: Rect = {x: 0, y: 0, width: 0, height: 0};
-    
-    /** Z-index for draw ordering. Higher values are drawn on top. */
     zIndex: number = 0;
 
-    // Cached intrinsic size from last measure
     protected _intrinsicWidth = 0;
     protected _intrinsicHeight = 0;
 
-    // Dirty flags for layout optimization
     protected _layoutDirty = true;
     protected _measureDirty = true;
 
-    // Style for flex layout
     private _style: CanvasFlexStyle = {
         flexGrow: 0,
         flexShrink: 1,
@@ -69,14 +63,12 @@ export abstract class CanvasNode {
     borderColor: string = 'transparent';
     borderWidth: number = 0;
 
-    /** Flag indicating whether this node should drive the hover portal */
     portalHoverEnabled = false;
 
     constructor(id: string) {
         this.id = id;
     }
 
-    // Dirty flag management
     markLayoutDirty() {
         if (!this._layoutDirty) {
             this._layoutDirty = true;
@@ -108,15 +100,11 @@ export abstract class CanvasNode {
     }
 
     addChild(child: CanvasNode) {
-        child.parent = this;
-        this.children.push(child);
-        this.markLayoutDirty();
+        this.attachChild(child, (list, node) => list.push(node));
     }
 
     addChildStart(child: CanvasNode) {
-        child.parent = this;
-        this.children.unshift(child);
-        this.markLayoutDirty();
+        this.attachChild(child, (list, node) => list.unshift(node));
     }
 
     removeChild(child: CanvasNode) {
@@ -130,18 +118,12 @@ export abstract class CanvasNode {
 
     abstract measure(ctx: CanvasRenderingContext2D): void;
 
-    /**
-     * Paint node using the batcher.
-     * @param batcher - The draw batcher to enqueue commands to
-     * @param ctx - Canvas context for text measurement
-     */
     paint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void {
-        // Set z-index for this node's commands
         const prevZ = batcher.getZIndex();
         batcher.setZIndex(prevZ + this.zIndex);
-        
+
         this.onPaint(batcher, ctx);
-        
+
         if (CanvasNode.DEBUG) {
             batcher.strokeRect(
                 this.rect.x,
@@ -153,30 +135,21 @@ export abstract class CanvasNode {
             );
         }
         
-        // Restore previous z-index
         batcher.setZIndex(prevZ);
     }
 
-    /**
-     * Override this to draw the node.
-     * @param batcher - The draw batcher to enqueue commands to
-     * @param ctx - Canvas context for text measurement
-     */
     abstract onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D): void;
 
     hitTest(x: number, y: number): CanvasNode[] {
         const hits: CanvasNode[] = [];
 
-        if (x >= this.rect.x && x <= this.rect.x + this.rect.width &&
-            y >= this.rect.y && y <= this.rect.y + this.rect.height) {
-
+        if (this.containsPoint(x, y)) {
             for (let i = this.children.length - 1; i >= 0; i--) {
                 const childHits = this.children[i].hitTest(x, y);
                 if (childHits.length > 0) {
                     hits.push(...childHits);
                 }
             }
-
             hits.push(this);
         }
 
@@ -194,9 +167,6 @@ export abstract class CanvasNode {
             this.parent.requestPaint();
         }
     }
-
-
-    // Event handlers
     onClick(_event: CanvasEvent<any>) {
     }
 
@@ -216,5 +186,20 @@ export abstract class CanvasNode {
     }
 
     onDoubleClick(_event: CanvasEvent<any>) {
+    }
+
+    private attachChild(child: CanvasNode, insert: (list: CanvasNode[], node: CanvasNode) => void) {
+        child.parent = this;
+        insert(this.children, child);
+        this.markLayoutDirty();
+    }
+
+    private containsPoint(x: number, y: number): boolean {
+        return (
+            x >= this.rect.x &&
+            x <= this.rect.x + this.rect.width &&
+            y >= this.rect.y &&
+            y <= this.rect.y + this.rect.height
+        );
     }
 }

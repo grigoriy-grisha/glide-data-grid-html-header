@@ -249,7 +249,7 @@ function buildNode(
 function createNode(type: string, id: string, props: Record<string, any>): CanvasNode {
   switch (type) {
     case 'Container': {
-      const { children, style, id: _, gap, columnGap, rowGap, portalHoverEnabled: _phe, ...restFlexOptions } = props
+      const { id: _, gap, columnGap, rowGap, portalHoverEnabled: _phe, ...restFlexOptions } = props
       const flexOptions = {
         ...restFlexOptions,
         columnGap: columnGap ?? gap ?? 0,
@@ -274,9 +274,12 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, portalHoverEnabled: _phe } = props
       const node = new CanvasIcon(id, icon, { size, color })
       if (backgroundColor) node.backgroundColor = backgroundColor
-      node.onClick = wrapEventHandler(onClick, node) as any
-      node.onMouseEnter = wrapEventHandler(onMouseEnter, node) as any
-      node.onMouseLeave = wrapEventHandler(onMouseLeave, node) as any
+      const click = wrapEventHandler(onClick, node)
+      const enter = wrapEventHandler(onMouseEnter, node)
+      const leave = wrapEventHandler(onMouseLeave, node)
+      if (click) node.onClick = click
+      if (enter) node.onMouseEnter = enter
+      if (leave) node.onMouseLeave = leave
       return node
     }
 
@@ -284,14 +287,16 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       const { children, variant, disabled, onClick, portalHoverEnabled: _phe } = props
       const text = typeof children === 'string' ? children : ''
       const node = new CanvasButton(id, text, { variant, disabled })
-      node.onClick = wrapEventHandler(onClick, node) as any
+      const click = wrapEventHandler(onClick, node)
+      if (click) node.onClick = click
       return node
     }
 
     case 'IconButton': {
       const { icon, size, variant, disabled, onClick, portalHoverEnabled: _phe } = props
       const node = new CanvasIconButton(id, icon, { size, variant, disabled })
-      node.onClick = wrapEventHandler(onClick, node) as any
+      const click = wrapEventHandler(onClick, node)
+      if (click) node.onClick = click
       return node
     }
 

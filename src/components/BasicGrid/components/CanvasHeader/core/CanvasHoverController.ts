@@ -3,15 +3,7 @@ import type { CanvasPortalHoverDetail, CanvasPortalSource } from '../utils/porta
 
 export interface CanvasHoverControllerOptions {
   onCursorChange?: (cursor: string) => void
-  /**
-   * Called when the active portal-enabled target changes. Consumers can use this
-   * to perform custom positioning logic (header canvas).
-   */
   onPortalTargetChange?: (target: CanvasNode | null, baseEvent: CanvasEvent | null) => void
-  /**
-   * Optional dispatcher used when the controller should emit portal overlay
-   * events directly (cells rendered inside Glide data grid).
-   */
   portalHoverDispatch?: (detail: CanvasPortalHoverDetail) => void
   portalSource?: CanvasPortalSource
 }
@@ -19,7 +11,7 @@ export interface CanvasHoverControllerOptions {
 export class CanvasHoverController {
   private hoveredNode: CanvasNode | null = null
   private activePortalNode: { id: string; rect: Rect } | null = null
-  private currentCursor: string = 'default'
+  private currentCursor = 'default'
   private bounds: Rect | null = null
 
   constructor(private readonly options: CanvasHoverControllerOptions = {}) {}
@@ -29,18 +21,18 @@ export class CanvasHoverController {
   }
 
   handlePointerMove(hits: CanvasNode[], baseEvent: CanvasEvent | null) {
-    this.handleHoverTransition(hits[0], baseEvent)
+    this.transitionHover(hits[0], baseEvent)
     this.updateCursor(hits)
   }
 
   handlePointerLeave() {
-    this.handleHoverTransition(undefined, null)
+    this.transitionHover(undefined, null)
     this.updateCursor([])
   }
 
   handlePortalReset() {
-    if (this.activePortalNode && this.options.portalHoverDispatch) {
-      this.options.portalHoverDispatch({
+    if (this.activePortalNode) {
+      this.dispatchPortalHover({
         visible: false,
         x: 0,
         y: 0,
@@ -68,45 +60,44 @@ export class CanvasHoverController {
     return this.currentCursor
   }
 
-  private handleHoverTransition(target: CanvasNode | undefined, baseEvent: CanvasEvent | null) {
+  private transitionHover(target: CanvasNode | undefined, baseEvent: CanvasEvent | null) {
     if (this.hoveredNode === target) {
-      this.updatePortalHover(target)
+      this.updatePortalHover(target, baseEvent)
       return
     }
 
-    const buildEvent = (type: CanvasEvent['type'], node: CanvasNode): CanvasEvent => {
-      if (baseEvent) {
-        return {
-          ...baseEvent,
-          type,
-          target: node,
-          currentTarget: node,
-        }
-      }
+    if (this.hoveredNode) {
+      this.hoveredNode.onMouseLeave(this.buildEvent('mouseleave', this.hoveredNode, baseEvent))
+    }
+
+    if (target) {
+      target.onMouseEnter(this.buildEvent('mouseenter', target, baseEvent))
+    }
+
+    this.hoveredNode = target ?? null
+    this.updatePortalHover(target, baseEvent)
+  }
+
+  private buildEvent(type: CanvasEvent['type'], node: CanvasNode, baseEvent: CanvasEvent | null): CanvasEvent {
+    if (baseEvent) {
       return {
+        ...baseEvent,
         type,
-        x: 0,
-        y: 0,
-        originalEvent: {} as MouseEvent,
-        stopPropagation: () => {},
-        preventDefault: () => {},
         target: node,
         currentTarget: node,
       }
     }
 
-    if (this.hoveredNode) {
-      const leaveEvent = buildEvent('mouseleave', this.hoveredNode)
-      this.hoveredNode.onMouseLeave(leaveEvent)
+    return {
+      type,
+      x: 0,
+      y: 0,
+      originalEvent: {} as MouseEvent,
+      stopPropagation: () => {},
+      preventDefault: () => {},
+      target: node,
+      currentTarget: node,
     }
-
-    if (target) {
-      const enterEvent = buildEvent('mouseenter', target)
-      target.onMouseEnter(enterEvent)
-    }
-
-    this.hoveredNode = target ?? null
-    this.updatePortalHover(target, baseEvent)
   }
 
   private updateCursor(hits: CanvasNode[]) {
@@ -140,15 +131,15 @@ export class CanvasHoverController {
   private updatePortalHover(target: CanvasNode | undefined, baseEvent: CanvasEvent | null = null) {
     const portalTarget = this.findPortalTarget(target)
     const rect = portalTarget ? { ...portalTarget.rect } : null
+    const previousActive = this.activePortalNode
+    const next = portalTarget && rect ? { id: portalTarget.id, rect } : null
 
-    if (portalTarget && this.activePortalNode?.id === portalTarget.id) {
+    if (portalTarget && previousActive?.id === portalTarget.id) {
       this.options.onPortalTargetChange?.(portalTarget, baseEvent)
       return
     }
 
-    const previousActive = this.activePortalNode
-    this.activePortalNode = portalTarget && rect ? { id: portalTarget.id, rect } : null
-
+    this.activePortalNode = next
     this.options.onPortalTargetChange?.(portalTarget ?? null, baseEvent)
 
     if (!this.options.portalHoverDispatch) {
@@ -156,7 +147,7 @@ export class CanvasHoverController {
     }
 
     if (portalTarget && rect && this.bounds) {
-      this.options.portalHoverDispatch({
+      this.dispatchPortalHover({
         visible: true,
         x: this.bounds.x + rect.x,
         y: this.bounds.y + rect.y,
@@ -167,7 +158,7 @@ export class CanvasHoverController {
         source: this.options.portalSource,
       })
     } else if (previousActive) {
-      this.options.portalHoverDispatch({
+      this.dispatchPortalHover({
         visible: false,
         x: 0,
         y: 0,
@@ -178,5 +169,8 @@ export class CanvasHoverController {
       })
     }
   }
-}
 
+  private dispatchPortalHover(detail: CanvasPortalHoverDetail) {
+    this.options.portalHoverDispatch?.(detail)
+  }
+}
