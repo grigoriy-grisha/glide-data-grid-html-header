@@ -1,5 +1,4 @@
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
 const priorityOptions = [
@@ -21,7 +20,6 @@ const departmentOptions = [
 const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Сотрудник',
-    headerContent: <HeaderCard icon="👤" iconTone="blue" title="Сотрудник" subtitle="Основная информация" compact />,
     children: [
       createColumn<DataRow>('employeeId', 'string', 'ID', { width: 120 }),
       createColumn<DataRow>('firstName', 'string', 'Имя', { width: 150 }),
@@ -30,7 +28,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Select ячейки',
-    headerContent: <HeaderCard icon="📋" iconTone="purple" title="Select ячейки" subtitle="Выпадающие списки" compact />,
     children: [
       createColumn<DataRow>('status.name', 'select', 'Статус (из данных)', {
         width: 200,
@@ -51,7 +48,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Дополнительно',
-    headerContent: <HeaderCard icon="📊" iconTone="green" title="Дополнительно" subtitle="Другие поля" compact />,
     children: [
       createColumn<DataRow>('progress', 'percent', 'Прогресс %', { width: 140 }),
       createColumn<DataRow>('salary', 'number', 'Зарплата', {

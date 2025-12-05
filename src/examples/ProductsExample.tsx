@@ -1,11 +1,9 @@
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { productData, type Product } from './data/products'
 
 const columns: BasicGridColumn<Product>[] = [
   {
     title: 'Товар',
-    headerContent: <HeaderCard icon="📦" iconTone="blue" title="Товар" subtitle="Основная информация" compact />,
     children: [
       createColumn<Product>('id', 'string', 'ID', { width: 120 }),
       createColumn<Product>('name', 'string', 'Название', { width: 250 }),
@@ -14,7 +12,6 @@ const columns: BasicGridColumn<Product>[] = [
   },
   {
     title: 'Цена и наличие',
-    headerContent: <HeaderCard icon="💰" iconTone="green" title="Цена и наличие" subtitle="Финансы и склад" compact />,
     children: [
       createColumn<Product>('price', 'number', 'Цена', {
         width: 140,
@@ -30,7 +27,6 @@ const columns: BasicGridColumn<Product>[] = [
   },
   {
     title: 'Дополнительно',
-    headerContent: <HeaderCard icon="⭐" iconTone="amber" title="Дополнительно" subtitle="Рейтинг и поставщик" compact />,
     children: [
       createColumn<Product>('rating', 'number', 'Рейтинг', {
         width: 120,

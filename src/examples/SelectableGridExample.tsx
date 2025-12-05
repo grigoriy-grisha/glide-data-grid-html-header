@@ -1,20 +1,10 @@
 import { useCallback, useState } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridRowSelectionChange } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
 const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Основные данные',
-    headerContent: (
-      <HeaderCard
-        icon="🧾"
-        iconTone="blue"
-        title="Основные данные"
-        subtitle="Идентификаторы и роли"
-        chip={{ label: 'Core', tone: 'blue' }}
-      />
-    ),
     children: [
       createColumn<DataRow>('employeeId', 'string', 'ID', { width: 120 }),
       createColumn<DataRow>('firstName', 'string', 'Имя', { width: 150 }),
@@ -25,9 +15,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Контакты',
-    headerContent: (
-      <HeaderCard icon="☎" iconTone="purple" title="Контакты" subtitle="CRM & сервис" chip={{ label: 'Live', tone: 'green' }} />
-    ),
     children: [
       createColumn<DataRow>('email', 'string', 'Email', { width: 260 }),
       createColumn<DataRow>('contact.phone', 'string', 'Телефон', { width: 180 }),
@@ -35,7 +22,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Прогресс',
-    headerContent: <HeaderCard icon="📈" iconTone="purple" title="Прогресс" subtitle="KPI + статус" compact />,
     children: [
       createColumn<DataRow>('status.name', 'select', 'Статус', {
         width: 160,

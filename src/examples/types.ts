@@ -44,20 +44,4 @@ export interface NetworkNode extends Record<string, unknown> {
   items?: NetworkNode[]
 }
 
-export type HeaderTone = 'blue' | 'green' | 'amber' | 'purple' | 'teal'
-
-export interface HeaderChip {
-  label: string
-  tone?: HeaderTone
-}
-
-export interface HeaderCardProps {
-  icon: React.ReactNode
-  iconTone?: HeaderTone
-  title: string
-  subtitle?: string
-  chip?: HeaderChip
-  metrics?: { label: string; value: string }[]
-  compact?: boolean
-}
 

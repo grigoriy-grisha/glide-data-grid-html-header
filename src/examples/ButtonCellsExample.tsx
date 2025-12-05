@@ -1,11 +1,9 @@
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { basicGridRows, type DataRow } from './data'
 
 const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Сотрудник',
-    headerContent: <HeaderCard icon="👤" iconTone="blue" title="Сотрудник" subtitle="Основная информация" compact />,
     children: [
       createColumn<DataRow>('employeeId', 'string', 'ID', { width: 120 }),
       createColumn<DataRow>('firstName', 'string', 'Имя', { width: 150 }),
@@ -15,7 +13,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Действия',
-    headerContent: <HeaderCard icon="⚡" iconTone="green" title="Действия" subtitle="Кнопки действий" compact />,
     children: [
       createColumn<DataRow>('actions', 'button', 'Основное действие', {
         width: 200,
@@ -53,7 +50,6 @@ const columns: BasicGridColumn<DataRow>[] = [
   },
   {
     title: 'Условные кнопки',
-    headerContent: <HeaderCard icon="🎯" iconTone="purple" title="Условные кнопки" subtitle="Динамические действия" compact />,
     children: [
       createColumn<DataRow>('actions', 'button', 'Статус', {
         width: 180,

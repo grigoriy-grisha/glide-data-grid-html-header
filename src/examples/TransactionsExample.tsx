@@ -1,11 +1,9 @@
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { transactionData, type Transaction } from './data/transactions'
 
 const columns: BasicGridColumn<Transaction>[] = [
   {
     title: 'Транзакция',
-    headerContent: <HeaderCard icon="💳" iconTone="blue" title="Транзакция" subtitle="Основная информация" compact />,
     children: [
       createColumn<Transaction>('id', 'string', 'ID', { width: 120 }),
       createColumn<Transaction>('date', 'string', 'Дата', { width: 120 }),
@@ -14,7 +12,6 @@ const columns: BasicGridColumn<Transaction>[] = [
   },
   {
     title: 'Финансы',
-    headerContent: <HeaderCard icon="💰" iconTone="green" title="Финансы" subtitle="Суммы и категории" compact />,
     children: [
       createColumn<Transaction>('amount', 'number', 'Сумма', {
         width: 150,
@@ -31,7 +28,6 @@ const columns: BasicGridColumn<Transaction>[] = [
   },
   {
     title: 'Дополнительно',
-    headerContent: <HeaderCard icon="🏦" iconTone="purple" title="Дополнительно" subtitle="Счета и статус" compact />,
     children: [
       createColumn<Transaction>('account', 'string', 'Счёт', { width: 200 }),
       createColumn<Transaction>('status', 'string', 'Статус', { width: 140 }),

@@ -1,11 +1,9 @@
 import { BasicGrid, createColumn, type BasicGridColumn } from '../components'
-import { HeaderCard } from './components/HeaderCard'
 import { userData, type User } from './data/users'
 
 const columns: BasicGridColumn<User>[] = [
   {
     title: 'Пользователь',
-    headerContent: <HeaderCard icon="👤" iconTone="blue" title="Пользователь" subtitle="Основная информация" compact />,
     children: [
       createColumn<User>('id', 'string', 'ID', { width: 120 }),
       createColumn<User>('username', 'string', 'Имя пользователя', { width: 180 }),
@@ -14,7 +12,6 @@ const columns: BasicGridColumn<User>[] = [
   },
   {
     title: 'Роль и статус',
-    headerContent: <HeaderCard icon="🔐" iconTone="purple" title="Роль и статус" subtitle="Права доступа" compact />,
     children: [
       createColumn<User>('role', 'string', 'Роль', { width: 150 }),
       createColumn<User>('status', 'string', 'Статус', { width: 120 }),
@@ -23,7 +20,6 @@ const columns: BasicGridColumn<User>[] = [
   },
   {
     title: 'Даты',
-    headerContent: <HeaderCard icon="📅" iconTone="green" title="Даты" subtitle="Регистрация и вход" compact />,
     children: [
       createColumn<User>('registrationDate', 'string', 'Регистрация', { width: 140 }),
       createColumn<User>('lastLogin', 'string', 'Последний вход', { width: 180 }),
