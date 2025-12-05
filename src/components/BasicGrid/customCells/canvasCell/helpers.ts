@@ -2,15 +2,19 @@ import type { CellIndices, HoverState, Point, RectBounds } from './types'
 
 export const RELATIVE_COORD_TOLERANCE = 1
 
-// Reusable objects to avoid allocations in hot paths
-const _tempIndices: CellIndices = { colIndex: -1, rowIndex: -1 }
-const _tempPoint: Point = { x: 0, y: 0 }
+const INVALID_INDEX = -1
+const DEFAULT_COORD = 0
+
+const _tempIndices: CellIndices = { colIndex: INVALID_INDEX, rowIndex: INVALID_INDEX }
+const _tempPoint: Point = { x: DEFAULT_COORD, y: DEFAULT_COORD }
+
+const MIN_LOCATION_ARRAY_LENGTH = 2
 
 export function getCellIndices(argsAny: Record<string, any>): CellIndices {
   const location = argsAny.location
-  if (Array.isArray(location) && location.length >= 2) {
-    _tempIndices.colIndex = location[0] ?? -1
-    _tempIndices.rowIndex = location[1] ?? -1
+  if (Array.isArray(location) && location.length >= MIN_LOCATION_ARRAY_LENGTH) {
+    _tempIndices.colIndex = location[0] ?? INVALID_INDEX
+    _tempIndices.rowIndex = location[1] ?? INVALID_INDEX
     return _tempIndices
   }
 
@@ -30,22 +34,23 @@ export function getCellIndices(argsAny: Record<string, any>): CellIndices {
     return _tempIndices
   }
 
-  _tempIndices.colIndex = -1
-  _tempIndices.rowIndex = -1
+  _tempIndices.colIndex = INVALID_INDEX
+  _tempIndices.rowIndex = INVALID_INDEX
   return _tempIndices
 }
 
+const ID_SEPARATOR = '-'
+const MIN_VALID_INDEX = 0
+
 export function buildCellId(indices: CellIndices, rect: RectBounds): string {
-  const col = indices.colIndex
-  const row = indices.rowIndex
-  if (col >= 0 && row >= 0) {
-    return col + '-' + row
+  const { colIndex, rowIndex } = indices
+  if (colIndex >= MIN_VALID_INDEX && rowIndex >= MIN_VALID_INDEX) {
+    return `${colIndex}${ID_SEPARATOR}${rowIndex}`
   }
-  return rect.x + '-' + rect.y + '-' + rect.width + '-' + rect.height
+  return `${rect.x}${ID_SEPARATOR}${rect.y}${ID_SEPARATOR}${rect.width}${ID_SEPARATOR}${rect.height}`
 }
 
 export function resolveClickPoint(argsAny: Record<string, any>): Point | null {
-  // Check posX/posY first (most common)
   const posX = argsAny.posX
   const posY = argsAny.posY
   if (typeof posX === 'number' && typeof posY === 'number' && posX === posX && posY === posY) {
@@ -54,7 +59,6 @@ export function resolveClickPoint(argsAny: Record<string, any>): Point | null {
     return _tempPoint
   }
 
-  // Check x/y
   const x = argsAny.x
   const y = argsAny.y
   if (typeof x === 'number' && typeof y === 'number' && x === x && y === y) {
@@ -63,7 +67,6 @@ export function resolveClickPoint(argsAny: Record<string, any>): Point | null {
     return _tempPoint
   }
 
-  // Check location array
   const location = argsAny.location
   if (Array.isArray(location) && location.length >= 2) {
     const locX = location[0]
@@ -84,7 +87,6 @@ export function toRelativePoint(point: Point, rect: RectBounds): Point {
   const rx = rect.x
   const ry = rect.y
   
-  // Inline isPointInArea check
   if (px >= rx && px <= rx + rect.width && py >= ry && py <= ry + rect.height) {
     _tempPoint.x = px - rx
     _tempPoint.y = py - ry
@@ -108,14 +110,12 @@ export function normalizeHoverPoint(
   const rx = rect.x
   const ry = rect.y
 
-  // Check relative coords first (more common case)
   if (hoverX >= -1 && hoverX <= w + 1 && hoverY >= -1 && hoverY <= h + 1) {
     _tempPoint.x = hoverX
     _tempPoint.y = hoverY
     return _tempPoint
   }
 
-  // Check absolute coords
   if (hoverX >= rx - 1 && hoverX <= rx + w + 1 && hoverY >= ry - 1 && hoverY <= ry + h + 1) {
     _tempPoint.x = hoverX - rx
     _tempPoint.y = hoverY - ry
@@ -148,7 +148,6 @@ export function isHoveringBounds(hovered: HoverState, bounds: RectBounds): boole
       typeof rectX === 'number' &&
       typeof rectY === 'number'
     ) {
-      // Inline point-in-area check to avoid object allocation
       const relX = bounds.x - rectX
       const relY = bounds.y - rectY
       return hoverX >= relX && hoverX <= relX + bounds.width && 

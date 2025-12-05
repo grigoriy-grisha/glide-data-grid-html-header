@@ -140,7 +140,6 @@ function getIconImage(icon: ButtonIcon, color?: string): HTMLImageElement | null
   return null
 }
 
-// Exported for use in buttons.ts batched rendering
 export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageElement | null {
   return getIconImage(icon, color)
 }
@@ -150,13 +149,13 @@ export function getIconSprite(icon: ButtonIcon, size: number, color?: string): C
   return iconSpriteManager.getSprite(icon, { size, color })
 }
 
-// Get current device pixel ratio (cached per frame for consistency)
+const DPR_REFRESH_INTERVAL = 1000
+
 let cachedDpr = 1
 let dprTimestamp = 0
 function getDevicePixelRatio(): number {
   const now = performance.now()
-  // Refresh DPR every 1000ms (handles display changes)
-  if (now - dprTimestamp > 1000) {
+  if (now - dprTimestamp > DPR_REFRESH_INTERVAL) {
     cachedDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
     dprTimestamp = now
   }
@@ -232,13 +231,9 @@ class IconSpriteManager {
     this.stats.misses += 1
 
     if (record.image.complete && record.image.naturalHeight !== 0) {
-      // Start async rasterization to ImageBitmap
       this.scheduleWarm(record.image, variantKey, options)
-      
-      // Return canvas sprite synchronously for first render
       const canvasSprite = this.rasterizeToCanvas(record.image, options)
       if (canvasSprite) {
-        // Don't cache canvas - we want the ImageBitmap version
         return canvasSprite
       }
     }
@@ -282,7 +277,6 @@ class IconSpriteManager {
     variantKey: string,
     options: IconSpriteOptions
   ): Promise<void> {
-    // Already cached or pending
     if (this.sprites.has(variantKey) || this.pending.has(variantKey)) {
       const pendingPromise = this.pending.get(variantKey)
       return pendingPromise ? pendingPromise.then(() => undefined) : Promise.resolve()
@@ -332,8 +326,6 @@ class IconSpriteManager {
     })
   }
 
-  // Synchronous canvas rasterization for immediate use
-  // Renders at device pixel ratio for crisp display
   private rasterizeToCanvas(source: CanvasImageSource, options: IconSpriteOptions): CanvasSprite | null {
     const dpr = getDevicePixelRatio()
     const physicalSize = Math.ceil(options.size * dpr)
@@ -355,7 +347,6 @@ class IconSpriteManager {
     return canvas
   }
 
-  // Async rasterization with DPI awareness
   private async rasterize(source: CanvasImageSource, options: IconSpriteOptions): Promise<CanvasSprite | null> {
     return this.rasterizeToCanvas(source, options)
   }
@@ -384,10 +375,6 @@ export function resetIconSpriteCache(): void {
   iconSpriteManager.clear()
 }
 
-/**
- * Draw icon directly to canvas context.
- * @deprecated Use drawIcon from buttons.ts which supports both ctx and batcher.
- */
 export function drawIcon(
   ctx: CanvasRenderingContext2D,
   icon: ButtonIcon,
@@ -399,9 +386,6 @@ export function drawIcon(
   drawIconDirect(ctx, icon, x, y, size, color)
 }
 
-/**
- * Internal: draw icon directly to canvas context.
- */
 export function drawIconDirect(
   ctx: CanvasRenderingContext2D,
   icon: ButtonIcon,

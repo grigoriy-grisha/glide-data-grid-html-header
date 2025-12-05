@@ -4,17 +4,15 @@ import { DrawBatcher } from '../../components/CanvasHeader/core/DrawBatcher'
 import { dispatchCanvasPortalHover } from '../../components/CanvasHeader/utils/portalHoverEvents'
 import { CanvasHoverController } from '../../components/CanvasHeader/core/CanvasHoverController'
 
+const PORTAL_SOURCE = 'cell' as const
+
 type PointerEventType = CanvasEvent['type']
 
 export class CellCanvasRoot {
   rootNode: CanvasNode
   private bounds: Rect | null = null
   private hoverController: CanvasHoverController
-
-  /** Draw batcher for optimized rendering */
   private batcher: DrawBatcher = new DrawBatcher()
-
-  /** Callback fired when cursor should change based on hovered element */
   onCursorChange?: (cursor: string) => void
 
   constructor(node: CanvasNode, _originId?: string) {
@@ -22,16 +20,15 @@ export class CellCanvasRoot {
     this.hoverController = new CanvasHoverController({
       onCursorChange: (cursor) => this.onCursorChange?.(cursor),
       portalHoverDispatch: dispatchCanvasPortalHover,
-      portalSource: 'cell',
+      portalSource: PORTAL_SOURCE,
     })
   }
 
-  setRootNode(node: CanvasNode) {
+  setRootNode(node: CanvasNode): void {
     this.rootNode = node
   }
 
-  setOriginId(_originId: string) {
-    // no-op kept for API compatibility
+  setOriginId(_originId: string): void {
   }
 
   render(
@@ -39,7 +36,7 @@ export class CellCanvasRoot {
     rect: Rect,
     hoverPos?: { x: number; y: number },
     absoluteBounds?: Rect
-  ) {
+  ): void {
     this.bounds = { ...(absoluteBounds ?? rect) }
     this.hoverController.setAbsoluteBounds(this.bounds)
 
@@ -54,7 +51,6 @@ export class CellCanvasRoot {
       this.handleMouseLeave()
     }
 
-    // Batched rendering: collect commands, then flush
     this.batcher.clear()
     this.rootNode.paint(this.batcher, ctx)
     this.batcher.flush(ctx)
@@ -67,14 +63,13 @@ export class CellCanvasRoot {
       return false
     }
 
-    const localX = x
-    const localY = y
-    const hits = this.rootNode.hitTest(localX, localY)
+    const hits = this.rootNode.hitTest(x, y)
     let stopped = false
+    
     const canvasEvent: CanvasEvent = {
       type,
-      x: localX,
-      y: localY,
+      x,
+      y,
       originalEvent: nativeEvent ?? ({} as MouseEvent),
       target: hits[0],
       stopPropagation: () => {
@@ -92,35 +87,7 @@ export class CellCanvasRoot {
       return false
     }
 
-    for (const node of hits) {
-      if (stopped) {
-        break
-      }
-      const nodeEvent = { ...canvasEvent, currentTarget: node }
-      switch (type) {
-        case 'click':
-          node.onClick(nodeEvent)
-          break
-        case 'mousedown':
-          node.onMouseDown(nodeEvent)
-          break
-        case 'mouseup':
-          node.onMouseUp(nodeEvent)
-          break
-        case 'dblclick':
-          node.onDoubleClick(nodeEvent)
-          break
-        case 'mousemove':
-          node.onMouseMove(nodeEvent)
-          break
-        case 'mouseenter':
-          node.onMouseEnter(nodeEvent)
-          break
-        case 'mouseleave':
-          node.onMouseLeave(nodeEvent)
-          break
-      }
-    }
+    this.dispatchEventToNodes(hits, canvasEvent, type)
 
     if (type === 'mousemove') {
       this.hoverController.handlePointerMove(hits, canvasEvent)
@@ -129,11 +96,51 @@ export class CellCanvasRoot {
     return stopped
   }
 
-  handleMouseLeave() {
+  private dispatchEventToNodes(hits: CanvasNode[], canvasEvent: CanvasEvent, type: PointerEventType): void {
+    let stopped = false
+    const stopPropagation = () => { stopped = true }
+    const eventWithStop = { ...canvasEvent, stopPropagation }
+
+    for (const node of hits) {
+      if (stopped) {
+        break
+      }
+      const nodeEvent = { ...eventWithStop, currentTarget: node }
+      this.invokeNodeHandler(node, type, nodeEvent)
+    }
+  }
+
+  private invokeNodeHandler(node: CanvasNode, type: PointerEventType, event: CanvasEvent): void {
+    switch (type) {
+      case 'click':
+        node.onClick(event)
+        break
+      case 'mousedown':
+        node.onMouseDown(event)
+        break
+      case 'mouseup':
+        node.onMouseUp(event)
+        break
+      case 'dblclick':
+        node.onDoubleClick(event)
+        break
+      case 'mousemove':
+        node.onMouseMove(event)
+        break
+      case 'mouseenter':
+        node.onMouseEnter(event)
+        break
+      case 'mouseleave':
+        node.onMouseLeave(event)
+        break
+    }
+  }
+
+  handleMouseLeave(): void {
     this.hoverController.handlePointerLeave()
   }
 
-  private prepareRootNode(ctx: CanvasRenderingContext2D, rect: Rect) {
+  private prepareRootNode(ctx: CanvasRenderingContext2D, rect: Rect): void {
     this.rootNode.rect.x = 0
     this.rootNode.rect.y = 0
     this.rootNode.rect.width = rect.width
@@ -154,7 +161,7 @@ export class CellCanvasRoot {
     return this.hoverController.getCurrentCursor()
   }
 
-  forcePortalHide() {
+  forcePortalHide(): void {
     this.hoverController.handlePortalReset()
   }
 }

@@ -5,6 +5,10 @@ import type { BasicGridSelectOption } from '../types'
 
 export const SELECT_CELL_KIND = 'select-cell'
 
+const DEFAULT_PADDING_X = 8
+const CARET_WIDTH = 8
+const CARET_HEIGHT = 5
+
 export interface SelectCellData {
   kind: typeof SELECT_CELL_KIND
   value: string
@@ -15,7 +19,7 @@ export interface SelectCellData {
 
 export type SelectCell = CustomCell<SelectCellData>
 
-function resolveDisplayValue(value: string, options: BasicGridSelectOption[], placeholder?: string) {
+function resolveDisplayValue(value: string, options: BasicGridSelectOption[], placeholder?: string): string {
   if (!value) {
     return placeholder ?? ''
   }
@@ -63,28 +67,12 @@ export const selectCellRenderer: CustomRenderer<SelectCell> = {
     ctx.rect(rect.x, rect.y, rect.width, rect.height)
     ctx.clip()
 
-    const paddingX = theme.cellHorizontalPadding ?? 8
+    const paddingX = theme.cellHorizontalPadding ?? DEFAULT_PADDING_X
     const textX = rect.x + paddingX
     const textY = rect.y + rect.height / 2
 
-    ctx.font = theme.baseFontFull
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = highlighted ? theme.textMedium : theme.textDark
-    const text = displayValue || placeholder || ''
-    ctx.fillText(text, textX, textY)
-
-    // caret
-    const caretWidth = 8
-    const caretHeight = 5
-    const caretX = rect.x + rect.width - paddingX - caretWidth
-    const caretY = rect.y + rect.height / 2 - caretHeight / 2
-    ctx.fillStyle = theme.textLight
-    ctx.beginPath()
-    ctx.moveTo(caretX, caretY)
-    ctx.lineTo(caretX + caretWidth, caretY)
-    ctx.lineTo(caretX + caretWidth / 2, caretY + caretHeight)
-    ctx.closePath()
-    ctx.fill()
+    drawSelectText(ctx, displayValue || placeholder || '', textX, textY, theme, highlighted)
+    drawCaret(ctx, rect, paddingX, theme)
 
     ctx.restore()
   },
@@ -129,4 +117,34 @@ export const selectCellRenderer: CustomRenderer<SelectCell> = {
   }),
 }
 
+function drawSelectText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  theme: any,
+  highlighted: boolean
+): void {
+  ctx.font = theme.baseFontFull
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = highlighted ? theme.textMedium : theme.textDark
+  ctx.fillText(text, x, y)
+}
 
+function drawCaret(
+  ctx: CanvasRenderingContext2D,
+  rect: { x: number; y: number; width: number; height: number },
+  paddingX: number,
+  theme: any
+): void {
+  const caretX = rect.x + rect.width - paddingX - CARET_WIDTH
+  const caretY = rect.y + rect.height / 2 - CARET_HEIGHT / 2
+
+  ctx.fillStyle = theme.textLight
+  ctx.beginPath()
+  ctx.moveTo(caretX, caretY)
+  ctx.lineTo(caretX + CARET_WIDTH, caretY)
+  ctx.lineTo(caretX + CARET_WIDTH / 2, caretY + CARET_HEIGHT)
+  ctx.closePath()
+  ctx.fill()
+}
