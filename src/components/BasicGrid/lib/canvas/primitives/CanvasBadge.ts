@@ -1,5 +1,6 @@
 import { CanvasLeaf } from '../core/CanvasLeaf'
 import { DrawBatcher } from '../core/DrawBatcher'
+import { drawIcon, preloadIconSprites, type ButtonIcon } from '../cells/buttons'
 
 // Badge view types based on sdds_finai__light theme
 export type BadgeView = 
@@ -83,13 +84,24 @@ const VIEW_COLORS: Record<BadgeView, ViewColors> = {
 }
 
 const CACHE_SEPARATOR = '|'
+const ICON_TEXT_SPACING = 6
 const textWidthCache = new Map<string, number>()
+
+// Icon sizes for each badge size
+const ICON_SIZE_CONFIG: Record<BadgeSize, number> = {
+    xs: 10,
+    s: 12,
+    m: 14,
+    l: 16,
+}
 
 export interface CanvasBadgeOptions {
     view?: BadgeView
     size?: BadgeSize
     transparent?: boolean
     clear?: boolean
+    leftIcon?: ButtonIcon
+    rightIcon?: ButtonIcon
 }
 
 export class CanvasBadge extends CanvasLeaf {
@@ -98,6 +110,8 @@ export class CanvasBadge extends CanvasLeaf {
     size: BadgeSize = 's'
     transparent = false
     clear = false
+    leftIcon?: ButtonIcon
+    rightIcon?: ButtonIcon
 
     constructor(id: string, text: string, options?: CanvasBadgeOptions) {
         super(id)
@@ -107,21 +121,38 @@ export class CanvasBadge extends CanvasLeaf {
             if (options.size !== undefined) this.size = options.size
             if (options.transparent !== undefined) this.transparent = options.transparent
             if (options.clear !== undefined) this.clear = options.clear
+            if (options.leftIcon !== undefined) this.leftIcon = options.leftIcon
+            if (options.rightIcon !== undefined) this.rightIcon = options.rightIcon
+        }
+        
+        // Preload icons
+        const iconSize = ICON_SIZE_CONFIG[this.size]
+        if (this.leftIcon) {
+            void preloadIconSprites(this.leftIcon, { size: iconSize })
+        }
+        if (this.rightIcon) {
+            void preloadIconSprites(this.rightIcon, { size: iconSize })
         }
     }
 
     measure(ctx: CanvasRenderingContext2D) {
         const sizeConfig = SIZE_CONFIG[this.size]
+        const iconSize = ICON_SIZE_CONFIG[this.size]
         const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
         const textWidth = getCachedTextWidth(ctx, font, this.text)
 
-        this.rect.width = textWidth + sizeConfig.paddingX * 2
+        let iconsWidth = 0
+        if (this.leftIcon) iconsWidth += iconSize + ICON_TEXT_SPACING
+        if (this.rightIcon) iconsWidth += iconSize + ICON_TEXT_SPACING
+
+        this.rect.width = textWidth + iconsWidth + sizeConfig.paddingX * 2
         this.rect.height = sizeConfig.height
     }
 
     onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
         const { x, y, width, height } = this.rect
         const sizeConfig = SIZE_CONFIG[this.size]
+        const iconSize = ICON_SIZE_CONFIG[this.size]
         const viewColors = VIEW_COLORS[this.view]
         const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
 
@@ -150,15 +181,33 @@ export class CanvasBadge extends CanvasLeaf {
             })
         }
 
+        const centerY = y + height / 2
+        let currentX = x + sizeConfig.paddingX
+
+        // Draw left icon
+        if (this.leftIcon) {
+            const iconY = centerY - iconSize / 2
+            drawIcon(batcher, this.leftIcon, currentX, iconY, iconSize, textColor)
+            currentX += iconSize + ICON_TEXT_SPACING
+        }
+
         // Draw text
         batcher.fillText(
             this.text,
-            x + sizeConfig.paddingX,
-            y + height / 2,
+            currentX,
+            centerY,
             font,
             textColor,
             'middle'
         )
+
+        // Draw right icon
+        if (this.rightIcon) {
+            const textWidth = getCachedTextWidth(_ctx, font, this.text)
+            const rightIconX = currentX + textWidth + ICON_TEXT_SPACING
+            const iconY = centerY - iconSize / 2
+            drawIcon(batcher, this.rightIcon, rightIconX, iconY, iconSize, textColor)
+        }
     }
 }
 

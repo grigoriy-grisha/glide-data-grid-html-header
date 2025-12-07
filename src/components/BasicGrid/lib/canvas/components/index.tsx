@@ -68,6 +68,10 @@ interface ButtonProps {
   view?: ButtonView
   /** Button size */
   size?: ButtonSize
+  /** Left icon (SVG string or image) */
+  leftIcon?: ButtonIcon
+  /** Right icon (SVG string or image) */
+  rightIcon?: ButtonIcon
   disabled?: boolean
   onClick?: (event: CanvasEvent<CanvasButton>) => void
   style?: Partial<CanvasFlexStyle>
@@ -112,6 +116,10 @@ interface BadgeProps {
   transparent?: boolean
   /** No background, only text */
   clear?: boolean
+  /** Left icon (SVG string or image) */
+  leftIcon?: ButtonIcon
+  /** Right icon (SVG string or image) */
+  rightIcon?: ButtonIcon
   style?: Partial<CanvasFlexStyle>
   id?: string
   portalHoverEnabled?: boolean
@@ -288,6 +296,18 @@ function buildNode(
     const buttonSize: ButtonSize = props.buttonSize ?? 's'
     const iconSize = SIZE_CONFIG[buttonSize].iconSize
     iconsToPreload.push({ icon: props.icon, size: iconSize })
+  } else if (canvasType === 'Button') {
+    const buttonSize: ButtonSize = props.size ?? 's'
+    const iconSize = SIZE_CONFIG[buttonSize].iconSize
+    if (props.leftIcon) iconsToPreload.push({ icon: props.leftIcon, size: iconSize })
+    if (props.rightIcon) iconsToPreload.push({ icon: props.rightIcon, size: iconSize })
+  } else if (canvasType === 'Badge') {
+    // Badge icon sizes: xs=10, s=12, m=14, l=16
+    const badgeSize = props.size ?? 's'
+    const iconSizeMap: Record<string, number> = { xs: 10, s: 12, m: 14, l: 16 }
+    const iconSize = iconSizeMap[badgeSize] ?? 12
+    if (props.leftIcon) iconsToPreload.push({ icon: props.leftIcon, size: iconSize })
+    if (props.rightIcon) iconsToPreload.push({ icon: props.rightIcon, size: iconSize })
   }
 
   const node = createNode(canvasType, nodeId, props)
@@ -394,9 +414,9 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Button': {
-      const { children, variant, view, size, disabled, onClick, portalHoverEnabled: _phe } = props
+      const { children, variant, view, size, leftIcon, rightIcon, disabled, onClick, portalHoverEnabled: _phe } = props
       const text = typeof children === 'string' ? children : ''
-      const node = new CanvasButton(id, text, { variant, view, size, disabled })
+      const node = new CanvasButton(id, text, { variant, view, size, leftIcon, rightIcon, disabled })
       const click = wrapEventHandler(onClick, node)
       if (click) node.onClick = click
       return node
@@ -419,8 +439,8 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Badge': {
-      const { text, view, size, transparent, clear, portalHoverEnabled: _phe } = props
-      return new CanvasBadge(id, text, { view, size, transparent, clear })
+      const { text, view, size, transparent, clear, leftIcon, rightIcon, portalHoverEnabled: _phe } = props
+      return new CanvasBadge(id, text, { view, size, transparent, clear, leftIcon, rightIcon })
     }
 
     default:

@@ -58,6 +58,11 @@ const hasHTMLImageElement = typeof HTMLImageElement !== 'undefined'
 function createSVGDataURL(svgString: string, color?: string): string {
   let processedSVG = svgString
 
+  // Remove fixed width/height to allow proper scaling via viewBox
+  // This prevents quality loss when rendering at different sizes
+  processedSVG = processedSVG.replace(/\s+width=["'][^"']*["']/g, '')
+  processedSVG = processedSVG.replace(/\s+height=["'][^"']*["']/g, '')
+
   if (color) {
     processedSVG = processedSVG.replace(/currentColor/g, color)
     if (!processedSVG.includes('fill=') && !processedSVG.includes('stroke=')) {

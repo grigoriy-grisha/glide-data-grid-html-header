@@ -234,12 +234,12 @@ export function drawButton(
   hovered: HoverState = false,
   leftIcon?: ButtonIcon,
   rightIcon?: ButtonIcon,
-  measureCtx?: CanvasRenderingContext2D
+  measureCtx?: CanvasRenderingContext2D,
+  iconSpacing: number = DEFAULT_ICON_SPACING
 ): { x: number; y: number; width: number; height: number; actualWidth: number } {
   const paddingY = DEFAULT_BUTTON_PADDING_Y
   const buttonHeight = height - paddingY * 2
   const iconSize = Math.min(buttonHeight - DEFAULT_ICON_SIZE_ADJUSTMENT, DEFAULT_ICON_SIZE)
-  const iconSpacing = DEFAULT_ICON_SPACING
   const font = theme.baseFontFull
 
   const textWidth = measureCtx ? getCachedTextWidth(measureCtx, label, font) : 0
@@ -292,12 +292,12 @@ export function drawButtonWithView(
   hovered: HoverState = false,
   leftIcon?: ButtonIcon,
   rightIcon?: ButtonIcon,
-  measureCtx?: CanvasRenderingContext2D
+  measureCtx?: CanvasRenderingContext2D,
+  iconSpacing: number = DEFAULT_ICON_SPACING
 ): { x: number; y: number; width: number; height: number; actualWidth: number } {
   const sizeConfig = SIZE_CONFIG[size]
   const viewColors = VIEW_COLORS[view]
   const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
-  const iconSpacing = DEFAULT_ICON_SPACING
 
   const textWidth = measureCtx ? getCachedTextWidth(measureCtx, label, font) : 0
   const actualWidth = calculateButtonWidth(width, textWidth, sizeConfig.iconSize, iconSpacing, leftIcon, rightIcon)

@@ -14,6 +14,13 @@ const BADGE_VIEWS: BadgeView[] = [
 
 const BADGE_SIZES: BadgeSize[] = ['xs', 's', 'm', 'l']
 
+// SVG icons for demonstration
+const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+
+const INFO_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+
+const CLOSE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+
 interface BadgeRow {
   id: string
   size: BadgeSize
@@ -70,7 +77,7 @@ function createBadgeColumns(): BasicGridColumn<BadgeRow>[] {
       title: view.charAt(0).toUpperCase() + view.slice(1),
       dataType: 'string',
       width: 60,
-      grow: 1, // Stretch to fill available width
+      grow: 1,
       renderCellContent: (row) => (
         <Canvas.Container
           direction="row"
@@ -92,9 +99,66 @@ function createBadgeColumns(): BasicGridColumn<BadgeRow>[] {
   return columns
 }
 
+// Badges with icons example
+interface BadgeWithIconsRow {
+  id: string
+  type: 'leftIcon' | 'rightIcon' | 'bothIcons' | 'noIcons'
+  label: string
+  [key: string]: unknown
+}
+
+function generateBadgeWithIconsRows(): BadgeWithIconsRow[] {
+  return [
+    { id: 'left', type: 'leftIcon', label: 'Left Icon' },
+    { id: 'right', type: 'rightIcon', label: 'Right Icon' },
+    { id: 'both', type: 'bothIcons', label: 'Both Icons' },
+    { id: 'none', type: 'noIcons', label: 'No Icons' },
+  ]
+}
+
+function createBadgeWithIconsColumns(): BasicGridColumn<BadgeWithIconsRow>[] {
+  const columns: BasicGridColumn<BadgeWithIconsRow>[] = [
+    createColumn<BadgeWithIconsRow>('label', 'string', 'Type', { width: 100, grow: 0 }),
+  ]
+
+  BADGE_VIEWS.forEach((view) => {
+    columns.push({
+      title: view.charAt(0).toUpperCase() + view.slice(1),
+      dataType: 'string',
+      width: 100,
+      grow: 1,
+      renderCellContent: (row) => {
+        const leftIcon = row.type === 'leftIcon' || row.type === 'bothIcons' ? CHECK_ICON : undefined
+        const rightIcon = row.type === 'rightIcon' || row.type === 'bothIcons' ? CLOSE_ICON : undefined
+        
+        return (
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Canvas.Badge
+              text="Status"
+              view={view}
+              size="m"
+              leftIcon={leftIcon}
+              rightIcon={rightIcon}
+            />
+          </Canvas.Container>
+        )
+      },
+    })
+  })
+
+  return columns
+}
+
 export function CanvasBadgesExample() {
   const rows = useMemo(() => generateBadgeRows(), [])
   const columns = useMemo(() => createBadgeColumns(), [])
+  
+  const badgeWithIconsRows = useMemo(() => generateBadgeWithIconsRows(), [])
+  const badgeWithIconsColumns = useMemo(() => createBadgeWithIconsColumns(), [])
 
   return (
     <div className="data-grid-section">
@@ -111,6 +175,20 @@ export function CanvasBadgesExample() {
         height={400}
         headerRowHeight={44}
         rowHeight={64}
+        showRowMarkers={false}
+        getRowId={(row) => row.id}
+      />
+      
+      <h2 className="section-title" style={{ marginTop: 32 }}>Badges with Icons</h2>
+      <p className="section-description">
+        Бейджи с иконками слева, справа или с обеих сторон. Отступ между текстом и иконкой — 6px.
+      </p>
+      <BasicGrid<BadgeWithIconsRow>
+        columns={badgeWithIconsColumns}
+        rows={badgeWithIconsRows}
+        height={300}
+        headerRowHeight={44}
+        rowHeight={56}
         showRowMarkers={false}
         getRowId={(row) => row.id}
       />
