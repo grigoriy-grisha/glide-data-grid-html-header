@@ -1,4 +1,4 @@
-import { drawButton, drawButtonWithView, SIZE_CONFIG, type ButtonView, type ButtonSize, type ButtonIcon, preloadIconSprites } from '../cells/buttons'
+import { drawButton, drawButtonWithView, SIZE_CONFIG, type ButtonView, type ButtonSize, type ButtonIcon } from '../cells/buttons'
 import { CanvasLeaf } from "../core/CanvasLeaf"
 import { CanvasEvent, CanvasFlexStyle } from "../core/CanvasNode"
 import { DrawBatcher } from "../core/DrawBatcher"
@@ -63,19 +63,10 @@ export class CanvasButton extends CanvasLeaf {
                 this.size = options.size
                 this.useNewApi = true
             }
-            if (options.leftIcon !== undefined) this.leftIcon = options.leftIcon
-            if (options.rightIcon !== undefined) this.rightIcon = options.rightIcon
+            this.leftIcon = options.leftIcon
+            this.rightIcon = options.rightIcon
             if (options.disabled !== undefined) this.disabled = options.disabled
             if (options.onClick) this.onClick = options.onClick
-        }
-        
-        // Preload icons
-        const sizeConfig = SIZE_CONFIG[this.size]
-        if (this.leftIcon) {
-            void preloadIconSprites(this.leftIcon, { size: sizeConfig.iconSize })
-        }
-        if (this.rightIcon) {
-            void preloadIconSprites(this.rightIcon, { size: sizeConfig.iconSize })
         }
     }
 

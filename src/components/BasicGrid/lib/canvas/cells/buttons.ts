@@ -202,14 +202,11 @@ export function drawIcon(
   x: number,
   y: number,
   size: number,
-  color?: string,
-  onLoad?: IconLoadCallback
+  color?: string
 ): void {
-  if (!icon || size <= 0) {
-    return
-  }
+  if (!icon || size <= 0) return
 
-  const sprite = getIconSprite(icon, size, color, onLoad)
+  const sprite = getIconSprite(icon, size, color)
   if (sprite) {
     batcher.drawImage(sprite, x, y, size, size)
     return

@@ -1,4 +1,4 @@
-import { drawIcon, preloadIconSprites } from '../cells/buttons'
+import { drawIcon } from '../cells/buttons'
 import type { ButtonIcon } from '../cells/iconSprites'
 import { CanvasLeaf } from "../core/CanvasLeaf"
 import { DrawBatcher } from "../core/DrawBatcher"
@@ -21,11 +21,6 @@ export class CanvasIcon extends CanvasLeaf {
         this.icon = icon
         this.size = options?.size ?? DEFAULT_SIZE
         this.color = options?.color
-        if (this.icon) {
-            void (preloadIconSprites(this.icon, { size: this.size, color: this.color }).catch(
-                () => undefined,
-            ))
-        }
     }
 
     measure(_ctx: CanvasRenderingContext2D) {

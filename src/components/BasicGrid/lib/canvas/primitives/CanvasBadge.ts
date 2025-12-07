@@ -1,6 +1,6 @@
 import { CanvasLeaf } from '../core/CanvasLeaf'
 import { DrawBatcher } from '../core/DrawBatcher'
-import { drawIcon, preloadIconSprites, type ButtonIcon } from '../cells/buttons'
+import { drawIcon, type ButtonIcon } from '../cells/buttons'
 
 // Badge view types based on sdds_finai__light theme
 export type BadgeView = 
@@ -121,17 +121,8 @@ export class CanvasBadge extends CanvasLeaf {
             if (options.size !== undefined) this.size = options.size
             if (options.transparent !== undefined) this.transparent = options.transparent
             if (options.clear !== undefined) this.clear = options.clear
-            if (options.leftIcon !== undefined) this.leftIcon = options.leftIcon
-            if (options.rightIcon !== undefined) this.rightIcon = options.rightIcon
-        }
-        
-        // Preload icons
-        const iconSize = ICON_SIZE_CONFIG[this.size]
-        if (this.leftIcon) {
-            void preloadIconSprites(this.leftIcon, { size: iconSize })
-        }
-        if (this.rightIcon) {
-            void preloadIconSprites(this.rightIcon, { size: iconSize })
+            this.leftIcon = options.leftIcon
+            this.rightIcon = options.rightIcon
         }
     }
 

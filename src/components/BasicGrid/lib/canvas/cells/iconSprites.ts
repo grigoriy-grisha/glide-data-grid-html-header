@@ -55,23 +55,22 @@ let iconIdentityCursor = 0
 const hasImageConstructor = typeof Image !== 'undefined'
 const hasHTMLImageElement = typeof HTMLImageElement !== 'undefined'
 
-function createSVGDataURL(svgString: string, color?: string): string {
-  let processedSVG = svgString
+// Regex for removing width/height attributes (combined for performance)
+const SVG_SIZE_ATTRS_REGEX = /\s+(width|height)=["'][^"']*["']/g
 
+function createSVGDataURL(svgString: string, color?: string): string {
   // Remove fixed width/height to allow proper scaling via viewBox
-  // This prevents quality loss when rendering at different sizes
-  processedSVG = processedSVG.replace(/\s+width=["'][^"']*["']/g, '')
-  processedSVG = processedSVG.replace(/\s+height=["'][^"']*["']/g, '')
+  let processedSVG = svgString.replace(SVG_SIZE_ATTRS_REGEX, '')
 
   if (color) {
     processedSVG = processedSVG.replace(/currentColor/g, color)
-    if (!processedSVG.includes('fill=') && !processedSVG.includes('stroke=')) {
+    // Add fill only if neither fill nor stroke is present
+    if (processedSVG.indexOf('fill=') === -1 && processedSVG.indexOf('stroke=') === -1) {
       processedSVG = processedSVG.replace('<svg', `<svg fill="${color}"`)
     }
   }
 
-  const encoded = encodeURIComponent(processedSVG)
-  return `data:image/svg+xml;charset=utf-8,${encoded}`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(processedSVG)}`
 }
 
 function getRegistrySVG(iconName: string): string | undefined {
@@ -168,11 +167,10 @@ export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageE
 export function getIconSprite(
   icon: ButtonIcon, 
   size: number, 
-  color?: string, 
-  onLoad?: IconLoadCallback
+  color?: string
 ): CanvasImageSource | null {
   if (!icon || size <= 0) return null
-  return iconSpriteManager.getSprite(icon, { size, color }, onLoad)
+  return iconSpriteManager.getSprite(icon, { size, color })
 }
 
 const DPR_REFRESH_INTERVAL = 1000
@@ -228,7 +226,6 @@ export function registerIconDefinitions(
 class IconSpriteManager {
   private sprites = new Map<string, CanvasSprite>()
   private pending = new Map<string, Promise<CanvasSprite | null>>()
-  private loadCallbacks = new Map<string, Set<IconLoadCallback>>()
   private stats: IconSpriteStats = {
     requests: 0,
     hits: 0,
@@ -238,17 +235,15 @@ class IconSpriteManager {
     pending: 0,
   }
 
-  getSprite(icon: ButtonIcon, options: IconSpriteOptions, onLoad?: IconLoadCallback): CanvasSprite | null {
-    if (!options.size || options.size <= 0) {
-      return null
-    }
+  getSprite(icon: ButtonIcon, options: IconSpriteOptions): CanvasSprite | null {
+    if (!options.size || options.size <= 0) return null
+    
     const record = getOrCreateIconImageRecord(icon, options.color)
-    if (!record) {
-      return null
-    }
+    if (!record) return null
 
     const variantKey = buildVariantKey(record.sourceKey, options)
     this.stats.requests += 1
+    
     const cached = this.sprites.get(variantKey)
     if (cached) {
       this.stats.hits += 1
@@ -257,58 +252,35 @@ class IconSpriteManager {
 
     this.stats.misses += 1
 
+    // Try immediate rasterization if image is ready
     if (record.image.complete && record.image.naturalHeight !== 0) {
-      this.scheduleWarm(record.image, variantKey, options)
-      const canvasSprite = this.rasterizeToCanvas(record.image, options)
-      if (canvasSprite) {
-        return canvasSprite
+      const sprite = this.rasterizeToCanvas(record.image, options)
+      if (sprite) {
+        this.sprites.set(variantKey, sprite)
+        this.stats.cacheSize = this.sprites.size
+        return sprite
       }
-    }
-
-    if (onLoad) {
-      this.addLoadCallback(variantKey, onLoad)
     }
 
     this.scheduleWarm(record.image, variantKey, options)
     return null
   }
 
-  private addLoadCallback(variantKey: string, callback: IconLoadCallback): void {
-    let callbacks = this.loadCallbacks.get(variantKey)
-    if (!callbacks) {
-      callbacks = new Set()
-      this.loadCallbacks.set(variantKey, callbacks)
-    }
-    callbacks.add(callback)
-  }
-
-  private notifyLoadCallbacks(variantKey: string): void {
-    const callbacks = this.loadCallbacks.get(variantKey)
-    if (callbacks) {
-      this.loadCallbacks.delete(variantKey)
-      callbacks.forEach(cb => cb())
-    }
-  }
-
   warmSprite(icon: ButtonIcon, options: IconSpriteOptions): Promise<void> {
-    if (!options.size || options.size <= 0) {
-      return Promise.resolve()
-    }
+    if (!options.size || options.size <= 0) return Promise.resolve()
+    
     const record = getOrCreateIconImageRecord(icon, options.color)
-    if (!record) {
-      return Promise.resolve()
-    }
+    if (!record) return Promise.resolve()
+    
     const variantKey = buildVariantKey(record.sourceKey, options)
-    if (this.sprites.has(variantKey)) {
-      return Promise.resolve()
-    }
+    if (this.sprites.has(variantKey)) return Promise.resolve()
+    
     return this.scheduleWarm(record.image, variantKey, options)
   }
 
-  clear() {
+  clear(): void {
     this.sprites.clear()
     this.pending.clear()
-    this.loadCallbacks.clear()
     this.stats.cacheSize = 0
     this.stats.pending = 0
   }
@@ -326,20 +298,19 @@ class IconSpriteManager {
     variantKey: string,
     options: IconSpriteOptions
   ): Promise<void> {
-    if (this.sprites.has(variantKey) || this.pending.has(variantKey)) {
-      const pendingPromise = this.pending.get(variantKey)
-      return pendingPromise ? pendingPromise.then(() => undefined) : Promise.resolve()
-    }
+    // Return existing pending promise if already loading
+    const existingPending = this.pending.get(variantKey)
+    if (existingPending) return existingPending.then(() => undefined)
+    if (this.sprites.has(variantKey)) return Promise.resolve()
 
     const promise = this.waitForImage(image)
-      .then(async (loaded) => {
+      .then((loaded) => {
         if (!loaded) return null
-        const sprite = await this.rasterize(loaded, options)
+        const sprite = this.rasterizeToCanvas(loaded, options)
         if (sprite) {
           this.sprites.set(variantKey, sprite)
           this.stats.warmed += 1
           this.stats.cacheSize = this.sprites.size
-          this.notifyLoadCallbacks(variantKey)
           notifyGlobalIconLoad()
         }
         return sprite
@@ -382,24 +353,16 @@ class IconSpriteManager {
     const physicalSize = Math.ceil(options.size * dpr)
     
     const canvas = createMemoryCanvas(physicalSize, physicalSize)
-    if (!canvas) {
-      return source as CanvasSprite
-    }
+    if (!canvas) return source as CanvasSprite
     
     const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      return source as CanvasSprite
-    }
+    if (!ctx) return source as CanvasSprite
     
     ctx.imageSmoothingEnabled = options.smoothing !== false
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(source, 0, 0, physicalSize, physicalSize)
     
     return canvas
-  }
-
-  private async rasterize(source: CanvasImageSource, options: IconSpriteOptions): Promise<CanvasSprite | null> {
-    return this.rasterizeToCanvas(source, options)
   }
 }
 
@@ -432,26 +395,11 @@ export function drawIcon(
   x: number,
   y: number,
   size: number,
-  color?: string,
-  onLoad?: IconLoadCallback
+  color?: string
 ): void {
-  drawIconDirect(ctx, icon, x, y, size, color, onLoad)
-}
+  if (!icon || size <= 0) return
 
-export function drawIconDirect(
-  ctx: CanvasRenderingContext2D,
-  icon: ButtonIcon,
-  x: number,
-  y: number,
-  size: number,
-  color?: string,
-  onLoad?: IconLoadCallback
-): void {
-  if (!icon || size <= 0) {
-    return
-  }
-
-  const sprite = iconSpriteManager.getSprite(icon, { size, color }, onLoad)
+  const sprite = iconSpriteManager.getSprite(icon, { size, color })
   if (sprite) {
     ctx.drawImage(sprite, x, y, size, size)
     return
@@ -462,4 +410,8 @@ export function drawIconDirect(
     ctx.drawImage(img, x, y, size, size)
   }
 }
+
+// Alias for backward compatibility
+export const drawIconDirect = drawIcon
+
 
