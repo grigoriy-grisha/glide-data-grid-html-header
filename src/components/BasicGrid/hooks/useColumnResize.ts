@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type React from 'react'
 
 import type { GridColumn } from '../models/GridColumn'
+import { lockPortalHover } from '../lib/canvas'
 
 interface UseColumnResizeOptions<RowType extends Record<string, unknown>> {
   columns: GridColumn<RowType>[]
@@ -64,6 +65,7 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
       const startX = event.clientX
       const previousUserSelect = document.body.style.userSelect
       const previousCursor = document.body.style.cursor
+      const unlockPortalHover = lockPortalHover()
 
       const calculateWidths = (delta: number) => {
         if (columnRange.length === 1) {
@@ -146,6 +148,7 @@ export function useColumnResize<RowType extends Record<string, unknown>>({
         document.removeEventListener('mouseup', handleMouseUp)
         document.body.style.userSelect = previousUserSelect
         document.body.style.cursor = previousCursor
+        unlockPortalHover()
       }
 
       document.body.style.userSelect = 'none'

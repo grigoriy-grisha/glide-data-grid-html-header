@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { lockPortalHover } from '../../../lib/canvas'
 
 export interface DragState {
     sourceIndex: number
@@ -65,6 +66,7 @@ export const useHeaderDragDrop = ({
     const columnWidthsRef = useRef(columnWidths)
     const columnCountRef = useRef(columnCount)
     const onColumnReorderRef = useRef(onColumnReorder)
+    const unlockPortalHoverRef = useRef<(() => void) | null>(null)
 
     scrollLeftRef.current = scrollLeft
     columnPositionsRef.current = columnPositions
@@ -113,6 +115,8 @@ export const useHeaderDragDrop = ({
 
         const canvas = canvasRef.current
         const snapshot = canvas ? captureSnapshot(canvas, rect) : undefined
+
+        unlockPortalHoverRef.current = lockPortalHover()
 
         setDragState({
             sourceIndex: columnIndex,
@@ -185,6 +189,8 @@ export const useHeaderDragDrop = ({
 
             setDragState(null)
             if (canvas) canvas.style.cursor = 'default'
+            unlockPortalHoverRef.current?.()
+            unlockPortalHoverRef.current = null
         }
 
         document.addEventListener('mousemove', handleMouseMove)

@@ -108,6 +108,9 @@ export {
   CANVAS_PORTAL_EVENT,
   dispatchCanvasPortalHover,
   subscribeToCanvasPortalHover,
+  lockPortalHover,
+  isPortalHoverLocked,
+  subscribeToPortalHoverLock,
 } from './utils'
 export type {
   CanvasPortalSource,

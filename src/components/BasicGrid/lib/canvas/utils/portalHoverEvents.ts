@@ -1,6 +1,42 @@
 import type { CanvasNode } from '../core/CanvasNode'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Interaction Lock (pauses portal hover during drag/resize)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let interactionLockCount = 0
+type InteractionLockListener = (locked: boolean) => void
+const lockListeners = new Set<InteractionLockListener>()
+
+export function lockPortalHover(): () => void {
+  interactionLockCount++
+  if (interactionLockCount === 1) {
+    lockListeners.forEach((listener) => listener(true))
+  }
+  
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    interactionLockCount--
+    if (interactionLockCount === 0) {
+      lockListeners.forEach((listener) => listener(false))
+    }
+  }
+}
+
+export function isPortalHoverLocked(): boolean {
+  return interactionLockCount > 0
+}
+
+export function subscribeToPortalHoverLock(listener: InteractionLockListener): () => void {
+  lockListeners.add(listener)
+  return () => {
+    lockListeners.delete(listener)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 

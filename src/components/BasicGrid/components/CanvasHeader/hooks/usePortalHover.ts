@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
   subscribeToCanvasPortalHover, 
+  subscribeToPortalHoverLock,
   type CanvasPortalHoverDetail,
   type CanvasPortalSource 
 } from '../../../lib/canvas'
@@ -45,6 +46,7 @@ export function usePortalHover<T = unknown>(
   const [state, setState] = useState<PortalHoverState<T>>(createInitialState)
   const leaveTimeoutRef = useRef<number | null>(null)
   const initialStateRef = useRef(createInitialState<T>())
+  const lockedRef = useRef(false)
 
   const clearLeaveTimeout = useCallback(() => {
     if (leaveTimeoutRef.current !== null) {
@@ -52,10 +54,16 @@ export function usePortalHover<T = unknown>(
       leaveTimeoutRef.current = null
     }
   }, [])
+
+  const hideImmediately = useCallback(() => {
+    clearLeaveTimeout()
+    setState(initialStateRef.current)
+  }, [clearLeaveTimeout])
  
   useEffect(() => {
-    const unsubscribe = subscribeToCanvasPortalHover((detail: CanvasPortalHoverDetail) => {
+    const unsubscribeHover = subscribeToCanvasPortalHover((detail: CanvasPortalHoverDetail) => {
       if (source && detail.source !== source) return
+      if (lockedRef.current) return
 
       if (!detail.visible) {
         setState((prev) => {
@@ -90,11 +98,19 @@ export function usePortalHover<T = unknown>(
       })
     })
 
+    const unsubscribeLock = subscribeToPortalHoverLock((locked: boolean) => {
+      lockedRef.current = locked
+      if (locked) {
+        hideImmediately()
+      }
+    })
+
     return () => {
-      unsubscribe()
+      unsubscribeHover()
+      unsubscribeLock()
       clearLeaveTimeout()
     }
-  }, [source, filter, leaveAnimationDuration, clearLeaveTimeout])
+  }, [source, filter, leaveAnimationDuration, clearLeaveTimeout, hideImmediately])
 
   return state
 }

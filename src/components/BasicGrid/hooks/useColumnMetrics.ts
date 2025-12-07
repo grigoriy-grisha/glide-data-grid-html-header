@@ -13,13 +13,10 @@ export function useColumnMetrics<RowType extends Record<string, unknown>>(
       return []
     }
 
-    const hasOverrides = Boolean(columnWidthOverrides && Object.keys(columnWidthOverrides).length > 0)
-
-    if (hasOverrides) {
-      return normalizedColumns.map((column) => columnWidthOverrides?.[column.id] ?? column.baseWidth)
-    }
-
-    const base = normalizedColumns.map((column) => column.baseWidth)
+    // Get base widths: use override if exists, otherwise use baseWidth
+    const base = normalizedColumns.map((column) => 
+      columnWidthOverrides?.[column.id] ?? column.baseWidth
+    )
     const baseTotal = base.reduce((sum, width) => sum + width, 0)
     const available = Math.max(containerWidth - rowMarkerWidth, baseTotal)
     const extra = available - baseTotal
@@ -28,14 +25,24 @@ export function useColumnMetrics<RowType extends Record<string, unknown>>(
       return base
     }
 
-    const totalGrow = normalizedColumns.reduce((sum, column) => sum + column.grow, 0)
+    // Only columns WITHOUT overrides participate in grow distribution
+    const totalGrow = normalizedColumns.reduce((sum, column) => {
+      const hasOverride = columnWidthOverrides?.[column.id] !== undefined
+      return sum + (hasOverride ? 0 : column.grow)
+    }, 0)
 
     if (totalGrow <= 0) {
       return base
     }
 
     return base.map((width, index) => {
-      const grow = normalizedColumns[index].grow
+      const column = normalizedColumns[index]
+      const hasOverride = columnWidthOverrides?.[column.id] !== undefined
+      // Columns with overrides keep their fixed width, others grow
+      if (hasOverride) {
+        return width
+      }
+      const grow = column.grow
       return width + extra * (grow / totalGrow)
     })
   }, [columnWidthOverrides, containerWidth, normalizedColumns, rowMarkerWidth])
