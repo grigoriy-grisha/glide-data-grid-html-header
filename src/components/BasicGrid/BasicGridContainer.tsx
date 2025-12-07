@@ -8,7 +8,6 @@ import { onAnyIconLoad } from './lib/canvas'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_ROW_MARKER_WIDTH,
-  DEFAULT_SCROLLBAR_RESERVE,
 } from './constants'
 import { DataEditorWithVirtualization } from './components/DataEditorWithVirtualization'
 import { VirtualResizeLine } from './components/VirtualResizeLine'
@@ -50,7 +49,6 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   rowHeight: rowHeightProp,
   rowMarkerWidth = DEFAULT_ROW_MARKER_WIDTH,
   showRowMarkers = true,
-  scrollbarReserve: scrollbarReserveProp,
   className,
   enableColumnReorder = false,
   columnOrder,
@@ -76,10 +74,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   const canvasHeaderRef = useRef<HTMLCanvasElement>(null)
 
   const stickyHeaderEnabled = Boolean(stickyHeader)
-  const scrollbarReserve = scrollbarReserveProp ?? DEFAULT_SCROLLBAR_RESERVE
   const containerWidth = useContainerWidth(gridRef)
   const gridTheme = useGridTheme()
-
 
   const {
     markerWidth,
@@ -217,7 +213,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   }, [gridRows.length, estimatedRowHeight, height])
 
   // Only reserve space for scrollbar if it's actually visible
-  const actualScrollbarReserve = hasVerticalScrollbar ? scrollbarReserve : 0
+  const actualScrollbarReserve = hasVerticalScrollbar ? verticalScrollbarWidth : 0
 
   const effectiveViewportWidth = Math.max(0, viewportWidth - actualScrollbarReserve)
   const effectiveDataViewportWidth = Math.max(0, dataViewportWidth - actualScrollbarReserve)
@@ -333,34 +329,34 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   // Uses requestAnimationFrame to batch multiple icon loads into a single redraw
   useEffect(() => {
     let pendingFrame: number | null = null
-    
+
     const unsubscribe = onAnyIconLoad(() => {
       // Skip if already scheduled
       if (pendingFrame !== null) return
-      
+
       pendingFrame = requestAnimationFrame(() => {
         pendingFrame = null
-        
+
         const ref = dataEditorRef.current
         if (!ref) return
-        
+
         // Only redraw first N visible rows to minimize impact
         const numRows = Math.min(30, gridRows.length)
         const numCols = orderedColumns.length
         const cells: Array<{ cell: [number, number] }> = []
-        
+
         for (let row = 0; row < numRows; row++) {
           for (let col = 0; col < numCols; col++) {
             cells.push({ cell: [col, row] })
           }
         }
-        
+
         if (cells.length > 0) {
           ref.updateCells(cells)
         }
       })
     })
-    
+
     return () => {
       unsubscribe()
       if (pendingFrame !== null) {
@@ -378,7 +374,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
           )}
 
           <GridHeader
-            width={effectiveViewportWidth - 6}
+            width={effectiveViewportWidth}
             scrollbarWidth={verticalScrollbarWidth}
             height={headerHeightPx}
             effectiveHeight={effectiveHeaderHeight}
@@ -412,14 +408,14 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
             onColumnClick={handleHeaderColumnClick}
           />
 
-          <div className="basic-grid-body" ref={gridBodyRef} style={gridBodyStyle}>
+          <div className="basic-grid-body" ref={gridBodyRef} style={{...gridBodyStyle, width: viewportWidth}}>
             <DataEditorWithVirtualization
               ref={dataEditorRef}
               getCellContent={getCellContent}
               columns={[...dataEditorColumns]}
               rows={gridRows.length + (summaryRows?.length ?? 0)}
               freezeTrailingRows={summaryRows?.length ?? 0}
-              width={effectiveViewportWidth}
+              width={viewportWidth}
               height={height + headerHeightPx}
               theme={gridTheme}
               customRenderers={customRenderers}
