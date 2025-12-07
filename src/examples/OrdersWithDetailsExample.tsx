@@ -169,7 +169,7 @@ function createOrderColumns(
       width: 160,
       grow: 0,
       renderCellContent: (row) => (
-        <Canvas.Container direction="column" gap={4} padding={8}>
+        <Canvas.Container direction="column" gap={4} padding={12}>
           <Canvas.Text font="600 14px -apple-system, BlinkMacSystemFont, sans-serif" color="#1a1a1a">
             {row.orderNumber}
           </Canvas.Text>
@@ -186,9 +186,9 @@ function createOrderColumns(
       grow: 1,
       renderCellContent: (row) => (
         <Canvas.Container direction="row" gap={10} alignItems="center" padding={{ left: 8 }}>
-          <Canvas.Container 
-            direction="row" 
-            alignItems="center" 
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
             justifyContent="center"
             style={{ width: 36, height: 36 }}
           >
@@ -245,7 +245,7 @@ function createOrderColumns(
       width: 140,
       grow: 0,
       renderCellContent: (row) => (
-        <Canvas.Container direction="column" gap={2} alignItems="flex-end" padding={{ right: 12 }}>
+        <Canvas.Container direction="column" gap={2} alignItems="flex-end" justifyContent="center" padding={12}>
           <Canvas.Text font="700 15px -apple-system, BlinkMacSystemFont, sans-serif" color="#1a1a1a">
             {row.total.toLocaleString()} ₽
           </Canvas.Text>
@@ -364,11 +364,11 @@ const overlayStyles = {
 
 function OrderDetailsOverlay({ order }: { order: Order }) {
   return (
-    <div style={overlayStyles.container}>
+    <div>
       <div style={overlayStyles.header}>
         <h3 style={overlayStyles.title}>Детали заказа {order.orderNumber}</h3>
       </div>
-      
+
       <div style={overlayStyles.grid}>
         {/* Товары */}
         <div style={overlayStyles.section}>
@@ -395,7 +395,7 @@ function OrderDetailsOverlay({ order }: { order: Order }) {
               ))}
             </tbody>
           </table>
-          
+
           <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
             <div style={overlayStyles.totalsRow}>
               <span style={overlayStyles.totalLabel}>Подытог:</span>
@@ -419,7 +419,7 @@ function OrderDetailsOverlay({ order }: { order: Order }) {
           <div style={overlayStyles.sectionTitle}>
             <span>📍</span> Информация о доставке
           </div>
-          
+
           <div style={overlayStyles.infoRow}>
             <span style={overlayStyles.infoIcon}>👤</span>
             <div>
@@ -427,12 +427,12 @@ function OrderDetailsOverlay({ order }: { order: Order }) {
               <div style={{ ...overlayStyles.infoText, color: '#64748b', fontSize: '13px' }}>{order.email}</div>
             </div>
           </div>
-          
+
           <div style={overlayStyles.infoRow}>
             <span style={overlayStyles.infoIcon}>📍</span>
             <div style={overlayStyles.infoText}>{order.address}</div>
           </div>
-          
+
           <div style={overlayStyles.infoRow}>
             <span style={overlayStyles.infoIcon}>💳</span>
             <div style={overlayStyles.infoText}>{order.paymentMethod}</div>
@@ -487,8 +487,8 @@ export function OrdersWithDetailsExample() {
     <div className="data-grid-section">
       <h2 className="section-title">Orders with Details (Row Overlay)</h2>
       <p className="section-description">
-        Таблица заказов с раскрывающимися деталями. Нажмите на стрелку слева от заказа, 
-        чтобы увидеть подробную информацию о товарах, доставке и оплате. 
+        Таблица заказов с раскрывающимися деталями. Нажмите на стрелку слева от заказа,
+        чтобы увидеть подробную информацию о товарах, доставке и оплате.
         Демонстрация <code>renderRowOverlay</code> для создания расширяемых строк.
       </p>
       <BasicGrid<Order>

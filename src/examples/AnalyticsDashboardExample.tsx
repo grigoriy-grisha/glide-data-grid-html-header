@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { BasicGrid, type BasicGridColumn, Canvas } from '../components'
-import type { BadgeView } from '../components/BasicGrid/lib/canvas'
 
 // SVG icons
 const TRENDING_UP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>'
@@ -212,7 +211,7 @@ function createAnalyticsColumns(): BasicGridColumn<MetricData>[] {
       width: 160,
       grow: 0,
       renderCellContent: (row) => (
-        <Canvas.Container direction="column" gap={4} padding={{ left: 8 }}>
+        <Canvas.Container direction="column" gap={4} padding={12}>
           <Canvas.Text font="700 20px -apple-system, BlinkMacSystemFont, sans-serif" color="#0f172a">
             {row.currentValue}
           </Canvas.Text>
@@ -240,9 +239,8 @@ function createAnalyticsColumns(): BasicGridColumn<MetricData>[] {
               gap={6} 
               alignItems="center"
               padding={{ left: 12, right: 12, top: 8, bottom: 8 }}
-              style={{ backgroundColor: bgColor }}
             >
-              <Canvas.Rect color={bgColor} style={{ position: 'absolute', width: '100%', height: '100%' }} />
+              <Canvas.Rect color={bgColor} style={{ width: 80, height: 32 }} />
               <Canvas.Icon icon={icon} size={16} color={color} />
               <Canvas.Text font="600 14px -apple-system, BlinkMacSystemFont, sans-serif" color={color}>
                 {row.change > 0 ? '+' : ''}{row.change.toFixed(1)}%
@@ -259,7 +257,7 @@ function createAnalyticsColumns(): BasicGridColumn<MetricData>[] {
       grow: 0,
       renderCellContent: (row) => (
         <Canvas.Container direction="row" alignItems="center" justifyContent="center">
-          <SparklineCell data={row.sparkline} color={row.iconColor} />
+          {SparklineCell({data: row.sparkline, color: row.iconColor})}
         </Canvas.Container>
       ),
     },
@@ -273,7 +271,7 @@ function createAnalyticsColumns(): BasicGridColumn<MetricData>[] {
         const progressColor = progress >= 90 ? '#059669' : progress >= 70 ? '#eab308' : '#dc2626'
         
         return (
-          <Canvas.Container direction="column" gap={8} padding={{ left: 12, right: 16 }}>
+          <Canvas.Container direction="column" justifyContent="center"  gap={8} padding={12}>
             <Canvas.Container direction="row" alignItems="center" justifyContent="space-between">
               <Canvas.Text font="600 13px -apple-system, BlinkMacSystemFont, sans-serif" color={progressColor}>
                 {progress.toFixed(0)}%
@@ -283,16 +281,6 @@ function createAnalyticsColumns(): BasicGridColumn<MetricData>[] {
                   ? row.target.toLocaleString() 
                   : row.target}
               </Canvas.Text>
-            </Canvas.Container>
-            <Canvas.Container direction="row" style={{ height: 8, width: '100%' }}>
-              <Canvas.Rect 
-                color="#e2e8f0" 
-                style={{ height: 8, width: '100%' }} 
-              />
-              <Canvas.Rect 
-                color={progressColor} 
-                style={{ height: 8, width: `${progress}%`, position: 'absolute' }} 
-              />
             </Canvas.Container>
           </Canvas.Container>
         )

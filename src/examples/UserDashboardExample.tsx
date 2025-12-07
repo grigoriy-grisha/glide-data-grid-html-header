@@ -149,7 +149,7 @@ function createUserColumns(): BasicGridColumn<DashboardUser>[] {
       renderCellContent: (row) => {
         const barColor = row.activity > 70 ? '#4caf50' : row.activity > 40 ? '#ff9800' : '#ef5350'
         return (
-          <Canvas.Container direction="column" gap={6} padding={{ left: 12, right: 12 }}>
+          <Canvas.Container direction="column" justifyContent="center"  gap={6} padding={12}>
             <Canvas.Container direction="row" alignItems="center" justifyContent="space-between">
               <Canvas.Container direction="row" alignItems="center" gap={4}>
                 <Canvas.Icon icon={ACTIVITY_ICON} size={14} color={barColor} />
@@ -160,13 +160,6 @@ function createUserColumns(): BasicGridColumn<DashboardUser>[] {
               <Canvas.Text font="11px -apple-system, BlinkMacSystemFont, sans-serif" color="#888">
                 {row.lastSeen}
               </Canvas.Text>
-            </Canvas.Container>
-            <Canvas.Container direction="row" style={{ height: 6, width: 120 }}>
-              <Canvas.Rect color="#eee" style={{ height: 6, width: 120 }} />
-              <Canvas.Rect 
-                color={barColor} 
-                style={{ height: 6, width: Math.round(row.activity * 1.2) }} 
-              />
             </Canvas.Container>
           </Canvas.Container>
         )

@@ -31,7 +31,7 @@ export const OverlayContainer = styled.div<{
   $height: number
 }>`
   cursor: pointer;
-  position: fixed;
+  position: absolute;
   left: ${({ $x }) => $x}px;
   top: ${({ $y }) => $y}px;
   width: ${({ $width }) => $width}px;

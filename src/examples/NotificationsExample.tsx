@@ -10,7 +10,7 @@ import {
   IconLock,
   IconBankCard,
   IconPersone,
-  IconTrash,
+  IconTrashFill,
   IconDoneCircleFill,
   IconEye,
 } from '@salutejs/plasma-icons'
@@ -334,7 +334,7 @@ function createNotificationColumns(
             />
           )}
           <Canvas.IconButton
-            icon={<IconTrash />}
+            icon={<IconTrashFill />}
             view="critical"
             buttonSize="xs"
             onClick={() => onDelete(row.id)}

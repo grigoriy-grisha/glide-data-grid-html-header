@@ -14,26 +14,24 @@ const iconCache = new Map<string, string>()
 export function reactIconToSvg(iconElement: ReactElement): string {
   // Create a cache key based on the component type and key props
   const cacheKey = createCacheKey(iconElement)
-  
+
   const cached = iconCache.get(cacheKey)
   if (cached) {
     return cached
   }
-  
-  // Render the React element to string
+
   const htmlString = renderToString(iconElement)
-  
-  // Extract the SVG from the rendered HTML
+
   const svgMatch = htmlString.match(/<svg[\s\S]*?<\/svg>/)
-  
+
   if (!svgMatch) {
     console.warn('Could not extract SVG from React icon component:', iconElement.type)
     return ''
   }
-  
+
   const svgString = svgMatch[0]
   iconCache.set(cacheKey, svgString)
-  
+
   return svgString
 }
 
@@ -43,17 +41,17 @@ export function reactIconToSvg(iconElement: ReactElement): string {
 function createCacheKey(element: ReactElement): string {
   const type = element.type as { displayName?: string; name?: string } | string
   const typeName = typeof type === 'function' || typeof type === 'object'
-    ? (type as { displayName?: string; name?: string }).displayName 
-      || (type as { name?: string }).name 
+    ? (type as { displayName?: string; name?: string }).displayName
+      || (type as { name?: string }).name
       || 'Anonymous'
     : String(type)
-  
+
   // Include relevant props in the cache key
   const { size, color, className } = (element.props || {}) as Record<string, unknown>
-  
+
   // Simple hash of props that affect rendering
   const propsHash = JSON.stringify({ size, color, className })
-  
+
   return `${typeName}:${propsHash}`
 }
 
@@ -72,11 +70,11 @@ export function normalizeIcon(icon: string | ReactElement): string {
   if (typeof icon === 'string') {
     return icon
   }
-  
+
   if (isReactIcon(icon)) {
     return reactIconToSvg(icon)
   }
-  
+
   return ''
 }
 

@@ -11,7 +11,7 @@ import {
   type SortDirection 
 } from './sortUtils'
 
-const LEAVE_ANIMATION_DURATION = 200
+const LEAVE_ANIMATION_DURATION = 100
 
 export interface SortButtonOverlayProps {
   sortColumn?: string
@@ -52,8 +52,8 @@ export const SortButtonOverlay: React.FC<SortButtonOverlayProps> = React.memo(({
 
   return createPortal(
     <OverlayContainer
-      $x={state.x}
-      $y={state.y}
+      $x={state.x + window.scrollX}
+      $y={state.y + window.scrollY}
       $width={state.width}
       $height={state.height}
       onClick={handleClick}

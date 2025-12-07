@@ -180,7 +180,6 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
               icon={FOLDER_ICON} 
               size={22} 
               color={PRIORITY_CONFIG[row.priority].color} 
-              style={{ position: 'absolute' }} 
             />
           </Canvas.Container>
           <Canvas.Container direction="column" gap={4}>
@@ -190,7 +189,6 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
             <Canvas.Text 
               font="12px -apple-system, BlinkMacSystemFont, sans-serif" 
               color="#666"
-              style={{ maxWidth: 200 }}
             >
               {row.description}
             </Canvas.Text>
@@ -215,79 +213,6 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
       ),
     },
     {
-      title: 'Прогресс',
-      dataType: 'number',
-      width: 180,
-      grow: 0,
-      renderCellContent: (row) => {
-        const progressColor = row.progress === 100 ? '#4caf50' : 
-                              row.progress > 60 ? '#8bc34a' : 
-                              row.progress > 30 ? '#ff9800' : '#f44336'
-        return (
-          <Canvas.Container direction="column" gap={8} padding={{ left: 12, right: 12 }}>
-            <Canvas.Container direction="row" alignItems="center" justifyContent="space-between">
-              <Canvas.Text font="700 16px -apple-system, BlinkMacSystemFont, sans-serif" color={progressColor}>
-                {row.progress}%
-              </Canvas.Text>
-              <Canvas.Text font="11px -apple-system, BlinkMacSystemFont, sans-serif" color="#888">
-                {row.tasksCompleted}/{row.tasksTotal} задач
-              </Canvas.Text>
-            </Canvas.Container>
-            <Canvas.Container direction="row" style={{ height: 8, width: '100%' }}>
-              <Canvas.Rect 
-                color="#e0e0e0" 
-                style={{ height: 8, width: '100%' }} 
-              />
-              <Canvas.Rect 
-                color={progressColor} 
-                style={{ height: 8, width: `${row.progress}%`, position: 'absolute' }} 
-              />
-            </Canvas.Container>
-          </Canvas.Container>
-        )
-      },
-    },
-    {
-      title: 'Команда',
-      dataType: 'string',
-      width: 160,
-      grow: 0,
-      renderCellContent: (row) => (
-        <Canvas.Container direction="row" gap={6} alignItems="center" justifyContent="center" padding={{ left: 8, right: 8 }}>
-          <Canvas.Container direction="row" gap={-8} alignItems="center">
-            {row.team.slice(0, 3).map((member, i) => (
-              <Canvas.Container 
-                key={i}
-                direction="row" 
-                alignItems="center" 
-                justifyContent="center"
-                style={{ width: 28, height: 28 }}
-              >
-                <Canvas.Rect 
-                  color={['#e91e63', '#9c27b0', '#3f51b5', '#009688'][i % 4]} 
-                  style={{ width: 28, height: 28 }} 
-                  borderColor="#ffffff"
-                  borderWidth={2}
-                />
-                <Canvas.Text 
-                  font="600 10px -apple-system, BlinkMacSystemFont, sans-serif" 
-                  color="#fff"
-                  style={{ position: 'absolute' }}
-                >
-                  {member[0]}
-                </Canvas.Text>
-              </Canvas.Container>
-            ))}
-          </Canvas.Container>
-          {row.team.length > 3 && (
-            <Canvas.Text font="12px -apple-system, BlinkMacSystemFont, sans-serif" color="#666">
-              +{row.team.length - 3}
-            </Canvas.Text>
-          )}
-        </Canvas.Container>
-      ),
-    },
-    {
       title: 'Дедлайн',
       dataType: 'string',
       width: 150,
@@ -298,7 +223,7 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
         const textColor = isOverdue ? '#f44336' : isUrgent ? '#ff9800' : '#333'
         
         return (
-          <Canvas.Container direction="column" gap={4} alignItems="center" justifyContent="center">
+          <Canvas.Container direction="column" gap={12} alignItems="center" justifyContent="center">
             <Canvas.Container direction="row" gap={4} alignItems="center">
               <Canvas.Icon icon={CALENDAR_ICON} size={14} color={textColor} />
               <Canvas.Text font="13px -apple-system, BlinkMacSystemFont, sans-serif" color={textColor}>
