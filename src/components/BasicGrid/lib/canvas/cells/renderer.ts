@@ -165,9 +165,11 @@ function handleCanvasRootClick(
   relativePoint: ReturnType<typeof toRelativePoint>,
   event: MouseEvent | React.MouseEvent | undefined
 ): boolean {
-  if (renderData?.canvasRoot instanceof CellCanvasRoot && event) {
-    // Normalize React.MouseEvent to native MouseEvent if needed
-    const nativeEvent = 'nativeEvent' in event ? event.nativeEvent : event
+  if (renderData?.canvasRoot instanceof CellCanvasRoot) {
+    // Normalize React.MouseEvent to native MouseEvent if available
+    const nativeEvent = event
+      ? ('nativeEvent' in event ? event.nativeEvent : event)
+      : undefined
     const handled = renderData.canvasRoot.dispatchPointerEvent('click', relativePoint.x, relativePoint.y, nativeEvent)
     return handled
   }
@@ -219,10 +221,13 @@ function handleCanvasRootHover(
     return
   }
 
-  if (relativeHover && argsAny.event) {
-    // Normalize React.MouseEvent to native MouseEvent if needed
-    const nativeEvent = 'nativeEvent' in argsAny.event ? argsAny.event.nativeEvent : argsAny.event
-    canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, nativeEvent)
+  if (relativeHover) {
+    // Dispatch pointer event if native event is available
+    if (argsAny.event) {
+      const nativeEvent = 'nativeEvent' in argsAny.event ? argsAny.event.nativeEvent : argsAny.event
+      canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, nativeEvent)
+    }
+    // Always compute and apply cursor when hovering
     const cursor = canvasRoot.computeCursor(relativeHover.x, relativeHover.y)
     if (cursor && cursor !== DEFAULT_CURSOR) {
       args.overrideCursor?.(cursor as 'pointer' | 'text' | 'move' | 'grab' | 'grabbing' | 'not-allowed' | 'crosshair')

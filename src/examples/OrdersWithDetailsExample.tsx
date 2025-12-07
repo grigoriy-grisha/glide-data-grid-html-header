@@ -158,7 +158,11 @@ function createOrderColumns(
             icon={expandedRowId === row.id ? CHEVRON_UP_ICON : CHEVRON_DOWN_ICON}
             view="secondary"
             buttonSize="xs"
-            onClick={() => onToggleExpand(row.id)}
+            onClick={() => {
+              console.log(row);
+              
+              onToggleExpand(row.id)
+            }}
           />
         </Canvas.Container>
       ),
