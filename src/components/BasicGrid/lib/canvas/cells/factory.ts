@@ -1,27 +1,29 @@
-import type { CanvasCell, CanvasCellData, CanvasRenderResult, RectBounds } from './types'
+import { GridCellKind } from '@glideapps/glide-data-grid'
+import type { CanvasCell, CanvasCellData, CanvasRenderResult, RectBounds, CanvasRenderArgs } from './types'
+import type { GridTheme } from '../../../types'
 import { CANVAS_CELL_KIND } from './types'
 
 export function createCanvasCell(
   render: (
     ctx: CanvasRenderingContext2D,
     rect: RectBounds,
-    theme: any,
+    theme: GridTheme,
     hoverX: number | undefined,
     hoverY: number | undefined,
-    args?: any
+    args?: CanvasRenderArgs
   ) => CanvasRenderResult,
   onClick?: (
     x: number,
     y: number,
     rect: RectBounds,
-    row?: any,
+    row?: Record<string, unknown>,
     rowIndex?: number,
-    renderData?: any
+    renderData?: CanvasRenderResult
   ) => boolean,
   copyData?: string
 ): CanvasCell {
   return {
-    kind: 'custom' as any,
+    kind: GridCellKind.Custom,
     allowOverlay: false,
     readonly: true,
     copyData: copyData ?? '',
@@ -33,7 +35,8 @@ export function createCanvasCell(
   }
 }
 
-export function isCanvasCell(cell: any): cell is CanvasCell {
-  return Boolean(cell && cell.kind === 'custom' && (cell.data as CanvasCellData)?.kind === CANVAS_CELL_KIND)
+export function isCanvasCell(cell: unknown): cell is CanvasCell {
+  const c = cell as CanvasCell | null | undefined
+  return Boolean(c && c.kind === GridCellKind.Custom && (c.data as CanvasCellData)?.kind === CANVAS_CELL_KIND)
 }
 

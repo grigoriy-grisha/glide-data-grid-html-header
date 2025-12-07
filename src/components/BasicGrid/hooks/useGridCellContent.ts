@@ -5,9 +5,11 @@ import { createSelectCell } from '../customCells/selectCell'
 import { createButtonCell } from '../customCells/buttonCell'
 import { createCanvasCell, CellCanvasRoot } from '../lib/canvas'
 import { buildCanvasTree } from '../lib/canvas'
+import type { CanvasRenderResult } from '../lib/canvas/cells/types'
 import { GridCellState } from '../models/GridCellState'
 import type { GridColumn } from '../models/GridColumn'
 import type { GridTreeNode } from '../models/GridTree'
+import type { GridTheme } from '../types'
 import { createTreeViewCanvasCell } from '../factories/createTreeViewCanvasCell'
 
 const EMPTY_TEXT_CELL: GridCell = {
@@ -23,6 +25,9 @@ interface CanvasCellCacheEntry {
   cacheKey: CanvasCacheKey
   canvasRoot: CellCanvasRoot
 }
+
+/** Handler function type for button cell events */
+type ButtonEventHandler = () => void
 
 interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   orderedColumns: GridColumn<RowType>[]
@@ -55,11 +60,11 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
   treeColumnId,
   onTreeToggle,
 }: UseGridCellContentParams<RowType>) {
-  const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, any>>(), [])
+  const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, ButtonEventHandler>>(), [])
   const canvasCellCache = useMemo(() => new WeakMap<RowType, Map<string, CanvasCellCacheEntry>>(), [])
 
   const getCachedHandler = useCallback(
-    (row: RowType, handlerKey: string, handlerFactory: () => any) => {
+    (row: RowType, handlerKey: string, handlerFactory: () => ButtonEventHandler): ButtonEventHandler | undefined => {
       let rowCache = cellHandlerCache.get(row)
       if (!rowCache) {
         rowCache = new Map()
@@ -193,11 +198,11 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
         const render = (
           ctx: CanvasRenderingContext2D,
           rect: { x: number; y: number; width: number; height: number },
-          _theme: any,
+          _theme: GridTheme,
           _hoverX: number | undefined,
           _hoverY: number | undefined,
           renderArgs?: { canvasRoot?: CellCanvasRoot }
-        ) => {
+        ): CanvasRenderResult => {
           const cacheKeyValue = canvasOptions?.getCacheKey?.(dataRow, row)
           const isCacheable = cacheKeyValue !== undefined && cacheKeyValue !== null
           const columnCacheId = column.id

@@ -23,8 +23,6 @@ const PLUS_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 
 const ARROW_RIGHT_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>'
 
-const DOWNLOAD_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
-
 const SETTINGS_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
 
 interface ButtonRow {
@@ -38,7 +36,7 @@ interface ButtonRow {
 // Generate rows for the grid
 function generateButtonRows(): ButtonRow[] {
   const rows: ButtonRow[] = []
-  
+
   BUTTON_SIZES.forEach((size) => {
     rows.push({
       id: `size-${size}`,
@@ -47,7 +45,7 @@ function generateButtonRows(): ButtonRow[] {
       disabled: false,
     })
   })
-  
+
   // Add disabled row
   rows.push({
     id: 'disabled',
@@ -55,7 +53,7 @@ function generateButtonRows(): ButtonRow[] {
     label: 'Disabled',
     disabled: true,
   })
-  
+
   return rows
 }
 
@@ -119,7 +117,7 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
   ]
 
   const selectedViews: ButtonView[] = ['accent', 'secondary', 'success', 'warning', 'critical', 'dark']
-  
+
   selectedViews.forEach((view) => {
     columns.push({
       title: view.charAt(0).toUpperCase() + view.slice(1),
@@ -127,17 +125,17 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
       width: 130,
       grow: 1,
       renderCellContent: (row) => {
-        const leftIcon = row.type === 'leftIcon' || row.type === 'bothIcons' 
-          ? (row.type === 'bothIcons' ? SETTINGS_ICON : PLUS_ICON) 
+        const leftIcon = row.type === 'leftIcon' || row.type === 'bothIcons'
+          ? (row.type === 'bothIcons' ? SETTINGS_ICON : PLUS_ICON)
           : undefined
-        const rightIcon = row.type === 'rightIcon' || row.type === 'bothIcons' 
-          ? ARROW_RIGHT_ICON 
+        const rightIcon = row.type === 'rightIcon' || row.type === 'bothIcons'
+          ? ARROW_RIGHT_ICON
           : undefined
-        
-        const buttonText = row.type === 'bothIcons' ? 'Settings' : 
-                          row.type === 'leftIcon' ? 'Add' : 
+
+        const buttonText = row.type === 'bothIcons' ? 'Settings' :
+                          row.type === 'leftIcon' ? 'Add' :
                           row.type === 'rightIcon' ? 'Next' : 'Action'
-        
+
         return (
           <Canvas.Container
             direction="row"
@@ -165,7 +163,7 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
 export function CanvasButtonsExample() {
   const rows = useMemo(() => generateButtonRows(), [])
   const columns = useMemo(() => createButtonColumns(), [])
-  
+
   const buttonWithIconsRows = useMemo(() => generateButtonWithIconsRows(), [])
   const buttonWithIconsColumns = useMemo(() => createButtonWithIconsColumns(), [])
 
@@ -186,7 +184,7 @@ export function CanvasButtonsExample() {
         showRowMarkers={false}
         getRowId={(row) => row.id}
       />
-      
+
       <h2 className="section-title" style={{ marginTop: 32 }}>Buttons with Icons</h2>
       <p className="section-description">
         Кнопки с иконками слева, справа или с обеих сторон. Отступ между текстом и иконкой — 8px.

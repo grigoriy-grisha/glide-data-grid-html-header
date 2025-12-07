@@ -17,8 +17,6 @@ const BADGE_SIZES: BadgeSize[] = ['xs', 's', 'm', 'l']
 // SVG icons for demonstration
 const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
 
-const INFO_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
-
 const CLOSE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
 
 interface BadgeRow {
@@ -33,7 +31,7 @@ interface BadgeRow {
 // Generate rows for the grid
 function generateBadgeRows(): BadgeRow[] {
   const rows: BadgeRow[] = []
-  
+
   // Solid badges (normal mode)
   BADGE_SIZES.forEach((size) => {
     rows.push({
@@ -44,7 +42,7 @@ function generateBadgeRows(): BadgeRow[] {
       clear: false,
     })
   })
-  
+
   // Transparent badges
   rows.push({
     id: 'transparent',
@@ -53,7 +51,7 @@ function generateBadgeRows(): BadgeRow[] {
     transparent: true,
     clear: false,
   })
-  
+
   // Clear badges (no background)
   rows.push({
     id: 'clear',
@@ -62,7 +60,7 @@ function generateBadgeRows(): BadgeRow[] {
     transparent: false,
     clear: true,
   })
-  
+
   return rows
 }
 
@@ -130,7 +128,7 @@ function createBadgeWithIconsColumns(): BasicGridColumn<BadgeWithIconsRow>[] {
       renderCellContent: (row) => {
         const leftIcon = row.type === 'leftIcon' || row.type === 'bothIcons' ? CHECK_ICON : undefined
         const rightIcon = row.type === 'rightIcon' || row.type === 'bothIcons' ? CLOSE_ICON : undefined
-        
+
         return (
           <Canvas.Container
             direction="row"
@@ -156,7 +154,7 @@ function createBadgeWithIconsColumns(): BasicGridColumn<BadgeWithIconsRow>[] {
 export function CanvasBadgesExample() {
   const rows = useMemo(() => generateBadgeRows(), [])
   const columns = useMemo(() => createBadgeColumns(), [])
-  
+
   const badgeWithIconsRows = useMemo(() => generateBadgeWithIconsRows(), [])
   const badgeWithIconsColumns = useMemo(() => createBadgeWithIconsColumns(), [])
 
@@ -178,7 +176,7 @@ export function CanvasBadgesExample() {
         showRowMarkers={false}
         getRowId={(row) => row.id}
       />
-      
+
       <h2 className="section-title" style={{ marginTop: 32 }}>Badges with Icons</h2>
       <p className="section-description">
         Бейджи с иконками слева, справа или с обеих сторон. Отступ между текстом и иконкой — 6px.

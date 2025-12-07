@@ -1,7 +1,7 @@
 import React from 'react'
 import { GridCellKind, type CustomCell, type CustomRenderer } from '@glideapps/glide-data-grid'
 
-import type { BasicGridSelectOption } from '../types'
+import type { BasicGridSelectOption, GridTheme } from '../types'
 
 export const SELECT_CELL_KIND = 'select-cell'
 
@@ -122,12 +122,12 @@ function drawSelectText(
   text: string,
   x: number,
   y: number,
-  theme: any,
+  theme: GridTheme,
   highlighted: boolean
 ): void {
   ctx.font = theme.baseFontFull
   ctx.textBaseline = 'middle'
-  ctx.fillStyle = highlighted ? theme.textMedium : theme.textDark
+  ctx.fillStyle = highlighted ? (theme.textMedium ?? theme.textDark) : theme.textDark
   ctx.fillText(text, x, y)
 }
 
@@ -135,7 +135,7 @@ function drawCaret(
   ctx: CanvasRenderingContext2D,
   rect: { x: number; y: number; width: number; height: number },
   paddingX: number,
-  theme: any
+  theme: GridTheme
 ): void {
   const caretX = rect.x + rect.width - paddingX - CARET_WIDTH
   const caretY = rect.y + rect.height / 2 - CARET_HEIGHT / 2

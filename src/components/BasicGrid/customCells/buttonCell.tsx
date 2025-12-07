@@ -1,4 +1,5 @@
 import { GridCellKind, type CustomCell, type CustomRenderer } from '@glideapps/glide-data-grid'
+import type { GridTheme } from '../types'
 
 export const BUTTON_CELL_KIND = 'button-cell'
 
@@ -73,7 +74,7 @@ interface ButtonColors {
 
 function getButtonColors(
   variant: 'primary' | 'secondary' | 'danger',
-  theme: any,
+  theme: GridTheme,
   disabled: boolean,
   hovered: boolean,
   pressed: boolean
@@ -103,7 +104,7 @@ function getButtonColors(
   }
 }
 
-function getBaseColors(variant: 'primary' | 'secondary' | 'danger', theme: any): Omit<ButtonColors, 'cursor'> {
+function getBaseColors(variant: 'primary' | 'secondary' | 'danger', theme: GridTheme): Omit<ButtonColors, 'cursor'> {
   switch (variant) {
     case 'primary':
       return {
@@ -135,7 +136,7 @@ function getBaseColors(variant: 'primary' | 'secondary' | 'danger', theme: any):
 function getPressedColors(
   variant: 'primary' | 'secondary' | 'danger',
   baseColors: Omit<ButtonColors, 'cursor'>,
-  theme: any
+  theme: GridTheme
 ): ButtonColors {
   if (variant === 'secondary') {
     return {
@@ -155,7 +156,7 @@ function getPressedColors(
 function getHoverColors(
   variant: 'primary' | 'secondary' | 'danger',
   baseColors: Omit<ButtonColors, 'cursor'>,
-  theme: any
+  theme: GridTheme
 ): ButtonColors {
   if (variant === 'secondary') {
     return {
@@ -212,22 +213,44 @@ function isPointInButton(
   )
 }
 
+/** Click arguments from glide-data-grid */
+interface ButtonClickArgs {
+  cell: ButtonCell
+  bounds: { x: number; y: number; width: number; height: number }
+  posX?: number
+  posY?: number
+  x?: number
+  y?: number
+  location?: [number, number]
+}
+
+/** Draw arguments from glide-data-grid */
+interface ButtonDrawArgs {
+  ctx: CanvasRenderingContext2D
+  rect: { x: number; y: number; width: number; height: number }
+  theme: GridTheme
+  cell: ButtonCell
+  hoverX?: number
+  hoverY?: number
+  overrideCursor?: (cursor: 'pointer' | 'not-allowed' | 'default') => void
+}
+
 export const buttonCellRenderer: CustomRenderer<ButtonCell> = {
   kind: GridCellKind.Custom,
   isMatch: (cell): cell is ButtonCell => (cell.data as ButtonCellData)?.kind === BUTTON_CELL_KIND,
   needsHover: true,
   needsHoverPosition: true,
   onClick: (args) => {
-    const cell = args.cell as ButtonCell
+    const typedArgs = args as unknown as ButtonClickArgs
+    const cell = typedArgs.cell
     const { onClick, disabled, onMouseUp, onMouseDown } = cell.data
 
     if (disabled || !onClick) {
       return undefined
     }
 
-    const rect = args.bounds
-    const argsAny = args as any
-    const clickPoint = resolveClickPoint(argsAny)
+    const rect = typedArgs.bounds
+    const clickPoint = resolveClickPoint(typedArgs)
 
     if (!clickPoint) {
       return undefined
@@ -245,7 +268,8 @@ export const buttonCellRenderer: CustomRenderer<ButtonCell> = {
     return cell
   },
   draw: (args, cell) => {
-    const { ctx, rect, theme } = args
+    const typedArgs = args as unknown as ButtonDrawArgs
+    const { ctx, rect, theme, hoverX, hoverY } = typedArgs
     const {
       label,
       variant = DEFAULT_VARIANT,
@@ -254,12 +278,9 @@ export const buttonCellRenderer: CustomRenderer<ButtonCell> = {
       onMouseLeave,
     } = cell.data
 
-    const argsAny = args as any
-    const hoverX = argsAny.hoverX
-    const hoverY = argsAny.hoverY
     const isHoverOverButton = checkHoverOverButton(hoverX, hoverY, rect)
 
-    updateCursor(args, disabled, isHoverOverButton)
+    updateCursor(typedArgs, disabled, isHoverOverButton)
     updateHoverState(cell.data, isHoverOverButton && !disabled, onMouseEnter, onMouseLeave)
 
     ctx.save()
@@ -278,15 +299,15 @@ export const buttonCellRenderer: CustomRenderer<ButtonCell> = {
   onPaste: () => undefined,
 }
 
-function resolveClickPoint(argsAny: any): { x: number; y: number } | null {
-  if (argsAny.posX !== undefined && argsAny.posY !== undefined) {
-    return { x: argsAny.posX, y: argsAny.posY }
+function resolveClickPoint(args: ButtonClickArgs): { x: number; y: number } | null {
+  if (args.posX !== undefined && args.posY !== undefined) {
+    return { x: args.posX, y: args.posY }
   }
-  if (argsAny.x !== undefined && argsAny.y !== undefined) {
-    return { x: argsAny.x, y: argsAny.y }
+  if (args.x !== undefined && args.y !== undefined) {
+    return { x: args.x, y: args.y }
   }
-  if (argsAny.location && Array.isArray(argsAny.location)) {
-    return { x: argsAny.location[0], y: argsAny.location[1] }
+  if (args.location && Array.isArray(args.location)) {
+    return { x: args.location[0], y: args.location[1] }
   }
   return null
 }
@@ -326,7 +347,7 @@ function checkHoverOverButton(
   return isPointInButton(relativeX, relativeY, rect)
 }
 
-function updateCursor(args: any, disabled: boolean, isHoverOverButton: boolean): void {
+function updateCursor(args: ButtonDrawArgs, disabled: boolean, isHoverOverButton: boolean): void {
   if (disabled) {
     args.overrideCursor?.(CURSOR_NOT_ALLOWED)
   } else if (isHoverOverButton) {
@@ -391,7 +412,7 @@ function drawButtonText(
   label: string,
   bounds: ReturnType<typeof calculateButtonBounds>,
   colors: ButtonColors,
-  theme: any
+  theme: GridTheme
 ): void {
   ctx.font = theme.baseFontFull
   ctx.textBaseline = 'middle'

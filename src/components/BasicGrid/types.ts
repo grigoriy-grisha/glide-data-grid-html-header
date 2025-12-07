@@ -1,6 +1,25 @@
 import type React from 'react'
 import type { ReactElement } from 'react'
 
+/**
+ * Theme interface compatible with @glideapps/glide-data-grid theme structure
+ */
+export interface GridTheme {
+    accentColor: string
+    accentLight?: string
+    accentFg?: string
+    bgCell: string
+    bgHeader?: string
+    borderColor: string
+    textLight: string
+    textDark: string
+    textMedium?: string
+    baseFontFull: string
+    cellHorizontalPadding?: number
+}
+
+// CanvasRenderData is now exported from lib/canvas/cells/types.ts as CanvasRenderResult
+
 export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select' | 'button' | 'canvas'
 
 export interface BasicGridSelectOption {
@@ -29,7 +48,7 @@ export interface CanvasCellOptions<RowType = Record<string, unknown>> {
     render: (
         ctx: CanvasRenderingContext2D,
         rect: { x: number; y: number; width: number; height: number },
-        theme: any,
+        theme: GridTheme,
         hoverX: number | undefined,
         hoverY: number | undefined,
         row: RowType,
@@ -41,7 +60,7 @@ export interface CanvasCellOptions<RowType = Record<string, unknown>> {
         rect: { x: number; y: number; width: number; height: number },
         row: RowType,
         rowIndex: number,
-        renderData?: any
+        renderData?: { hoveredAreas?: Array<{ x: number; y: number; width: number; height: number }> }
     ) => boolean
     onMouseEnter?: (row: RowType, rowIndex: number) => void
     onMouseLeave?: (row: RowType, rowIndex: number) => void

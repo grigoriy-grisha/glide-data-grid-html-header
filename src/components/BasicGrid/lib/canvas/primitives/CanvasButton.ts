@@ -16,6 +16,7 @@ const BUTTON_THEME = {
     bgCell: '#ffffff',
     borderColor: '#e0e0e0',
     textLight: '#9e9e9e',
+    textDark: '#1f1f1f',
     baseFontFull: "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
 }
 

@@ -14,9 +14,12 @@ const MAX_ICON_SIZE = 20
 const BUTTON_THEME = {
     accentColor: '#1e88e5',
     accentLight: 'rgba(30, 136, 229, 0.16)',
+    accentFg: '#ffffff',
     bgCell: '#ffffff',
     borderColor: '#e0e0e0',
     textLight: '#9e9e9e',
+    textDark: '#1f1f1f',
+    baseFontFull: "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 }
 
 interface ButtonMetrics {

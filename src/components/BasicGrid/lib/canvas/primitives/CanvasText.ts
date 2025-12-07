@@ -170,9 +170,10 @@ function normalizeSplitResult(result: ReturnType<typeof split>): string[] {
     if (Array.isArray(result)) {
         return result
     }
-    const asAny = result as any
-    if (asAny.lines && Array.isArray(asAny.lines)) {
-        return asAny.lines
+    // canvas-hypertxt may return an object with lines property in some cases
+    const resultObj = result as { lines?: string[] }
+    if (resultObj.lines && Array.isArray(resultObj.lines)) {
+        return resultObj.lines
     }
     return []
 }

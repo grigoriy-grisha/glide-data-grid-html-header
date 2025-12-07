@@ -8,7 +8,7 @@ const VISIBILITY_THRESHOLD = 10
 
 interface ResizeHandlesProps {
   visibleIndices: { start: number; end: number } | null
-  orderedColumns: GridColumn<any>[]
+  orderedColumns: GridColumn<Record<string, unknown>>[]
   columnWidths: number[]
   columnPositions: number[]
   scrollLeft: number
@@ -39,7 +39,7 @@ function isHandleVisible(relativeX: number, containerWidth: number): boolean {
 
 function createResizeHandleData(
   columnIndex: number,
-  column: GridColumn<any>,
+  column: GridColumn<Record<string, unknown>>,
   columnWidths: number[],
   columnPositions: number[],
   scrollLeft: number

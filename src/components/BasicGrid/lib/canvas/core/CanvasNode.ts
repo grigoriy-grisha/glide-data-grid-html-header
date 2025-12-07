@@ -167,25 +167,25 @@ export abstract class CanvasNode {
             this.parent.requestPaint()
         }
     }
-    onClick(_event: CanvasEvent<any>) {
+    onClick(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onMouseDown(_event: CanvasEvent<any>) {
+    onMouseDown(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onMouseUp(_event: CanvasEvent<any>) {
+    onMouseUp(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onMouseEnter(_event: CanvasEvent<any>) {
+    onMouseEnter(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onMouseLeave(_event: CanvasEvent<any>) {
+    onMouseLeave(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onMouseMove(_event: CanvasEvent<any>) {
+    onMouseMove(_event: CanvasEvent<CanvasNode>) {
     }
 
-    onDoubleClick(_event: CanvasEvent<any>) {
+    onDoubleClick(_event: CanvasEvent<CanvasNode>) {
     }
 
     private attachChild(child: CanvasNode, insert: (list: CanvasNode[], node: CanvasNode) => void) {

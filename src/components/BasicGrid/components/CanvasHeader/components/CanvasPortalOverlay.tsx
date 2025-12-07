@@ -2,7 +2,6 @@ import React from 'react'
 import { subscribeToCanvasPortalHover, type CanvasPortalSource, type CanvasPortalHoverDetail } from '../../../lib/canvas'
 
 const PORTAL_ROOT_ID = 'basic-grid-canvas-portal-root'
-const PORTAL_CLASS_NAME = 'canvas-header-portal-overlay'
 const DEFAULT_SOURCE: CanvasPortalSource = 'header'
 const HIDDEN_OPACITY = '0'
 const VISIBLE_OPACITY = '1'

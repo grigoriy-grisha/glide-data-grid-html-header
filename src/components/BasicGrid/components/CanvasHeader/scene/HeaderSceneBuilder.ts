@@ -5,6 +5,7 @@ import {
   CanvasNode,
   CanvasText,
   CanvasIcon,
+  CanvasEvent,
   buildCanvasTree,
 } from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
@@ -33,7 +34,7 @@ const HOVER_COLOR_MAP: Record<string, string> = {
 export interface GripIconHandlers {
     onMouseEnter: () => void
     onMouseLeave: () => void
-    onMouseDown: (e: any) => void
+    onMouseDown: (e: CanvasEvent) => void
 }
 
 export interface BuildSceneConfig {
@@ -42,7 +43,7 @@ export interface BuildSceneConfig {
     columnWidths: number[]
     scrollLeft: number
     headerRowHeight: number
-    orderedColumns: GridColumn<any>[]
+    orderedColumns: GridColumn<Record<string, unknown>>[]
     enableColumnReorder?: boolean
     sortColumn?: string
     sortDirection?: 'asc' | 'desc'
@@ -136,7 +137,7 @@ export class HeaderSceneBuilder {
         }
     }
 
-    private getColumn(cell: GridHeaderCell, orderedColumns: GridColumn<any>[]): GridColumn<any> | undefined {
+    private getColumn(cell: GridHeaderCell, orderedColumns: GridColumn<Record<string, unknown>>[]): GridColumn<Record<string, unknown>> | undefined {
         return cell.columnIndex !== undefined ? orderedColumns[cell.columnIndex] : undefined
     }
 
@@ -239,7 +240,7 @@ export class HeaderSceneBuilder {
     private populateContent(
         cell: GridHeaderCell,
         cellId: string,
-        column: GridColumn<any> | undefined,
+        column: GridColumn<Record<string, unknown>> | undefined,
         left: CanvasContainer,
         right: CanvasContainer,
         config: BuildSceneConfig,
@@ -257,7 +258,7 @@ export class HeaderSceneBuilder {
 
     private populateCustomContent(
         cellId: string,
-        column: GridColumn<any> | undefined,
+        column: GridColumn<Record<string, unknown>> | undefined,
         left: CanvasContainer,
         config: BuildSceneConfig,
         dimensions: { x: number; y: number; width: number; height: number },
@@ -278,7 +279,7 @@ export class HeaderSceneBuilder {
     private populateDefaultContent(
         cell: GridHeaderCell,
         cellId: string,
-        column: GridColumn<any> | undefined,
+        column: GridColumn<Record<string, unknown>> | undefined,
         left: CanvasContainer,
         right: CanvasContainer,
         config: BuildSceneConfig,
@@ -345,7 +346,7 @@ export class HeaderSceneBuilder {
     private addSortButton(
         container: CanvasContainer,
         cellId: string,
-        column: GridColumn<any>,
+        column: GridColumn<Record<string, unknown>>,
         config: BuildSceneConfig
     ): void {
         const { sortColumn, sortDirection } = config

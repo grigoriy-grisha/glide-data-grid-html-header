@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, ReactElement } from 'react'
-import { CanvasRoot, CanvasAbsoluteContainer, CanvasNode } from '../../../lib/canvas'
+import { CanvasRoot, CanvasAbsoluteContainer, CanvasNode, CanvasEvent } from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
 import { DragState } from './useHeaderDragDrop'
@@ -17,7 +17,7 @@ export interface UseHeaderSceneProps {
     canvasRef: React.RefObject<HTMLCanvasElement>
     visibleIndices: VisibleIndices | null
     headerCells: GridHeaderCell[]
-    orderedColumns: GridColumn<any>[]
+    orderedColumns: GridColumn<Record<string, unknown>>[]
     columnPositions: number[]
     columnWidths: number[]
     scrollLeft: number
@@ -92,7 +92,7 @@ export function useHeaderScene({
         onMouseLeave: () => {
             if (canvasRef.current) canvasRef.current.style.cursor = 'default'
         },
-        onMouseDown: (e: any) => {
+        onMouseDown: (e: CanvasEvent) => {
             e.preventDefault()
             e.stopPropagation()
             handleDragStart(e.originalEvent, columnIndex, title, width, { x, y, width, height })

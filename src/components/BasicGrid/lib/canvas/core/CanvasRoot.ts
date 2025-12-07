@@ -28,17 +28,17 @@ export class CanvasRoot {
     }
 
     private setupEvents() {
-        const types: CanvasEvent['type'][] = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick']
+        const types = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick'] as const
         types.forEach(type => {
             const handler = (event: MouseEvent) => this.dispatchPointerEvent(event, type)
             this.eventHandlers.set(type, handler)
-            this.canvas.addEventListener(type, handler)
+            this.canvas.addEventListener(type, handler as EventListener)
         })
     }
 
     destroy() {
         this.eventHandlers.forEach((handler, type) => {
-            this.canvas.removeEventListener(type, handler)
+            this.canvas.removeEventListener(type, handler as EventListener)
         })
         this.eventHandlers.clear()
     }

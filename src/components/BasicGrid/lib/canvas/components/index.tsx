@@ -292,7 +292,7 @@ function buildNode(
     throw new Error('Invalid element. Use Canvas.* components.')
   }
 
-  const elementType = element.type as any
+  const elementType = element.type as CanvasComponent<unknown>
   const canvasType = elementType.__canvasType as CanvasComponentType | undefined
 
   if (!canvasType) {

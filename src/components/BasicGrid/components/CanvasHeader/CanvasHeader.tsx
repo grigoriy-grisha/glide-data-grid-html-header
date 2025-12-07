@@ -24,7 +24,7 @@ interface CanvasHeaderProps {
   width: number
   height: number
   headerCells: GridHeaderCellType[]
-  orderedColumns: GridColumn<any>[]
+  orderedColumns: GridColumn<Record<string, unknown>>[]
   columnPositions: number[]
   columnWidths: number[]
   levelCount: number
@@ -353,7 +353,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
 interface SelectionAdjustedHeaderInput {
   width: number
   headerCells: GridHeaderCellType[]
-  orderedColumns: GridColumn<any>[]
+  orderedColumns: GridColumn<Record<string, unknown>>[]
   columnPositions: number[]
   columnWidths: number[]
   visibleIndices: { start: number; end: number }
@@ -366,7 +366,7 @@ interface SelectionAdjustedHeaderData {
   canvasWidth: number
   effectiveMarkerWidth: number
   headerCells: GridHeaderCellType[]
-  orderedColumns: GridColumn<any>[]
+  orderedColumns: GridColumn<Record<string, unknown>>[]
   columnPositions: number[]
   columnWidths: number[]
   visibleIndices: { start: number; end: number }

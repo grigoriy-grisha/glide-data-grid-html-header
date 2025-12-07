@@ -89,7 +89,7 @@ export function GridHeader<RowType extends Record<string, unknown>>({
         width={width}
         height={height}
         headerCells={headerCells}
-        orderedColumns={orderedColumns}
+        orderedColumns={orderedColumns as GridColumn<Record<string, unknown>>[]}
         columnPositions={columnPositions}
         columnWidths={columnWidths}
         levelCount={levelCount}

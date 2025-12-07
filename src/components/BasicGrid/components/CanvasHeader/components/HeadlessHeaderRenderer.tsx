@@ -7,7 +7,7 @@ import { useVisibleCells } from '../hooks/useVisibleCells'
 interface HeadlessHeaderRendererProps {
   visibleIndices: { start: number; end: number } | null
   headerCells: GridHeaderCell[]
-  orderedColumns: GridColumn<any>[]
+  orderedColumns: GridColumn<Record<string, unknown>>[]
   nodeRegistry: React.MutableRefObject<Map<string, ReactElement>>
   onRegistryChange?: () => void
 }
@@ -23,7 +23,7 @@ function createCellId(startIndex: number, level: number): string {
 
 function getRenderContent(
   cell: GridHeaderCell,
-  column: GridColumn<any> | undefined
+  column: GridColumn<Record<string, unknown>> | undefined
 ): (() => ReactElement) | null {
   return cell.renderColumnContent ?? column?.renderColumnContent ?? null
 }

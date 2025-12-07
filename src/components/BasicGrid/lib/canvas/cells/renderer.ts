@@ -1,4 +1,6 @@
-import type { CanvasCell, CanvasRenderResult, RectBounds } from './types'
+import { GridCellKind } from '@glideapps/glide-data-grid'
+import type { CanvasCell, CanvasCellData, CanvasRenderResult, RectBounds, CanvasRenderArgs } from './types'
+import type { GridTheme } from '../../../types'
 import { CANVAS_CELL_KIND } from './types'
 import {
   buildCellId,
@@ -25,7 +27,36 @@ const POINTER_CANDIDATE_KEYS: PointerKeyPair[] = [
   ['x', 'y'],
 ]
 
-function getRelativePointerPosition(argsAny: Record<string, any>, rect: RectBounds) {
+/** Draw arguments passed from glide-data-grid renderer */
+interface RendererDrawArgs {
+  ctx: CanvasRenderingContext2D
+  rect: RectBounds
+  theme: GridTheme
+  cell: CanvasCell
+  bounds: RectBounds
+  overrideCursor?: (cursor: 'default' | 'pointer' | 'text' | 'move' | 'grab' | 'grabbing' | 'not-allowed' | 'crosshair') => void
+  hoverX?: number
+  hoverY?: number
+  row?: Record<string, unknown>
+  rowData?: Record<string, unknown>
+  event?: MouseEvent | React.MouseEvent
+}
+
+/** Click arguments passed from glide-data-grid renderer */
+interface RendererClickArgs {
+  cell: CanvasCell
+  bounds: RectBounds
+  posX?: number
+  posY?: number
+  x?: number
+  y?: number
+  location?: [number, number]
+  event?: MouseEvent | React.MouseEvent
+  row?: Record<string, unknown>
+  rowData?: Record<string, unknown>
+}
+
+function getRelativePointerPosition(argsAny: CanvasRenderArgs, rect: RectBounds) {
   for (const [keyX, keyY] of POINTER_CANDIDATE_KEYS) {
     const x = argsAny[keyX]
     const y = argsAny[keyY]
@@ -51,36 +82,35 @@ function isRelativeCoords(x: number, y: number, rect: RectBounds): boolean {
 }
 
 export interface CanvasCellRendererConfig {
-  kind: any
-  isMatch: (cell: any) => cell is CanvasCell
+  kind: typeof GridCellKind.Custom
+  isMatch: (cell: { data?: { kind?: string } }) => cell is CanvasCell
   needsHover: boolean
   needsHoverPosition: boolean
-  onClick: (args: any) => any
-  draw: (args: any, cell: CanvasCell) => void
+  onClick: (args: RendererClickArgs) => CanvasCell | undefined
+  draw: (args: RendererDrawArgs, cell: CanvasCell) => void
   onPaste: () => undefined
 }
 
 export const canvasCellRenderer: CanvasCellRendererConfig = {
-  kind: 'custom' as any,
-  isMatch: (cell: any): cell is CanvasCell => (cell.data as any)?.kind === CANVAS_CELL_KIND,
+  kind: GridCellKind.Custom,
+  isMatch: (cell): cell is CanvasCell => (cell.data as CanvasCellData | undefined)?.kind === CANVAS_CELL_KIND,
   needsHover: true,
   needsHoverPosition: true,
-  onClick: (args: any) => {
+  onClick: (args: RendererClickArgs) => {
     const cell = args.cell as CanvasCell
     const rect = args.bounds
-    const argsAny = args as any
 
-    const clickPoint = resolveClickPoint(argsAny)
+    const clickPoint = resolveClickPoint(args)
     if (!clickPoint) {
       return undefined
     }
 
     const relativePoint = toRelativePoint(clickPoint, rect)
-    const indices = getCellIndices(argsAny)
+    const indices = getCellIndices(args)
     const cellId = buildCellId(indices, rect)
     const renderData = retrieveRenderData(cellId, cell)
 
-    if (handleCanvasRootClick(renderData, relativePoint, argsAny.event)) {
+    if (handleCanvasRootClick(renderData, relativePoint, args.event)) {
       return cell
     }
 
@@ -88,23 +118,29 @@ export const canvasCellRenderer: CanvasCellRendererConfig = {
       return cell
     }
 
-    return handleCellClick(cell, relativePoint, rect, argsAny, indices, renderData)
+    return handleCellClick(cell, relativePoint, rect, args, indices, renderData)
   },
-  draw: (args: any, cell: CanvasCell) => {
+  draw: (args: RendererDrawArgs, cell: CanvasCell) => {
     const { ctx, rect, theme } = args
-    const argsAny = args as any
     const { render } = cell.data
 
-    const indices = getCellIndices(argsAny)
+    const indices = getCellIndices(args)
     const cellId = buildCellId(indices, rect)
+    const renderArgs: CanvasRenderArgs = {
+      hoverX: args.hoverX,
+      hoverY: args.hoverY,
+      row: args.row,
+      rowData: args.rowData,
+      event: args.event,
+    }
     const relativeHover =
-      normalizeHoverPoint(argsAny.hoverX, argsAny.hoverY, rect) ?? getRelativePointerPosition(argsAny, rect)
+      normalizeHoverPoint(args.hoverX, args.hoverY, rect) ?? getRelativePointerPosition(renderArgs, rect)
 
     ctx.save()
 
     const previousRenderData = retrieveRenderData(cellId, cell)
     const renderResult = render(ctx, rect, theme, relativeHover?.x, relativeHover?.y, {
-      ...argsAny,
+      ...renderArgs,
       canvasRoot: previousRenderData?.canvasRoot,
     })
     const hoveredAreas = renderResult?.hoveredAreas ?? []
@@ -112,7 +148,7 @@ export const canvasCellRenderer: CanvasCellRendererConfig = {
     storeRenderData(cellId, cell, renderResult)
 
     const canvasRoot = renderResult?.canvasRoot ?? previousRenderData?.canvasRoot
-    handleCanvasRootHover(canvasRoot, relativeHover, argsAny, args)
+    handleCanvasRootHover(canvasRoot, relativeHover, renderArgs, args)
 
     updateHoverStateIfNeeded(cell.data, relativeHover, hoveredAreas, canvasRoot, args)
 
@@ -127,10 +163,12 @@ const LEGACY_HOVER_CURSOR = 'pointer'
 function handleCanvasRootClick(
   renderData: ReturnType<typeof retrieveRenderData>,
   relativePoint: ReturnType<typeof toRelativePoint>,
-  event: any
+  event: MouseEvent | React.MouseEvent | undefined
 ): boolean {
-  if (renderData?.canvasRoot instanceof CellCanvasRoot) {
-    const handled = renderData.canvasRoot.dispatchPointerEvent('click', relativePoint.x, relativePoint.y, event)
+  if (renderData?.canvasRoot instanceof CellCanvasRoot && event) {
+    // Normalize React.MouseEvent to native MouseEvent if needed
+    const nativeEvent = 'nativeEvent' in event ? event.nativeEvent : event
+    const handled = renderData.canvasRoot.dispatchPointerEvent('click', relativePoint.x, relativePoint.y, nativeEvent)
     return handled
   }
   return false
@@ -155,17 +193,17 @@ function handleCellClick(
   cell: CanvasCell,
   relativePoint: ReturnType<typeof toRelativePoint>,
   rect: RectBounds,
-  argsAny: any,
+  args: RendererClickArgs,
   indices: ReturnType<typeof getCellIndices>,
   renderData: ReturnType<typeof retrieveRenderData>
-) {
+): CanvasCell | undefined {
   const { onClick } = cell.data
   if (!onClick) {
     return undefined
   }
 
-  const row = argsAny.row ?? argsAny.rowData
-  if (onClick(relativePoint.x, relativePoint.y, rect, row, indices.rowIndex, renderData)) {
+  const row = args.row ?? args.rowData
+  if (onClick(relativePoint.x, relativePoint.y, rect, row, indices.rowIndex, renderData ?? undefined)) {
     return cell
   }
   return undefined
@@ -174,18 +212,20 @@ function handleCellClick(
 function handleCanvasRootHover(
   canvasRoot: CanvasRenderResult['canvasRoot'] | undefined,
   relativeHover: ReturnType<typeof getRelativePointerPosition>,
-  argsAny: any,
-  args: any
+  argsAny: CanvasRenderArgs,
+  args: RendererDrawArgs
 ): void {
   if (!(canvasRoot instanceof CellCanvasRoot)) {
     return
   }
 
-  if (relativeHover) {
-    canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, argsAny.event)
+  if (relativeHover && argsAny.event) {
+    // Normalize React.MouseEvent to native MouseEvent if needed
+    const nativeEvent = 'nativeEvent' in argsAny.event ? argsAny.event.nativeEvent : argsAny.event
+    canvasRoot.dispatchPointerEvent('mousemove', relativeHover.x, relativeHover.y, nativeEvent)
     const cursor = canvasRoot.computeCursor(relativeHover.x, relativeHover.y)
     if (cursor && cursor !== DEFAULT_CURSOR) {
-      args.overrideCursor?.(cursor as Parameters<NonNullable<typeof args.overrideCursor>>[0])
+      args.overrideCursor?.(cursor as 'pointer' | 'text' | 'move' | 'grab' | 'grabbing' | 'not-allowed' | 'crosshair')
     }
   } else {
     canvasRoot.handleMouseLeave()
@@ -194,11 +234,11 @@ function handleCanvasRootHover(
 }
 
 function updateHoverStateIfNeeded(
-  cellData: any,
+  cellData: CanvasCellData,
   relativeHover: ReturnType<typeof getRelativePointerPosition>,
   hoveredAreas: RectBounds[],
   canvasRoot: CanvasRenderResult['canvasRoot'] | undefined,
-  args: any
+  args: RendererDrawArgs
 ): void {
   const isHovered = Boolean(
     relativeHover && hoveredAreas.some((area) => isPointInArea(relativeHover.x, relativeHover.y, area))

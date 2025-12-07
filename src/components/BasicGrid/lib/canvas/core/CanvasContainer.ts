@@ -5,6 +5,7 @@ import {
     FlexBox,
     FlexBoxOptions,
     FlexElement,
+    FlexStyle,
     PaddingBox,
 } from '../miniflex'
 
@@ -13,14 +14,7 @@ const MAX_LAYOUT_PASSES = 3
 
 const ZERO_PADDING: PaddingBox = { top: 0, right: 0, bottom: 0, left: 0 }
 
-const _addChildStyle: {
-    flexGrow: number
-    flexShrink: number
-    flexBasis: number
-    alignSelf: string
-    width: number | undefined
-    height: number | undefined
-} = {
+const _addChildStyle: FlexStyle = {
     flexGrow: 0,
     flexShrink: 1,
     flexBasis: 0,
@@ -265,11 +259,11 @@ export class CanvasContainer extends CanvasNode {
                 childBox.size.width = child.rect.width
                 childBox.size.height = child.rect.height
 
-                fBox.addChild(childBox, _addChildStyle as any)
+                fBox.addChild(childBox, _addChildStyle)
 
                 this._buildFlexTree(child, childBox)
             } else {
-                const leaf = fBox.addChild(_addChildStyle as any)
+                const leaf = fBox.addChild(_addChildStyle)
                 leaf.size.width = child.rect.width
                 leaf.size.height = child.rect.height
             }

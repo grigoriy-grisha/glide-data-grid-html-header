@@ -1,4 +1,4 @@
-import type { DrawArgs, InnerGridCell } from '@glideapps/glide-data-grid'
+import type { CanvasRenderArgs } from '../lib/canvas/cells/types'
 
 export type AnimationEasing = (t: number) => number
 
@@ -31,11 +31,18 @@ export const easeInOutCubic: AnimationEasing = (t) =>
 
 type RendererDrawStateTuple = [RendererAnimationState | undefined, (state: RendererAnimationState) => void]
 
-function ensureRendererState<T extends InnerGridCell>(
-  args: DrawArgs<T>,
+/** Animation args interface supporting both DrawArgs and CanvasRenderArgs */
+interface AnimationArgs {
+  frameTime?: number
+  requestAnimationFrame?: () => void
+  drawState?: [unknown, (state: unknown) => void]
+}
+
+function ensureRendererState(
+  args: AnimationArgs,
   cellIdentity: string
 ): RendererAnimationState {
-  const [existingState, setState] = args.drawState as RendererDrawStateTuple
+  const [existingState, setState] = (args.drawState ?? [undefined, () => {}]) as RendererDrawStateTuple
 
   if (!existingState || existingState.cellIdentity !== cellIdentity) {
     const freshState: RendererAnimationState = {
@@ -49,15 +56,21 @@ function ensureRendererState<T extends InnerGridCell>(
   return existingState
 }
 
-export function animateNumericValue<T extends InnerGridCell>(
-  args: DrawArgs<T>,
+export function animateNumericValue(
+  args: AnimationArgs | CanvasRenderArgs,
   cellIdentity: string,
   animationKey: string,
   targetValue: number,
   options: NumericAnimationOptions = {},
 ): number {
-  const [, setRendererState] = args.drawState as RendererDrawStateTuple
-  const rendererState = ensureRendererState(args, cellIdentity)
+  const animArgs = args as AnimationArgs
+  if (!animArgs.drawState || !animArgs.frameTime) {
+    // No animation support available, return target immediately
+    return targetValue
+  }
+
+  const [, setRendererState] = animArgs.drawState as RendererDrawStateTuple
+  const rendererState = ensureRendererState(animArgs, cellIdentity)
 
   let animationState = rendererState.animations[animationKey]
 
@@ -81,24 +94,24 @@ export function animateNumericValue<T extends InnerGridCell>(
   if (animationState.target !== targetValue) {
     animationState.target = targetValue
     animationState.startValue = animationState.value
-    animationState.startTime = args.frameTime
+    animationState.startTime = animArgs.frameTime ?? null
   }
 
   animationState.duration = duration
   animationState.easing = easing
 
-  if (animationState.startTime == null) {
+  if (animationState.startTime == null || animArgs.frameTime === undefined) {
     return animationState.value
   }
 
-  const elapsed = args.frameTime - animationState.startTime
+  const elapsed = animArgs.frameTime - animationState.startTime
   const progress = duration <= 0 ? 1 : Math.min(1, elapsed / duration)
   const easedProgress = easing(progress)
   animationState.value =
     animationState.startValue + (animationState.target - animationState.startValue) * easedProgress
 
   if (progress < 1) {
-    args.requestAnimationFrame()
+    animArgs.requestAnimationFrame?.()
   } else {
     animationState.startTime = null
     animationState.value = animationState.target

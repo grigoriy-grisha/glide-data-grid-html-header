@@ -1,4 +1,6 @@
+import { GridCellKind } from '@glideapps/glide-data-grid'
 import type { CellCanvasRoot } from './CellCanvasRoot'
+import type { GridTheme } from '../../../types'
 
 export const CANVAS_CELL_KIND = 'canvas-cell'
 
@@ -13,8 +15,29 @@ export type CanvasRenderResult = {
   hoveredAreas?: RectBounds[]
   clickHandlers?: RenderClickHandler[]
   preferredHeight?: number
-  [key: string]: any
   canvasRoot?: CellCanvasRoot
+}
+
+/** Arguments passed to render function from the grid renderer */
+export interface CanvasRenderArgs {
+  canvasRoot?: CellCanvasRoot
+  row?: Record<string, unknown>
+  rowData?: Record<string, unknown>
+  event?: MouseEvent | React.MouseEvent
+  hoverX?: number
+  hoverY?: number
+  mouseX?: number
+  mouseY?: number
+  pointerX?: number
+  pointerY?: number
+  posX?: number
+  posY?: number
+  x?: number
+  y?: number
+  // Animation support from DrawArgs
+  frameTime?: number
+  requestAnimationFrame?: () => void
+  drawState?: [unknown, (state: unknown) => void]
 }
 
 export interface CanvasCellData {
@@ -22,27 +45,27 @@ export interface CanvasCellData {
   render: (
     ctx: CanvasRenderingContext2D,
     rect: RectBounds,
-    theme: any,
+    theme: GridTheme,
     hoverX: number | undefined,
     hoverY: number | undefined,
-    args?: any // Generic args passed from renderer
+    args?: CanvasRenderArgs
   ) => CanvasRenderResult
   onClick?: (
     x: number,
     y: number,
     rect: RectBounds,
-    row?: any,
+    row?: Record<string, unknown>,
     rowIndex?: number,
-    renderData?: any
+    renderData?: CanvasRenderResult
   ) => boolean
   onMouseEnter?: () => void
   onMouseLeave?: () => void
   copyData?: string
-  renderData?: any
+  renderData?: CanvasRenderResult
 }
 
 export interface CanvasCell {
-  kind: any
+  kind: typeof GridCellKind.Custom
   allowOverlay: boolean
   readonly: boolean
   copyData: string

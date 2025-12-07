@@ -1,5 +1,6 @@
 import { isHoveringBounds } from './helpers'
 import type { HoverState } from './types'
+import type { GridTheme } from '../../../types'
 import {
   getIconSprite,
   getIconImageDirect,
@@ -227,7 +228,7 @@ export function drawButton(
   width: number | 'auto',
   height: number,
   label: string,
-  theme: any,
+  theme: GridTheme,
   variant: 'primary' | 'secondary' | 'danger' = 'primary',
   disabled = false,
   hovered: HoverState = false,
@@ -379,7 +380,7 @@ export function drawIconButton(
   size: number | 'auto',
   height: number,
   icon: ButtonIcon,
-  theme: any,
+  theme: GridTheme,
   variant: 'primary' | 'secondary' | 'danger' = 'primary',
   disabled = false,
   hovered: HoverState = false
@@ -465,7 +466,7 @@ export function drawTag(
   centerY: number,
   maxHeight: number,
   label: string,
-  theme: any,
+  theme: GridTheme,
   textColor?: string,
   backgroundColor?: string,
   measureCtx?: CanvasRenderingContext2D
@@ -518,7 +519,7 @@ const DEFAULT_SECONDARY_HOVER = 'rgba(30, 136, 229, 0.08)'
 const DANGER_TEXT_COLOR = '#ffffff'
 
 function resolveButtonColors(
-  theme: any,
+  theme: GridTheme,
   variant: 'primary' | 'secondary' | 'danger',
   disabled: boolean,
   isHovered: boolean
@@ -544,7 +545,7 @@ function resolveButtonColors(
   }
 }
 
-function resolvePrimaryColors(theme: any, isHovered: boolean) {
+function resolvePrimaryColors(theme: GridTheme, isHovered: boolean) {
   const accentColor = theme.accentColor
   const bgColor = isHovered ? lightenColorCached(accentColor, LIGHTEN_AMOUNT) : accentColor
   return {
@@ -555,7 +556,7 @@ function resolvePrimaryColors(theme: any, isHovered: boolean) {
   }
 }
 
-function resolveSecondaryColors(theme: any, isHovered: boolean) {
+function resolveSecondaryColors(theme: GridTheme, isHovered: boolean) {
   return {
     bgColor: isHovered ? (theme.accentLight || DEFAULT_SECONDARY_HOVER) : theme.bgCell,
     borderColor: theme.accentColor,
