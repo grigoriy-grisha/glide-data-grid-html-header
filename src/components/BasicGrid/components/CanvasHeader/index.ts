@@ -37,7 +37,6 @@ export {
   canvasCellRenderer,
   drawButton,
   drawIconButton,
-  drawTag,
   drawIcon,
   CellCanvasRoot,
   preloadIconSprites,

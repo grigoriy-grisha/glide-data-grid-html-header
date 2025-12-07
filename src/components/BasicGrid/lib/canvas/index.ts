@@ -56,7 +56,6 @@ export {
   drawButtonWithView,
   drawIconButton,
   drawIconButtonWithView,
-  drawTag,
   drawIcon,
   BUTTON_PADDING_Y,
   ICON_SIZE_ADJUSTMENT,

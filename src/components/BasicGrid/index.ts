@@ -11,7 +11,7 @@ export type {
   BasicGridRowSelectionChange,
   CanvasCellOptions,
 } from './types'
-export { drawButton, drawIconButton, drawTag, onAnyIconLoad } from './lib/canvas'
+export { drawButton, drawIconButton, onAnyIconLoad } from './lib/canvas'
 export {
   animateNumericValue,
   easeInOutCubic,

@@ -435,7 +435,7 @@ export function LargeGridExample() {
         columns={columns}
         rows={dataRows}
         height={600}
-        rowHeight={40}
+        rowHeight={54}
         headerRowHeight={54}
         getRowId={(row) => row.id}
         stickyHeader={false}
