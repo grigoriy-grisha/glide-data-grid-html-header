@@ -1,5 +1,6 @@
 import React, {ReactElement, ReactNode, useLayoutEffect} from 'react'
 import {CanvasContainer} from '../core/CanvasContainer'
+import {CanvasAbsoluteContainer} from '../core/CanvasAbsoluteContainer'
 import {CanvasEvent, CanvasFlexStyle, CanvasNode} from '../core/CanvasNode'
 import {CanvasText, CanvasTextOptions} from '../primitives/CanvasText'
 import {CanvasIcon} from '../primitives/CanvasIcon'
@@ -21,6 +22,19 @@ interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
   portalHoverEnabled?: boolean
 }
 
+interface AbsoluteContainerProps extends ContainerProps {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  backgroundColor?: string
+  borderColor?: string
+  borderWidth?: number
+  onClick?: (event: CanvasEvent<CanvasAbsoluteContainer>) => void
+  onMouseEnter?: (event: CanvasEvent<CanvasAbsoluteContainer>) => void
+  onMouseLeave?: (event: CanvasEvent<CanvasAbsoluteContainer>) => void
+}
+
 interface TextProps
   extends Omit<CanvasTextOptions, 'font' | 'color'> {
   children?: ReactNode
@@ -40,6 +54,7 @@ interface IconProps {
   onClick?: (event: CanvasEvent<CanvasIcon>) => void
   onMouseEnter?: (event: CanvasEvent<CanvasIcon>) => void
   onMouseLeave?: (event: CanvasEvent<CanvasIcon>) => void
+  onMouseDown?: (event: CanvasEvent<CanvasIcon>) => void
   id?: string
   portalHoverEnabled?: boolean
 }
@@ -83,6 +98,7 @@ interface TagProps extends CanvasTagOptions {
 
 type CanvasComponentType =
   | 'Container'
+  | 'AbsoluteContainer'
   | 'Text'
   | 'Icon'
   | 'Button'
@@ -153,6 +169,7 @@ export const RootBridge = React.memo(function RootBridge({
 })
 
 const ContainerComponent = createCanvasComponent<ContainerProps>('Container')
+const AbsoluteContainerComponent = createCanvasComponent<AbsoluteContainerProps>('AbsoluteContainer')
 const TextComponent = createCanvasComponent<TextProps>('Text')
 const IconComponent = createCanvasComponent<IconProps>('Icon')
 const ButtonComponent = createCanvasComponent<ButtonProps>('Button')
@@ -163,6 +180,7 @@ const TagComponent = createCanvasComponent<TagProps>('Tag')
 
 export const Canvas = {
   Container: ContainerComponent,
+  AbsoluteContainer: AbsoluteContainerComponent,
   Text: TextComponent,
   Icon: IconComponent,
   Button: ButtonComponent,
@@ -258,6 +276,47 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       return new CanvasContainer(id, flexOptions)
     }
 
+    case 'AbsoluteContainer': {
+      const { 
+        id: _, 
+        gap, 
+        columnGap, 
+        rowGap, 
+        x, 
+        y, 
+        width, 
+        height, 
+        backgroundColor, 
+        borderColor, 
+        borderWidth,
+        onClick,
+        onMouseEnter,
+        onMouseLeave,
+        portalHoverEnabled: _phe, 
+        ...restFlexOptions 
+      } = props
+      const flexOptions = {
+        ...restFlexOptions,
+        columnGap: columnGap ?? gap ?? 0,
+        rowGap: rowGap ?? gap ?? 0,
+      }
+      const node = new CanvasAbsoluteContainer(id, flexOptions)
+      if (x !== undefined) node.rect.x = x
+      if (y !== undefined) node.rect.y = y
+      if (width !== undefined) node.rect.width = width
+      if (height !== undefined) node.rect.height = height
+      if (backgroundColor) node.backgroundColor = backgroundColor
+      if (borderColor) node.borderColor = borderColor
+      if (borderWidth !== undefined) node.borderWidth = borderWidth
+      const click = wrapEventHandler(onClick, node)
+      const enter = wrapEventHandler(onMouseEnter, node)
+      const leave = wrapEventHandler(onMouseLeave, node)
+      if (click) node.onClick = click
+      if (enter) node.onMouseEnter = enter
+      if (leave) node.onMouseLeave = leave
+      return node
+    }
+
     case 'Text': {
       const { children, style: _style, id: _, font, color, wordWrap, lineHeight, portalHoverEnabled: _phe } = props
       const text = extractTextFromChildren(children)
@@ -270,15 +329,17 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Icon': {
-      const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, portalHoverEnabled: _phe } = props
+      const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, onMouseDown, portalHoverEnabled: _phe } = props
       const node = new CanvasIcon(id, icon, { size, color })
       if (backgroundColor) node.backgroundColor = backgroundColor
       const click = wrapEventHandler(onClick, node)
       const enter = wrapEventHandler(onMouseEnter, node)
       const leave = wrapEventHandler(onMouseLeave, node)
+      const down = wrapEventHandler(onMouseDown, node)
       if (click) node.onClick = click
       if (enter) node.onMouseEnter = enter
       if (leave) node.onMouseLeave = leave
+      if (down) node.onMouseDown = down
       return node
     }
 
@@ -327,6 +388,7 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
 
 export type {
   ContainerProps as CanvasContainerProps,
+  AbsoluteContainerProps as CanvasAbsoluteContainerProps,
   TextProps as CanvasTextProps,
   IconProps as CanvasIconProps,
   ButtonProps as CanvasButtonProps,

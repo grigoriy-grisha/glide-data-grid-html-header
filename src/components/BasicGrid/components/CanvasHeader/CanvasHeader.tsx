@@ -267,7 +267,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   const headerStyle = React.useMemo(() => ({
     '--canvas-header-width': `${canvasWidth + effectiveMarkerWidth}px`,
     '--canvas-header-height': `${height}px`,
-    '--canvas-marker-width': `${effectiveMarkerWidth + 1}px`,
+    '--canvas-marker-width': `${effectiveMarkerWidth}px`,
     '--canvas-main-width': `${canvasWidth}px`,
   } as React.CSSProperties), [canvasWidth, height, effectiveMarkerWidth])
 

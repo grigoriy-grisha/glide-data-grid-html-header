@@ -5,13 +5,19 @@ interface VirtualResizeState {
   columnIndex: number
 }
 
+interface ColumnResizeUpdate {
+  columnId: string
+  width: number
+}
+
 interface UseVirtualResizeLineParams {
   scrollLeft: number
   markerWidth: number
   effectiveDataViewportWidth: number
   columnPositions: number[]
   orderedColumns: Array<{ id: string }>
-  setColumnWidths: (updates: Array<{ columnId: string; width: number }>) => void
+  setColumnWidths: (updates: ColumnResizeUpdate[]) => void
+  onColumnResize?: (resizes: ColumnResizeUpdate[]) => void
 }
 
 export function useVirtualResizeLine({
@@ -21,6 +27,7 @@ export function useVirtualResizeLine({
   columnPositions,
   orderedColumns,
   setColumnWidths,
+  onColumnResize,
 }: UseVirtualResizeLineParams) {
   const [virtualResizeState, setVirtualResizeState] = useState<VirtualResizeState | null>(null)
 
@@ -73,8 +80,9 @@ export function useVirtualResizeLine({
     (updates: Array<{ columnId: string; width: number }>) => {
       setColumnWidths(updates)
       setVirtualResizeState(null)
+      onColumnResize?.(updates)
     },
-    [setColumnWidths],
+    [setColumnWidths, onColumnResize],
   )
 
   return {

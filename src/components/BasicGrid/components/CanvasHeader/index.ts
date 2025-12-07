@@ -78,6 +78,7 @@ export type {
   
   // Component types
   CanvasContainerProps,
+  CanvasAbsoluteContainerProps,
   CanvasTextProps,
   CanvasIconProps,
   CanvasButtonProps,

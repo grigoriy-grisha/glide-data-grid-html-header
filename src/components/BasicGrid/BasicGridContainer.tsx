@@ -66,6 +66,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   onRowOverlayClose,
   sortModel,
   onSortChange,
+  onColumnResize,
   dataEditorRef,
 }: BasicGridContainerProps<RowType>) {
   const gridRef = useRef<HTMLDivElement>(null)
@@ -225,6 +226,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     columnPositions,
     orderedColumns,
     setColumnWidths,
+    onColumnResize,
   })
 
   const getColumnWidthByIndex = useMemo(() => {

@@ -108,6 +108,11 @@ export interface GridSortModel {
     direction: SortDirection
 }
 
+export interface ColumnResizeEvent {
+    columnId: string
+    width: number
+}
+
 export interface BasicGridProps<RowType = Record<string, unknown>> {
     columns: BasicGridColumn<RowType>[]
     rows: RowType[]
@@ -151,6 +156,11 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
      * Optional callback invoked when the overlay requests to be closed (close button click).
      */
     onRowOverlayClose?: () => void
+    /**
+     * Callback invoked when column resize is completed.
+     * Receives an array of column resize events with columnId and new width.
+     */
+    onColumnResize?: (resizes: ColumnResizeEvent[]) => void
 }
 
 export interface BasicGridCellChange<RowType> {

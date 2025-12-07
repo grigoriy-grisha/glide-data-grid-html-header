@@ -128,6 +128,7 @@ export type {
 export { Canvas, buildCanvasTree, RootBridge } from './components'
 export type {
   CanvasContainerProps,
+  CanvasAbsoluteContainerProps,
   CanvasTextProps,
   CanvasIconProps,
   CanvasButtonProps,

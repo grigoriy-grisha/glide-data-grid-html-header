@@ -48,86 +48,6 @@ function SimpleHeader() {
   )
 }
 
-function HeaderHoverPortal() {
-    const ref = useRef<any>();
-
-    const [state, setState] = useState({
-        visible: false,
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        nodeId: '',
-    })
-
-    useEffect(() => {
-        return subscribeToCanvasPortalHover((detail: CanvasPortalHoverDetail) => {
-            setState({
-                visible: detail.visible,
-                x: detail.x,
-                y: detail.y,
-                width: detail.width,
-                height: detail.height,
-                nodeId: detail.nodeId ?? '',
-            })
-        })
-    }, [])
-
-    useEffect(() => {
-        if (state.visible) {
-            ref.current!.parentNode.style.position = 'relative'
-            ref.current!.parentNode.style.top = '4px'
-        }
-    }, [state.visible]);
-
-    return createPortal(
-        <div style={{
-            position: 'fixed',
-            left: `${state.x}px`,
-            top: `${state.y}px`,
-            width: `${Math.max(0, state.width)}px`,
-            height: `${Math.max(0, state.height)}px`,
-            pointerEvents: 'none',
-            boxSizing: 'border-box',
-            borderRadius: 8,
-            border: '1px solid rgba(21, 101, 192, 0.8)',
-            background: 'rgba(21, 101, 192, 0.12)',
-            color: '#0f172a',
-            fontSize: 11,
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'flex-end',
-        }}>
-            <Tooltip
-                opened={state.visible}
-                placement="top"
-                text={state.nodeId ? `Ховер: ${state.nodeId}` : 'Элемент канваса'}
-                view="default"
-                style={{
-                    position: 'relative',
-                    top: 4,
-                }}
-                target={
-                    <div
-                        ref={ref}
-                        className="1231412412414"
-                        style={{
-                            width: `${Math.max(0, state.width)}px`,
-                            height: `${Math.max(0, state.height)}px`,
-                            display: 'flex',
-                            alignItems: 'flex-end',
-                            justifyContent: 'flex-end',
-                        }}
-                    >
-                    </div>
-                }
-            />
-        </div>
-        ,
-        document.body
-    )
-}
 
 const columns: BasicGridColumn<DataRow>[] = [
   {
@@ -282,10 +202,16 @@ const columns: BasicGridColumn<DataRow>[] = [
               color="#1565c0"
               onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
             />
-            <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+            <Canvas.Button variant="secondary" onClick={(event) => {
+              event.stopPropagation()
+              console.log('Button clicked!')
+            }}>
               Button
             </Canvas.Button>
-            <Canvas.Button variant="secondary" onClick={() => console.log('Button clicked!')}>
+            <Canvas.Button variant="secondary" onClick={(event) => {
+              event.stopPropagation()
+              console.log('Button clicked!')
+            }}>
               Button
             </Canvas.Button>
           </Canvas.Container>
@@ -363,6 +289,11 @@ export function BasicGridExample() {
         rowHeight={80}
         enableColumnReorder={true}
         getRowId={(row) => row.employeeId}
+        onColumnResize={(resizes) => {
+          resizes.forEach(({ columnId, width }) => {
+            console.log(`Column "${columnId}" resized to ${width}px`)
+          })
+        }}
       />
     </div>
   )
