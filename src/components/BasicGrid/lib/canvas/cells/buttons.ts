@@ -206,12 +206,14 @@ export function drawIcon(
 ): void {
   if (!icon || size <= 0) return
 
-  const sprite = getIconSprite(icon, size, color)
-  if (sprite) {
-    batcher.drawImage(sprite, x, y, size, size)
+  // Try cached ImageBitmap first (GPU-accelerated)
+  const bitmap = getIconSprite(icon, size, color)
+  if (bitmap) {
+    batcher.drawImage(bitmap, x, y, size, size)
     return
   }
   
+  // Fallback to source image while bitmap is loading
   const img = getIconImageDirect(icon, color)
   if (img) {
     batcher.drawImage(img, x, y, size, size)
@@ -304,7 +306,6 @@ export function drawButtonWithView(
   const centerX = x + actualWidth * 0.5
   const centerY = y + sizeConfig.height * 0.5
 
-  // Draw background
   if (colors.bgColor !== 'transparent') {
     batcher.roundedRect(x, y, actualWidth, sizeConfig.height, sizeConfig.borderRadius, {
       fillStyle: colors.bgColor,
@@ -312,7 +313,6 @@ export function drawButtonWithView(
       lineWidth: colors.borderColor !== 'transparent' ? DEFAULT_BORDER_WIDTH : 0,
     })
   } else if (colors.borderColor !== 'transparent') {
-    // Transparent background with border
     batcher.roundedRect(x, y, actualWidth, sizeConfig.height, sizeConfig.borderRadius, {
       fillStyle: colors.bgColor,
       strokeStyle: colors.borderColor,
@@ -408,9 +408,6 @@ export function drawIconButton(
   return { x, y: buttonY, width: actualSize, height: buttonHeight }
 }
 
-/**
- * Draw an icon button with view and size support (sdds_finai__light theme)
- */
 export function drawIconButtonWithView(
   batcher: DrawBatcher,
   x: number,
@@ -432,7 +429,6 @@ export function drawIconButtonWithView(
   const iconX = centerX - sizeConfig.iconSize * 0.5
   const iconY = centerY - sizeConfig.iconSize * 0.5
 
-  // Draw background
   if (colors.bgColor !== 'transparent') {
     batcher.roundedRect(x, y, buttonSize, buttonSize, sizeConfig.borderRadius, {
       fillStyle: colors.bgColor,

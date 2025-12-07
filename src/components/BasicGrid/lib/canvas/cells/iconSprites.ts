@@ -3,7 +3,6 @@ export type ButtonIcon = string | HTMLImageElement | null | undefined
 export type IconSpriteOptions = {
   size: number
   color?: string
-  smoothing?: boolean
 }
 
 export type IconDefinition = {
@@ -13,21 +12,12 @@ export type IconDefinition = {
 
 type IconDefinitionInput = IconDefinition[] | Record<string, string>
 
-type CanvasSprite = CanvasImageSource & { width: number; height: number }
-
-
-type IconImageRecord = {
-  image: HTMLImageElement
-  sourceKey: string
-}
-
 export type IconSpriteStats = {
   requests: number
   hits: number
   misses: number
-  warmed: number
   cacheSize: number
-  pending: number
+  inFlight: number
 }
 
 export type IconLoadCallback = () => void
@@ -46,21 +36,11 @@ function notifyGlobalIconLoad(): void {
   globalIconLoadListeners.forEach(cb => cb())
 }
 
-const iconSourceImages = new Map<string, HTMLImageElement>()
-const svgDataUrlCache = new Map<string, string>()
-const iconIdentity = new WeakMap<HTMLImageElement, string>()
 const iconRegistry = new Map<string, string>()
-let iconIdentityCursor = 0
-
-const hasImageConstructor = typeof Image !== 'undefined'
-const hasHTMLImageElement = typeof HTMLImageElement !== 'undefined'
-
-// Regex for removing width/height attributes (combined for performance)
-const SVG_SIZE_ATTRS_REGEX = /\s+(width|height)=["'][^"']*["']/g
+const svgDataUrlCache = new Map<string, string>()
 
 function createSVGDataURL(svgString: string, color?: string): string {
-  // Remove fixed width/height to allow proper scaling via viewBox
-  let processedSVG = svgString.replace(SVG_SIZE_ATTRS_REGEX, '')
+  let processedSVG = svgString
 
   if (color) {
     processedSVG = processedSVG.replace(/currentColor/g, color)
@@ -73,131 +53,40 @@ function createSVGDataURL(svgString: string, color?: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(processedSVG)}`
 }
 
-function getRegistrySVG(iconName: string): string | undefined {
-  return iconRegistry.get(iconName)
-}
-
-function hashInlineIcon(svg: string): string {
+function hashString(str: string): string {
   let hash = 0
-  for (let i = 0; i < svg.length; i += 1) {
-    hash = (hash << 5) - hash + svg.charCodeAt(i)
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
     hash |= 0
   }
   return hash.toString(36)
 }
 
-function getOrCreateDataUrl(
-  cacheKey: string,
-  svgString: string,
-  color?: string
-): { cacheKey: string; dataURL: string } {
-  const colorAwareKey = `${cacheKey}__${color ?? 'default'}`
-  if (svgDataUrlCache.has(colorAwareKey)) {
-    return { cacheKey: colorAwareKey, dataURL: svgDataUrlCache.get(colorAwareKey)! }
-  }
-  const dataURL = createSVGDataURL(svgString, color)
-  svgDataUrlCache.set(colorAwareKey, dataURL)
-  return { cacheKey: colorAwareKey, dataURL }
-}
-
-function resolveIconSource(icon: string, color?: string): {
-  cacheKey: string
-  dataURL: string
-} {
-  const fromRegistry = getRegistrySVG(icon)
+function getDataUrl(icon: string, color?: string): { key: string; url: string } {
+  const colorKey = color ?? 'default'
+  
+  // Check registry first
+  const fromRegistry = iconRegistry.get(icon)
   if (fromRegistry) {
-    return getOrCreateDataUrl(`registry:${icon}`, fromRegistry, color)
+    const cacheKey = `reg:${icon}:${colorKey}`
+    if (!svgDataUrlCache.has(cacheKey)) {
+      svgDataUrlCache.set(cacheKey, createSVGDataURL(fromRegistry, color))
+    }
+    return { key: cacheKey, url: svgDataUrlCache.get(cacheKey)! }
   }
 
+  // Check if inline SVG
   const trimmed = icon.trimStart()
-  const isInlineSVG = trimmed.startsWith('<svg')
-
-  if (isInlineSVG && !icon.startsWith('data:') && !icon.startsWith('http')) {
-    return getOrCreateDataUrl(`inline:${hashInlineIcon(trimmed)}`, trimmed, color)
-  }
-
-  if (!icon.startsWith('data:') && !icon.startsWith('http')) {
-    return getOrCreateDataUrl(icon, icon, color)
-  }
-
-  return { cacheKey: icon, dataURL: icon }
-}
-
-function getOrCreateIconImageRecord(icon: ButtonIcon, color?: string): IconImageRecord | null {
-  if (!hasImageConstructor || !icon) {
-    return null
-  }
-
-  if (typeof icon === 'string') {
-    const { cacheKey, dataURL } = resolveIconSource(icon, color)
-    if (iconSourceImages.has(cacheKey)) {
-      return { image: iconSourceImages.get(cacheKey)!, sourceKey: cacheKey }
+  if (trimmed.startsWith('<svg')) {
+    const cacheKey = `svg:${hashString(trimmed)}:${colorKey}`
+    if (!svgDataUrlCache.has(cacheKey)) {
+      svgDataUrlCache.set(cacheKey, createSVGDataURL(trimmed, color))
     }
-
-    const img = new Image()
-    img.decoding = 'async'
-    img.src = dataURL
-    iconSourceImages.set(cacheKey, img)
-    return { image: img, sourceKey: cacheKey }
+    return { key: cacheKey, url: svgDataUrlCache.get(cacheKey)! }
   }
 
-  if (hasHTMLImageElement && icon instanceof HTMLImageElement) {
-    if (!iconIdentity.has(icon)) {
-      iconIdentityCursor += 1
-      iconIdentity.set(icon, `html-img-${iconIdentityCursor}`)
-    }
-    return { image: icon, sourceKey: iconIdentity.get(icon)! }
-  }
-
-  return null
-}
-
-function getIconImage(icon: ButtonIcon, color?: string): HTMLImageElement | null {
-  const record = getOrCreateIconImageRecord(icon, color)
-  if (record?.image && record.image.complete && record.image.naturalHeight !== 0) {
-    return record.image
-  }
-  return null
-}
-
-export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageElement | null {
-  return getIconImage(icon, color)
-}
-
-export function getIconSprite(
-  icon: ButtonIcon, 
-  size: number, 
-  color?: string
-): CanvasImageSource | null {
-  if (!icon || size <= 0) return null
-  return iconSpriteManager.getSprite(icon, { size, color })
-}
-
-const DPR_REFRESH_INTERVAL = 1000
-
-let cachedDpr = 1
-let dprTimestamp = 0
-function getDevicePixelRatio(): number {
-  const now = performance.now()
-  if (now - dprTimestamp > DPR_REFRESH_INTERVAL) {
-    cachedDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
-    dprTimestamp = now
-  }
-  return cachedDpr
-}
-
-function buildVariantKey(recordKey: string, options: IconSpriteOptions): string {
-  const { size, color, smoothing } = options
-  const dpr = getDevicePixelRatio()
-  return `${recordKey}|${size}|${dpr}|${color ?? 'default'}|sm=${smoothing === false ? 0 : 1}`
-}
-
-function createMemoryCanvas(width: number, height: number): HTMLCanvasElement | null {
-  if (typeof document === 'undefined') return null
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  return canvas
+  // Already a URL
+  return { key: `url:${icon}:${colorKey}`, url: icon }
 }
 
 function normalizeDefinitions(input: IconDefinitionInput): IconDefinition[] {
@@ -212,10 +101,6 @@ export function registerIconDefinitions(
   options: { overwrite?: boolean } = {}
 ): void {
   const normalized = normalizeDefinitions(definitions)
-  if (normalized.length === 0) {
-    return
-  }
-
   normalized.forEach(({ name, svg }) => {
     if (!name || !svg) return
     if (!options.overwrite && iconRegistry.has(name)) return
@@ -223,162 +108,286 @@ export function registerIconDefinitions(
   })
 }
 
+/**
+ * Simple sprite manager inspired by glide-data-grid SpriteManager
+ * Uses image.decode() and caches sprites as HTMLCanvasElement
+ */
 class IconSpriteManager {
-  private sprites = new Map<string, CanvasSprite>()
-  private pending = new Map<string, Promise<CanvasSprite | null>>()
+  private spriteMap = new Map<string, HTMLCanvasElement>()
+  private pending = new Set<string>()
+  private inFlight = 0
   private stats: IconSpriteStats = {
     requests: 0,
     hits: 0,
     misses: 0,
-    warmed: 0,
     cacheSize: 0,
-    pending: 0,
+    inFlight: 0,
   }
 
-  getSprite(icon: ButtonIcon, options: IconSpriteOptions): CanvasSprite | null {
-    if (!options.size || options.size <= 0) return null
-    
-    const record = getOrCreateIconImageRecord(icon, options.color)
-    if (!record) return null
+  drawSprite(
+    ctx: CanvasRenderingContext2D,
+    icon: ButtonIcon,
+    x: number,
+    y: number,
+    size: number,
+    color?: string
+  ): void {
+    if (!icon || size <= 0) return
 
-    const variantKey = buildVariantKey(record.sourceKey, options)
-    this.stats.requests += 1
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const rSize = Math.ceil(size * dpr)
     
-    const cached = this.sprites.get(variantKey)
+    const colorKey = color ?? 'default'
+    let spriteKey: string
+    let imgUrl: string
+
+    if (typeof icon === 'string') {
+      const { key, url } = getDataUrl(icon, color)
+      spriteKey = `${key}_${rSize}`
+      imgUrl = url
+    } else if (icon instanceof HTMLImageElement) {
+      spriteKey = `img:${icon.src}_${colorKey}_${rSize}`
+      imgUrl = icon.src
+    } else {
+      return
+    }
+
+    this.stats.requests++
+
+    const spriteCanvas = this.spriteMap.get(spriteKey)
+    if (spriteCanvas !== undefined) {
+      this.stats.hits++
+      ctx.drawImage(spriteCanvas, 0, 0, rSize, rSize, x, y, size, size)
+      return
+    }
+
+    // Check if already loading
+    if (this.pending.has(spriteKey)) {
+      return
+    }
+
+    // Cache miss - start loading
+    this.stats.misses++
+
+    const imgSource = new Image()
+    imgSource.src = imgUrl
+
+    // Mark as pending
+    this.pending.add(spriteKey)
+
+    // Decode and draw
+    const promise = imgSource.decode?.()
+    if (!promise) {
+      this.pending.delete(spriteKey)
+      return
+    }
+
+    this.inFlight++
+    this.stats.inFlight = this.inFlight
+
+    promise
+      .then(() => {
+        // Create canvas and draw
+        const canvas = document.createElement('canvas')
+        canvas.width = rSize
+        canvas.height = rSize
+        const spriteCtx = canvas.getContext('2d')
+        if (spriteCtx) {
+          spriteCtx.imageSmoothingEnabled = true
+          spriteCtx.imageSmoothingQuality = 'high'
+          spriteCtx.drawImage(imgSource, 0, 0, rSize, rSize)
+          this.spriteMap.set(spriteKey, canvas)
+          this.stats.cacheSize = this.spriteMap.size
+        }
+      })
+      .catch(() => {
+        // Failed to decode
+      })
+      .finally(() => {
+        this.pending.delete(spriteKey)
+        this.inFlight--
+        this.stats.inFlight = this.inFlight
+        if (this.inFlight === 0) {
+          notifyGlobalIconLoad()
+        }
+      })
+  }
+
+  getSprite(icon: ButtonIcon, size: number, color?: string): HTMLCanvasElement | null {
+    if (!icon || size <= 0) return null
+
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const rSize = Math.ceil(size * dpr)
+    const colorKey = color ?? 'default'
+    
+    let spriteKey: string
+    let imgUrl: string
+    
+    if (typeof icon === 'string') {
+      const { key, url } = getDataUrl(icon, color)
+      spriteKey = `${key}_${rSize}`
+      imgUrl = url
+    } else if (icon instanceof HTMLImageElement) {
+      spriteKey = `img:${icon.src}_${colorKey}_${rSize}`
+      imgUrl = icon.src
+    } else {
+      return null
+    }
+
+    // Check cache
+    const cached = this.spriteMap.get(spriteKey)
     if (cached) {
-      this.stats.hits += 1
       return cached
     }
 
-    this.stats.misses += 1
+    // Not in cache - start loading if not already
+    if (!this.pending.has(spriteKey)) {
+      this.pending.add(spriteKey)
 
-    // Try immediate rasterization if image is ready
-    if (record.image.complete && record.image.naturalHeight !== 0) {
-      const sprite = this.rasterizeToCanvas(record.image, options)
-      if (sprite) {
-        this.sprites.set(variantKey, sprite)
-        this.stats.cacheSize = this.sprites.size
-        return sprite
+      const imgSource = new Image()
+      imgSource.src = imgUrl
+
+      const promise = imgSource.decode?.()
+      if (promise) {
+        this.inFlight++
+        this.stats.inFlight = this.inFlight
+
+        promise
+          .then(() => {
+            // Simple approach like glide-data-grid
+            const canvas = document.createElement('canvas')
+            canvas.width = rSize
+            canvas.height = rSize
+            const spriteCtx = canvas.getContext('2d')
+            if (spriteCtx) {
+              spriteCtx.drawImage(imgSource, 0, 0, rSize, rSize)
+              this.spriteMap.set(spriteKey, canvas)
+              this.stats.cacheSize = this.spriteMap.size
+            }
+            notifyGlobalIconLoad()
+          })
+          .catch((e) => {
+            console.error('[IconSprites] Decode failed:', e)
+          })
+          .finally(() => {
+            this.pending.delete(spriteKey)
+            this.inFlight--
+            this.stats.inFlight = this.inFlight
+          })
+      } else {
+        this.pending.delete(spriteKey)
       }
     }
 
-    this.scheduleWarm(record.image, variantKey, options)
     return null
   }
 
-  warmSprite(icon: ButtonIcon, options: IconSpriteOptions): Promise<void> {
-    if (!options.size || options.size <= 0) return Promise.resolve()
-    
-    const record = getOrCreateIconImageRecord(icon, options.color)
-    if (!record) return Promise.resolve()
-    
-    const variantKey = buildVariantKey(record.sourceKey, options)
-    if (this.sprites.has(variantKey)) return Promise.resolve()
-    
-    return this.scheduleWarm(record.image, variantKey, options)
+  warmSprite(icon: ButtonIcon, size: number, color?: string): void {
+    if (!icon || size <= 0) return
+
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const rSize = Math.ceil(size * dpr)
+    const colorKey = color ?? 'default'
+
+    let spriteKey: string
+    let imgUrl: string
+
+    if (typeof icon === 'string') {
+      const { key, url } = getDataUrl(icon, color)
+      spriteKey = `${key}_${rSize}`
+      imgUrl = url
+    } else if (icon instanceof HTMLImageElement) {
+      spriteKey = `img:${icon.src}_${colorKey}_${rSize}`
+      imgUrl = icon.src
+    } else {
+      return
+    }
+
+    // Already cached or loading
+    if (this.spriteMap.has(spriteKey) || this.pending.has(spriteKey)) return
+
+    this.pending.add(spriteKey)
+
+    const imgSource = new Image()
+    imgSource.src = imgUrl
+
+    const promise = imgSource.decode?.()
+    if (!promise) {
+      this.pending.delete(spriteKey)
+      return
+    }
+
+    this.inFlight++
+    this.stats.inFlight = this.inFlight
+
+    promise
+      .then(() => {
+        const canvas = document.createElement('canvas')
+        canvas.width = rSize
+        canvas.height = rSize
+        const spriteCtx = canvas.getContext('2d')
+        if (spriteCtx) {
+          spriteCtx.drawImage(imgSource, 0, 0, rSize, rSize)
+          this.spriteMap.set(spriteKey, canvas)
+          this.stats.cacheSize = this.spriteMap.size
+        }
+      })
+      .catch(() => {
+        // Failed to decode
+      })
+      .finally(() => {
+        this.pending.delete(spriteKey)
+        this.inFlight--
+        this.stats.inFlight = this.inFlight
+        if (this.inFlight === 0) {
+          notifyGlobalIconLoad()
+        }
+      })
   }
 
   clear(): void {
-    this.sprites.clear()
+    this.spriteMap.clear()
     this.pending.clear()
     this.stats.cacheSize = 0
-    this.stats.pending = 0
   }
 
   getStats(): IconSpriteStats {
-    return {
-      ...this.stats,
-      cacheSize: this.sprites.size,
-      pending: this.pending.size,
-    }
-  }
-
-  private scheduleWarm(
-    image: HTMLImageElement,
-    variantKey: string,
-    options: IconSpriteOptions
-  ): Promise<void> {
-    // Return existing pending promise if already loading
-    const existingPending = this.pending.get(variantKey)
-    if (existingPending) return existingPending.then(() => undefined)
-    if (this.sprites.has(variantKey)) return Promise.resolve()
-
-    const promise = this.waitForImage(image)
-      .then((loaded) => {
-        if (!loaded) return null
-        const sprite = this.rasterizeToCanvas(loaded, options)
-        if (sprite) {
-          this.sprites.set(variantKey, sprite)
-          this.stats.warmed += 1
-          this.stats.cacheSize = this.sprites.size
-          notifyGlobalIconLoad()
-        }
-        return sprite
-      })
-      .finally(() => {
-        this.pending.delete(variantKey)
-        this.stats.pending = this.pending.size
-      })
-
-    this.pending.set(variantKey, promise)
-    this.stats.pending = this.pending.size
-    return promise.then(() => undefined)
-  }
-
-  private waitForImage(image: HTMLImageElement): Promise<HTMLImageElement | null> {
-    if (image.complete && image.naturalHeight !== 0) {
-      return Promise.resolve(image)
-    }
-
-    return new Promise((resolve) => {
-      const cleanup = () => {
-        image.removeEventListener('load', onLoad)
-        image.removeEventListener('error', onError)
-      }
-      const onLoad = () => {
-        cleanup()
-        resolve(image)
-      }
-      const onError = () => {
-        cleanup()
-        resolve(null)
-      }
-      image.addEventListener('load', onLoad, { once: true })
-      image.addEventListener('error', onError, { once: true })
-    })
-  }
-
-  private rasterizeToCanvas(source: CanvasImageSource, options: IconSpriteOptions): CanvasSprite | null {
-    const dpr = getDevicePixelRatio()
-    const physicalSize = Math.ceil(options.size * dpr)
-    
-    const canvas = createMemoryCanvas(physicalSize, physicalSize)
-    if (!canvas) return source as CanvasSprite
-    
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return source as CanvasSprite
-    
-    ctx.imageSmoothingEnabled = options.smoothing !== false
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(source, 0, 0, physicalSize, physicalSize)
-    
-    return canvas
+    return { ...this.stats }
   }
 }
 
 const iconSpriteManager = new IconSpriteManager()
 
+// Public API
+
+export function drawIcon(
+  ctx: CanvasRenderingContext2D,
+  icon: ButtonIcon,
+  x: number,
+  y: number,
+  size: number,
+  color?: string
+): void {
+  iconSpriteManager.drawSprite(ctx, icon, x, y, size, color)
+}
+
+export const drawIconDirect = drawIcon
+
+export function getIconSprite(
+  icon: ButtonIcon,
+  size: number,
+  color?: string
+): HTMLCanvasElement | null {
+  return iconSpriteManager.getSprite(icon, size, color)
+}
+
 export function preloadIconSprites(
   icons: ButtonIcon | ButtonIcon[],
   options: IconSpriteOptions
 ): Promise<void> {
-  const list = (Array.isArray(icons) ? icons : [icons]).filter(Boolean)
-  if (!list.length) {
+  const list = (Array.isArray(icons) ? icons : [icons]).filter(Boolean) as ButtonIcon[]
+  list.forEach(icon => iconSpriteManager.warmSprite(icon, options.size, options.color))
     return Promise.resolve()
-  }
-  return Promise.all(list.map((icon) => iconSpriteManager.warmSprite(icon!, options))).then(
-    () => undefined
-  )
 }
 
 export function getIconSpriteStats(): IconSpriteStats {
@@ -389,29 +398,32 @@ export function resetIconSpriteCache(): void {
   iconSpriteManager.clear()
 }
 
-export function drawIcon(
-  ctx: CanvasRenderingContext2D,
-  icon: ButtonIcon,
-  x: number,
-  y: number,
-  size: number,
-  color?: string
-): void {
-  if (!icon || size <= 0) return
+// Image cache for fallback rendering
+const imageCache = new Map<string, HTMLImageElement>()
 
-  const sprite = iconSpriteManager.getSprite(icon, { size, color })
-  if (sprite) {
-    ctx.drawImage(sprite, x, y, size, size)
-    return
+export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageElement | null {
+  if (!icon) return null
+  
+  if (icon instanceof HTMLImageElement) {
+    return icon.complete && icon.naturalHeight !== 0 ? icon : null
   }
-
-  const img = getIconImage(icon, color)
-  if (img) {
-    ctx.drawImage(img, x, y, size, size)
+  
+  if (typeof icon === 'string') {
+    const { key, url } = getDataUrl(icon, color)
+    
+    // Check cache
+    let img = imageCache.get(key)
+    if (img) {
+      return img.complete && img.naturalHeight !== 0 ? img : null
+    }
+    
+    // Create and cache image
+    img = new Image()
+    img.src = url
+    imageCache.set(key, img)
+    
+    return null
   }
+  
+  return null
 }
-
-// Alias for backward compatibility
-export const drawIconDirect = drawIcon
-
-
