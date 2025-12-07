@@ -16,6 +16,7 @@ const TransactionsExample = lazy(() => import('./examples/TransactionsExample').
 const UsersExample = lazy(() => import('./examples/UsersExample').then(m => ({ default: m.UsersExample })))
 const CanvasButtonsExample = lazy(() => import('./examples/CanvasButtonsExample').then(m => ({ default: m.CanvasButtonsExample })))
 const CanvasIconButtonsExample = lazy(() => import('./examples/CanvasIconButtonsExample').then(m => ({ default: m.CanvasIconButtonsExample })))
+const CanvasBadgesExample = lazy(() => import('./examples/CanvasBadgesExample').then(m => ({ default: m.CanvasBadgesExample })))
 
 const tabs: Tab[] = [
   { id: 'basic', label: 'Basic Grid', icon: '📊' },
@@ -31,6 +32,7 @@ const tabs: Tab[] = [
   { id: 'users', label: 'Users', icon: '👥' },
   { id: 'canvas-buttons', label: 'Canvas Buttons', icon: '🎨' },
   { id: 'canvas-icon-buttons', label: 'Canvas Icon Buttons', icon: '🖼️' },
+  { id: 'canvas-badges', label: 'Canvas Badges', icon: '🏷️' },
 ]
 
 function LoadingSpinner() {
@@ -109,6 +111,10 @@ function App() {
 
             <TabPanel id="canvas-icon-buttons" activeTab={activeTab}>
               <CanvasIconButtonsExample />
+            </TabPanel>
+
+            <TabPanel id="canvas-badges" activeTab={activeTab}>
+              <CanvasBadgesExample />
             </TabPanel>
           </Suspense>
         </div>

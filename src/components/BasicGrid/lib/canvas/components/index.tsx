@@ -7,7 +7,7 @@ import {CanvasIcon} from '../primitives/CanvasIcon'
 import {CanvasButton} from '../primitives/CanvasButton'
 import {CanvasIconButton} from '../primitives/CanvasIconButton'
 import {CanvasRect} from '../primitives/CanvasRect'
-import {CanvasTag, CanvasTagOptions} from '../primitives/CanvasTag'
+import {CanvasBadge, type BadgeView, type BadgeSize} from '../primitives/CanvasBadge'
 import type {FlexBoxOptions} from '../miniflex'
 import type {ButtonIcon} from '../cells/iconSprites'
 import type {ButtonView, ButtonSize} from '../cells/buttons'
@@ -101,8 +101,17 @@ interface RectProps {
   portalHoverEnabled?: boolean
 }
 
-interface TagProps extends CanvasTagOptions {
-  children: ReactNode
+interface BadgeProps {
+  /** Badge text content */
+  text: string
+  /** Badge view style */
+  view?: BadgeView
+  /** Badge size */
+  size?: BadgeSize
+  /** Use transparent background */
+  transparent?: boolean
+  /** No background, only text */
+  clear?: boolean
   style?: Partial<CanvasFlexStyle>
   id?: string
   portalHoverEnabled?: boolean
@@ -116,7 +125,7 @@ type CanvasComponentType =
   | 'Button'
   | 'IconButton'
   | 'Rect'
-  | 'Tag'
+  | 'Badge'
 
 type CanvasComponentMarker = { __canvasType: CanvasComponentType }
 
@@ -188,7 +197,7 @@ const ButtonComponent = createCanvasComponent<ButtonProps>('Button')
 const IconButtonComponent =
   createCanvasComponent<IconButtonProps>('IconButton')
 const RectComponent = createCanvasComponent<RectProps>('Rect')
-const TagComponent = createCanvasComponent<TagProps>('Tag')
+const BadgeComponent = createCanvasComponent<BadgeProps>('Badge')
 
 export const Canvas = {
   Container: ContainerComponent,
@@ -198,7 +207,7 @@ export const Canvas = {
   Button: ButtonComponent,
   IconButton: IconButtonComponent,
   Rect: RectComponent,
-  Tag: TagComponent,
+  Badge: BadgeComponent,
 }
 
 function wrapEventHandler<T extends CanvasNode>(
@@ -380,17 +389,9 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
       return node
     }
 
-    case 'Tag': {
-      const { children, font, textColor, backgroundColor, paddingX, paddingY, borderRadius, portalHoverEnabled: _phe } = props
-      const text = extractTextFromChildren(children)
-      return new CanvasTag(id, text, {
-        font,
-        textColor,
-        backgroundColor,
-        paddingX,
-        paddingY,
-        borderRadius,
-      })
+    case 'Badge': {
+      const { text, view, size, transparent, clear, portalHoverEnabled: _phe } = props
+      return new CanvasBadge(id, text, { view, size, transparent, clear })
     }
 
     default:
@@ -406,5 +407,5 @@ export type {
   ButtonProps as CanvasButtonProps,
   IconButtonProps as CanvasIconButtonProps,
   RectProps as CanvasRectProps,
-  TagProps as CanvasTagProps,
+  BadgeProps as CanvasBadgeProps,
 }

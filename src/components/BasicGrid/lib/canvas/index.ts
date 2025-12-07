@@ -31,7 +31,7 @@ export {
   CanvasIcon,
   CanvasIconButton,
   CanvasRect,
-  CanvasTag,
+  CanvasBadge,
   CanvasChevron,
   CanvasFlex,
 } from './primitives'
@@ -40,7 +40,9 @@ export type {
   CanvasButtonOptions,
   CanvasIconOptions,
   CanvasIconButtonOptions,
-  CanvasTagOptions,
+  CanvasBadgeOptions,
+  BadgeView,
+  BadgeSize,
   CanvasChevronOptions,
 } from './primitives'
 
@@ -142,7 +144,7 @@ export type {
   CanvasButtonProps,
   CanvasIconButtonProps,
   CanvasRectProps,
-  CanvasTagProps,
+  CanvasBadgeProps,
   RootBridgeProps,
 } from './components'
 

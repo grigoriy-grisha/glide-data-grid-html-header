@@ -22,7 +22,7 @@ export {
   CanvasIcon,
   CanvasFlex,
   CanvasIconButton,
-  CanvasTag,
+  CanvasBadge,
   CanvasChevron,
   
   // JSX Components
@@ -73,7 +73,9 @@ export type {
   CanvasButtonOptions,
   CanvasIconOptions,
   CanvasIconButtonOptions,
-  CanvasTagOptions,
+  CanvasBadgeOptions,
+  BadgeView,
+  BadgeSize,
   CanvasChevronOptions,
   
   // Component types

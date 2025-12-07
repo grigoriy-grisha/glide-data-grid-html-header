@@ -12,8 +12,8 @@ export type { CanvasIconButtonOptions } from './CanvasIconButton'
 
 export { CanvasRect } from './CanvasRect'
 
-export { CanvasTag } from './CanvasTag'
-export type { CanvasTagOptions } from './CanvasTag'
+export { CanvasBadge } from './CanvasBadge'
+export type { CanvasBadgeOptions, BadgeView, BadgeSize } from './CanvasBadge'
 
 export { CanvasChevron } from './CanvasChevron'
 export type { CanvasChevronOptions } from './CanvasChevron'
