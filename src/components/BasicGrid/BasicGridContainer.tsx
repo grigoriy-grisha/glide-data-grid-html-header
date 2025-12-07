@@ -205,13 +205,20 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
       canvasHeaderRef,
     })
 
-  const effectiveViewportWidth = Math.max(0, viewportWidth - scrollbarReserve)
-  const effectiveDataViewportWidth = Math.max(0, dataViewportWidth - scrollbarReserve)
-
-  console.log(effectiveDataViewportWidth)
-  console.log(effectiveViewportWidth)
   // Calculate vertical scrollbar width to adjust header overlay width
   const verticalScrollbarWidth = useMemo(() => getScrollbarWidth(), [])
+
+  // Determine if vertical scrollbar is actually visible (content exceeds container)
+  const hasVerticalScrollbar = useMemo(() => {
+    const totalContentHeight = gridRows.length * estimatedRowHeight
+    return totalContentHeight > height
+  }, [gridRows.length, estimatedRowHeight, height])
+
+  // Only reserve space for scrollbar if it's actually visible
+  const actualScrollbarReserve = hasVerticalScrollbar ? scrollbarReserve : 0
+
+  const effectiveViewportWidth = Math.max(0, viewportWidth - actualScrollbarReserve)
+  const effectiveDataViewportWidth = Math.max(0, dataViewportWidth - actualScrollbarReserve)
 
   const {
     virtualResizeState,
@@ -329,7 +336,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
           )}
 
           <GridHeader
-            width={effectiveViewportWidth - scrollbarReserve - 6}
+            width={effectiveViewportWidth - 6}
             scrollbarWidth={verticalScrollbarWidth}
             height={headerHeightPx}
             effectiveHeight={effectiveHeaderHeight}

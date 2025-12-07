@@ -5,6 +5,7 @@ import './index.css'
 import {sdds_finai__light} from "@salutejs/sdds-themes";
 import {createGlobalStyle} from "styled-components";
 
+console.log(sdds_finai__light);
 const Theme = createGlobalStyle(sdds_finai__light);
 
 

@@ -15,7 +15,19 @@ export type {
 export { createCanvasCell, isCanvasCell } from './factory'
 export { canvasCellRenderer } from './renderer'
 export type { CanvasCellRendererConfig } from './renderer'
-export { drawButton, drawIconButton, drawTag, drawIcon, BUTTON_PADDING_Y, ICON_SIZE_ADJUSTMENT } from './buttons'
+export { 
+  drawButton, 
+  drawButtonWithView,
+  drawIconButton, 
+  drawIconButtonWithView,
+  drawTag, 
+  drawIcon, 
+  BUTTON_PADDING_Y, 
+  ICON_SIZE_ADJUSTMENT,
+  SIZE_CONFIG,
+  VIEW_COLORS,
+} from './buttons'
+export type { ButtonView, ButtonSize, SizeConfig, ViewColors } from './buttons'
 export {
   preloadIconSprites,
   registerIconDefinitions,

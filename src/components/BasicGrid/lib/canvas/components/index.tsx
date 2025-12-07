@@ -10,6 +10,7 @@ import {CanvasRect} from '../primitives/CanvasRect'
 import {CanvasTag, CanvasTagOptions} from '../primitives/CanvasTag'
 import type {FlexBoxOptions} from '../miniflex'
 import type {ButtonIcon} from '../cells/iconSprites'
+import type {ButtonView, ButtonSize} from '../cells/buttons'
 
 
 interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
@@ -61,7 +62,12 @@ interface IconProps {
 
 interface ButtonProps {
   children: string
+  /** @deprecated Use `view` instead */
   variant?: 'primary' | 'secondary' | 'danger'
+  /** Button view style based on sdds_finai__light theme */
+  view?: ButtonView
+  /** Button size */
+  size?: ButtonSize
   disabled?: boolean
   onClick?: (event: CanvasEvent<CanvasButton>) => void
   style?: Partial<CanvasFlexStyle>
@@ -71,8 +77,14 @@ interface ButtonProps {
 
 interface IconButtonProps {
   icon: ButtonIcon
+  /** @deprecated Use `buttonSize` with ButtonSize type instead */
   size?: number | 'auto'
+  /** @deprecated Use `view` instead */
   variant?: 'primary' | 'secondary' | 'danger'
+  /** Button view style based on sdds_finai__light theme */
+  view?: ButtonView
+  /** Button size */
+  buttonSize?: ButtonSize
   disabled?: boolean
   onClick?: (event: CanvasEvent<CanvasIconButton>) => void
   style?: Partial<CanvasFlexStyle>
@@ -344,17 +356,17 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     }
 
     case 'Button': {
-      const { children, variant, disabled, onClick, portalHoverEnabled: _phe } = props
+      const { children, variant, view, size, disabled, onClick, portalHoverEnabled: _phe } = props
       const text = typeof children === 'string' ? children : ''
-      const node = new CanvasButton(id, text, { variant, disabled })
+      const node = new CanvasButton(id, text, { variant, view, size, disabled })
       const click = wrapEventHandler(onClick, node)
       if (click) node.onClick = click
       return node
     }
 
     case 'IconButton': {
-      const { icon, size, variant, disabled, onClick, portalHoverEnabled: _phe } = props
-      const node = new CanvasIconButton(id, icon, { size, variant, disabled })
+      const { icon, size, variant, view, buttonSize, disabled, onClick, portalHoverEnabled: _phe } = props
+      const node = new CanvasIconButton(id, icon, { size, variant, view, buttonSize, disabled })
       const click = wrapEventHandler(onClick, node)
       if (click) node.onClick = click
       return node

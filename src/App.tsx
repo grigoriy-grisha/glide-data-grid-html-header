@@ -14,6 +14,8 @@ const ProductsExample = lazy(() => import('./examples/ProductsExample').then(m =
 const TasksExample = lazy(() => import('./examples/TasksExample').then(m => ({ default: m.TasksExample })))
 const TransactionsExample = lazy(() => import('./examples/TransactionsExample').then(m => ({ default: m.TransactionsExample })))
 const UsersExample = lazy(() => import('./examples/UsersExample').then(m => ({ default: m.UsersExample })))
+const CanvasButtonsExample = lazy(() => import('./examples/CanvasButtonsExample').then(m => ({ default: m.CanvasButtonsExample })))
+const CanvasIconButtonsExample = lazy(() => import('./examples/CanvasIconButtonsExample').then(m => ({ default: m.CanvasIconButtonsExample })))
 
 const tabs: Tab[] = [
   { id: 'basic', label: 'Basic Grid', icon: '📊' },
@@ -27,6 +29,8 @@ const tabs: Tab[] = [
   { id: 'tasks', label: 'Tasks', icon: '✅' },
   { id: 'transactions', label: 'Transactions', icon: '💳' },
   { id: 'users', label: 'Users', icon: '👥' },
+  { id: 'canvas-buttons', label: 'Canvas Buttons', icon: '🎨' },
+  { id: 'canvas-icon-buttons', label: 'Canvas Icon Buttons', icon: '🖼️' },
 ]
 
 function LoadingSpinner() {
@@ -97,6 +101,14 @@ function App() {
 
             <TabPanel id="users" activeTab={activeTab}>
               <UsersExample />
+            </TabPanel>
+
+            <TabPanel id="canvas-buttons" activeTab={activeTab}>
+              <CanvasButtonsExample />
+            </TabPanel>
+
+            <TabPanel id="canvas-icon-buttons" activeTab={activeTab}>
+              <CanvasIconButtonsExample />
             </TabPanel>
           </Suspense>
         </div>

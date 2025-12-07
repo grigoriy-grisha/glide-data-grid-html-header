@@ -17,6 +17,128 @@ import { DrawBatcher } from '../core/DrawBatcher'
 export { preloadIconSprites, registerIconDefinitions, resetIconSpriteCache, getIconSpriteStats }
 export type { ButtonIcon, IconDefinition, IconSpriteOptions, IconSpriteStats }
 
+// Button view types based on sdds_finai__light theme
+export type ButtonView = 
+  | 'default'
+  | 'primary'
+  | 'accent'
+  | 'secondary'
+  | 'clear'
+  | 'success'
+  | 'warning'
+  | 'critical'
+  | 'dark'
+  | 'black'
+  | 'white'
+
+// Button size types
+export type ButtonSize = 'xs' | 's' | 'm' | 'l'
+
+// Size configuration based on theme spacing
+export interface SizeConfig {
+  height: number
+  fontSize: number
+  borderRadius: number
+  paddingX: number
+  iconSize: number
+}
+
+export const SIZE_CONFIG: Record<ButtonSize, SizeConfig> = {
+  xs: { height: 24, fontSize: 12, borderRadius: 4, paddingX: 8, iconSize: 14 },
+  s: { height: 32, fontSize: 13, borderRadius: 6, paddingX: 12, iconSize: 16 },
+  m: { height: 40, fontSize: 14, borderRadius: 8, paddingX: 16, iconSize: 18 },
+  l: { height: 48, fontSize: 16, borderRadius: 10, paddingX: 20, iconSize: 20 },
+}
+
+// View colors based on sdds_finai__light theme
+export interface ViewColors {
+  bgColor: string
+  bgColorHover: string
+  borderColor: string
+  textColor: string
+  iconColor: string
+}
+
+export const VIEW_COLORS: Record<ButtonView, ViewColors> = {
+  default: {
+    bgColor: '#060A0C',
+    bgColorHover: '#111C22',
+    borderColor: '#060A0C',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  primary: {
+    bgColor: '#060A0C',
+    bgColorHover: '#111C22',
+    borderColor: '#060A0C',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  accent: {
+    bgColor: '#118CDF',
+    bgColorHover: '#1798EE',
+    borderColor: '#118CDF',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  secondary: {
+    bgColor: 'transparent',
+    bgColorHover: 'rgba(6, 10, 12, 0.08)',
+    borderColor: '#060A0C',
+    textColor: '#060A0C',
+    iconColor: '#060A0C',
+  },
+  clear: {
+    bgColor: 'transparent',
+    bgColorHover: 'rgba(6, 10, 12, 0.08)',
+    borderColor: 'transparent',
+    textColor: '#060A0C',
+    iconColor: '#060A0C',
+  },
+  success: {
+    bgColor: '#1A9E32',
+    bgColorHover: '#1EB83A',
+    borderColor: '#1A9E32',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  warning: {
+    bgColor: '#FA5F05',
+    bgColorHover: '#FB782D',
+    borderColor: '#FA5F05',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  critical: {
+    bgColor: '#FF293E',
+    bgColorHover: '#FF5263',
+    borderColor: '#FF293E',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  dark: {
+    bgColor: '#13181B',
+    bgColorHover: '#23292D',
+    borderColor: '#13181B',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  black: {
+    bgColor: '#060A0C',
+    bgColorHover: '#13181B',
+    borderColor: '#060A0C',
+    textColor: '#FFFFFF',
+    iconColor: '#FFFFFF',
+  },
+  white: {
+    bgColor: '#FFFFFF',
+    bgColorHover: '#F2F5F8',
+    borderColor: '#D5DFE6',
+    textColor: '#060A0C',
+    iconColor: '#060A0C',
+  },
+}
+
 export const BUTTON_PADDING_Y = 4
 export const ICON_SIZE_ADJUSTMENT = 4
 
@@ -33,6 +155,8 @@ const DEFAULT_BUTTON_RADIUS = 4
 const DEFAULT_BORDER_WIDTH = 1
 const DEFAULT_ICON_SPACING = 6
 const DEFAULT_TEXT_PADDING = 4
+const DEFAULT_SIZE: ButtonSize = 's'
+const DEFAULT_VIEW: ButtonView = 'default'
 
 const lightenColorCache = new Map<string, string>()
 const textMeasureCache = new Map<string, number>()
@@ -151,6 +275,72 @@ export function drawButton(
   return { x, y: buttonY, width: actualWidth, height: buttonHeight, actualWidth }
 }
 
+/**
+ * Draw a button with view and size support (sdds_finai__light theme)
+ */
+export function drawButtonWithView(
+  batcher: DrawBatcher,
+  x: number,
+  y: number,
+  width: number | 'auto',
+  label: string,
+  view: ButtonView = DEFAULT_VIEW,
+  size: ButtonSize = DEFAULT_SIZE,
+  disabled = false,
+  hovered: HoverState = false,
+  leftIcon?: ButtonIcon,
+  rightIcon?: ButtonIcon,
+  measureCtx?: CanvasRenderingContext2D
+): { x: number; y: number; width: number; height: number; actualWidth: number } {
+  const sizeConfig = SIZE_CONFIG[size]
+  const viewColors = VIEW_COLORS[view]
+  const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+  const iconSpacing = DEFAULT_ICON_SPACING
+
+  const textWidth = measureCtx ? getCachedTextWidth(measureCtx, label, font) : 0
+  const actualWidth = calculateButtonWidth(width, textWidth, sizeConfig.iconSize, iconSpacing, leftIcon, rightIcon)
+  const isHovered = isHoveringBounds(hovered, { x, y, width: actualWidth, height: sizeConfig.height })
+  const colors = resolveViewColors(viewColors, disabled, isHovered)
+
+  const centerX = x + actualWidth * 0.5
+  const centerY = y + sizeConfig.height * 0.5
+
+  // Draw background
+  if (colors.bgColor !== 'transparent') {
+    batcher.roundedRect(x, y, actualWidth, sizeConfig.height, sizeConfig.borderRadius, {
+      fillStyle: colors.bgColor,
+      strokeStyle: colors.borderColor !== 'transparent' ? colors.borderColor : undefined,
+      lineWidth: colors.borderColor !== 'transparent' ? DEFAULT_BORDER_WIDTH : 0,
+    })
+  } else if (colors.borderColor !== 'transparent') {
+    // Transparent background with border
+    batcher.roundedRect(x, y, actualWidth, sizeConfig.height, sizeConfig.borderRadius, {
+      fillStyle: colors.bgColor,
+      strokeStyle: colors.borderColor,
+      lineWidth: DEFAULT_BORDER_WIDTH,
+    })
+  }
+
+  const contentWidth = calculateContentWidth(textWidth, sizeConfig.iconSize, iconSpacing, leftIcon, rightIcon)
+  let currentX = centerX - contentWidth * 0.5
+
+  if (leftIcon) {
+    const iconY = centerY - sizeConfig.iconSize * 0.5
+    drawIcon(batcher, leftIcon, currentX, iconY, sizeConfig.iconSize, colors.textColor)
+    currentX += sizeConfig.iconSize + iconSpacing
+  }
+
+  batcher.fillText(label, currentX, centerY, font, colors.textColor, 'middle', 'left')
+
+  if (rightIcon) {
+    const rightIconX = currentX + textWidth + iconSpacing
+    const iconY = centerY - sizeConfig.iconSize * 0.5
+    drawIcon(batcher, rightIcon, rightIconX, iconY, sizeConfig.iconSize, colors.textColor)
+  }
+
+  return { x, y, width: actualWidth, height: sizeConfig.height, actualWidth }
+}
+
 function calculateButtonWidth(
   width: number | 'auto',
   textWidth: number,
@@ -217,6 +407,50 @@ export function drawIconButton(
   drawIcon(batcher, icon, iconX, iconY, iconSize, colors.iconColor)
 
   return { x, y: buttonY, width: actualSize, height: buttonHeight }
+}
+
+/**
+ * Draw an icon button with view and size support (sdds_finai__light theme)
+ */
+export function drawIconButtonWithView(
+  batcher: DrawBatcher,
+  x: number,
+  y: number,
+  icon: ButtonIcon,
+  view: ButtonView = DEFAULT_VIEW,
+  size: ButtonSize = DEFAULT_SIZE,
+  disabled = false,
+  hovered: HoverState = false
+): { x: number; y: number; width: number; height: number } {
+  const sizeConfig = SIZE_CONFIG[size]
+  const viewColors = VIEW_COLORS[view]
+  const buttonSize = sizeConfig.height
+  const isHovered = isHoveringBounds(hovered, { x, y, width: buttonSize, height: buttonSize })
+  const colors = resolveViewColors(viewColors, disabled, isHovered)
+
+  const centerX = x + buttonSize * 0.5
+  const centerY = y + buttonSize * 0.5
+  const iconX = centerX - sizeConfig.iconSize * 0.5
+  const iconY = centerY - sizeConfig.iconSize * 0.5
+
+  // Draw background
+  if (colors.bgColor !== 'transparent') {
+    batcher.roundedRect(x, y, buttonSize, buttonSize, sizeConfig.borderRadius, {
+      fillStyle: colors.bgColor,
+      strokeStyle: colors.borderColor !== 'transparent' ? colors.borderColor : undefined,
+      lineWidth: colors.borderColor !== 'transparent' ? DEFAULT_BORDER_WIDTH : 0,
+    })
+  } else if (colors.borderColor !== 'transparent') {
+    batcher.roundedRect(x, y, buttonSize, buttonSize, sizeConfig.borderRadius, {
+      fillStyle: colors.bgColor,
+      strokeStyle: colors.borderColor,
+      lineWidth: DEFAULT_BORDER_WIDTH,
+    })
+  }
+
+  drawIcon(batcher, icon, iconX, iconY, sizeConfig.iconSize, colors.iconColor)
+
+  return { x, y, width: buttonSize, height: buttonSize }
 }
 
 const TAG_PADDING_X = 10
@@ -342,5 +576,30 @@ function resolveDangerColors(isHovered: boolean) {
     borderColor: bgColor,
     textColor: DANGER_TEXT_COLOR,
     iconColor: DANGER_TEXT_COLOR,
+  }
+}
+
+/**
+ * Resolve colors for view-based buttons
+ */
+function resolveViewColors(
+  viewColors: ViewColors,
+  disabled: boolean,
+  isHovered: boolean
+): { bgColor: string; borderColor: string; textColor: string; iconColor: string } {
+  if (disabled) {
+    return {
+      bgColor: '#E8EEF2',
+      borderColor: '#D5DFE6',
+      textColor: '#8A959D',
+      iconColor: '#8A959D',
+    }
+  }
+
+  return {
+    bgColor: isHovered ? viewColors.bgColorHover : viewColors.bgColor,
+    borderColor: viewColors.borderColor,
+    textColor: viewColors.textColor,
+    iconColor: viewColors.iconColor,
   }
 }

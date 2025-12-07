@@ -51,11 +51,15 @@ export {
   isCanvasCell,
   canvasCellRenderer,
   drawButton,
+  drawButtonWithView,
   drawIconButton,
+  drawIconButtonWithView,
   drawTag,
   drawIcon,
   BUTTON_PADDING_Y,
   ICON_SIZE_ADJUSTMENT,
+  SIZE_CONFIG,
+  VIEW_COLORS,
   preloadIconSprites,
   registerIconDefinitions,
   resetIconSpriteCache,
@@ -90,6 +94,10 @@ export type {
   IconSpriteOptions,
   IconDefinition,
   IconSpriteStats,
+  ButtonView,
+  ButtonSize,
+  SizeConfig,
+  ViewColors,
 } from './cells'
 
 // Utils

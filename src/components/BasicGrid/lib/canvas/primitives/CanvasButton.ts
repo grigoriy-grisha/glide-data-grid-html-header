@@ -1,14 +1,13 @@
-import { drawButton } from '../cells/buttons'
+import { drawButton, drawButtonWithView, SIZE_CONFIG, type ButtonView, type ButtonSize } from '../cells/buttons'
 import { CanvasLeaf } from "../core/CanvasLeaf"
 import { CanvasEvent, CanvasFlexStyle } from "../core/CanvasNode"
 import { DrawBatcher } from "../core/DrawBatcher"
 
-const BUTTON_FONT = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-const BUTTON_HEIGHT = 24
-const BUTTON_PADDING = 32
-const DEFAULT_VARIANT = 'primary' as const
+const DEFAULT_VIEW: ButtonView = 'default'
+const DEFAULT_SIZE: ButtonSize = 's'
 const DEFAULT_CURSOR = 'pointer'
 
+// Legacy theme for backward compatibility
 const BUTTON_THEME = {
     accentColor: '#1e88e5',
     accentLight: 'rgba(30, 136, 229, 0.16)',
@@ -16,29 +15,47 @@ const BUTTON_THEME = {
     bgCell: '#ffffff',
     borderColor: '#e0e0e0',
     textLight: '#9e9e9e',
-    baseFontFull: BUTTON_FONT
+    baseFontFull: "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
 }
 
 const textWidthCache = new Map<string, number>()
 
 export interface CanvasButtonOptions {
+    /** @deprecated Use `view` instead */
     variant?: 'primary' | 'secondary' | 'danger'
+    /** Button view style based on sdds_finai__light theme */
+    view?: ButtonView
+    /** Button size */
+    size?: ButtonSize
     disabled?: boolean
     onClick?: (event: CanvasEvent) => void
 }
 
 export class CanvasButton extends CanvasLeaf {
     text: string
-    variant: 'primary' | 'secondary' | 'danger' = DEFAULT_VARIANT
+    /** @deprecated Use `view` instead */
+    variant: 'primary' | 'secondary' | 'danger' = 'primary'
+    view: ButtonView = DEFAULT_VIEW
+    size: ButtonSize = DEFAULT_SIZE
     disabled = false
     isHovered = false
+    private useNewApi = false
 
     constructor(id: string, text: string, options?: CanvasButtonOptions) {
         super(id)
         this.text = text
         super.style = { ...super.style, cursor: DEFAULT_CURSOR }
         if (options) {
-            if (options.variant !== undefined) this.variant = options.variant
+            if (options.view !== undefined) {
+                this.view = options.view
+                this.useNewApi = true
+            } else if (options.variant !== undefined) {
+                this.variant = options.variant
+            }
+            if (options.size !== undefined) {
+                this.size = options.size
+                this.useNewApi = true
+            }
             if (options.disabled !== undefined) this.disabled = options.disabled
             if (options.onClick) this.onClick = options.onClick
         }
@@ -57,28 +74,50 @@ export class CanvasButton extends CanvasLeaf {
     }
 
     measure(ctx: CanvasRenderingContext2D) {
-        const textWidth = getCachedTextWidth(ctx, this.text)
-        this.rect.width = textWidth + BUTTON_PADDING
-        this.rect.height = BUTTON_HEIGHT
+        const sizeConfig = SIZE_CONFIG[this.size]
+        const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+        const textWidth = getCachedTextWidth(ctx, this.text, font)
+        this.rect.width = textWidth + sizeConfig.paddingX * 2
+        this.rect.height = sizeConfig.height
     }
 
     onPaint(batcher: DrawBatcher, ctx: CanvasRenderingContext2D) {
-        const { x, y, width, height } = this.rect
-        drawButton(
-            batcher,
-            x,
-            y,
-            width,
-            height,
-            this.text,
-            BUTTON_THEME,
-            this.variant,
-            this.disabled,
-            this.isHovered,
-            undefined,
-            undefined,
-            ctx
-        )
+        const { x, y, width } = this.rect
+        
+        if (this.useNewApi) {
+            drawButtonWithView(
+                batcher,
+                x,
+                y,
+                width,
+                this.text,
+                this.view,
+                this.size,
+                this.disabled,
+                this.isHovered,
+                undefined,
+                undefined,
+                ctx
+            )
+        } else {
+            // Legacy API for backward compatibility
+            const sizeConfig = SIZE_CONFIG[this.size]
+            drawButton(
+                batcher,
+                x,
+                y,
+                width,
+                sizeConfig.height,
+                this.text,
+                BUTTON_THEME,
+                this.variant,
+                this.disabled,
+                this.isHovered,
+                undefined,
+                undefined,
+                ctx
+            )
+        }
     }
 
     onMouseEnter() {
@@ -90,12 +129,13 @@ export class CanvasButton extends CanvasLeaf {
     }
 }
 
-function getCachedTextWidth(ctx: CanvasRenderingContext2D, text: string): number {
-    let width = textWidthCache.get(text)
+function getCachedTextWidth(ctx: CanvasRenderingContext2D, text: string, font: string): number {
+    const key = `${font}|${text}`
+    let width = textWidthCache.get(key)
     if (width === undefined) {
-        ctx.font = BUTTON_FONT
+        ctx.font = font
         width = ctx.measureText(text).width
-        textWidthCache.set(text, width)
+        textWidthCache.set(key, width)
     }
     return width
 }
