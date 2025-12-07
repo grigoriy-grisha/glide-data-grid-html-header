@@ -1,4 +1,4 @@
-import { useMemo, useRef, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, type RefObject } from 'react'
 import type { DataEditorProps, DataEditorRef } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
@@ -32,6 +32,7 @@ import { useColumnResize } from './hooks/useColumnResize'
 import { useVirtualResizeLine } from './hooks/useVirtualResizeLine'
 import { useRowHeight } from './hooks/useRowHeight'
 import { useGridEventHandlers } from './hooks/useGridEventHandlers'
+import { getScrollbarWidth } from './utils/getScrollbarWidth'
 
 interface BasicGridContainerProps<RowType extends Record<string, unknown>>
   extends BasicGridProps<RowType> {
@@ -164,7 +165,34 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   })
 
   const columnSelection = useColumnSelection(gridRows.length, orderedColumns.length)
-  const { highlightRegions, clearSelection } = columnSelection
+  const { selectedColumns, toggleColumn, highlightRegions, clearSelection } = columnSelection
+
+  // When row selection is enabled, header indices are offset by -1 (selection column is removed from header)
+  // We need to adjust indices when communicating between header and body
+  const selectionColumnOffset = rowSelectionEnabled ? 1 : 0
+
+  // Wrapper that adds offset when header reports a click (header uses adjusted indices)
+  const handleHeaderColumnClick = useCallback(
+    (startIndex: number, colSpan: number, ctrlKey: boolean) => {
+      toggleColumn(startIndex + selectionColumnOffset, colSpan, ctrlKey)
+    },
+    [toggleColumn, selectionColumnOffset]
+  )
+
+  // Adjusted selectedColumns for header (subtract offset from each index)
+  const headerSelectedColumns = useMemo(() => {
+    if (selectionColumnOffset === 0 || selectedColumns.size === 0) {
+      return selectedColumns
+    }
+    const adjusted = new Set<number>()
+    for (const idx of selectedColumns) {
+      const adjustedIdx = idx - selectionColumnOffset
+      if (adjustedIdx >= 0) {
+        adjusted.add(adjustedIdx)
+      }
+    }
+    return adjusted
+  }, [selectedColumns, selectionColumnOffset])
 
   const { handleVisibleRegionChanged, viewportWidth, dataViewportWidth, scrollLeft } =
     useHorizontalScroll({
@@ -178,6 +206,11 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
 
   const effectiveViewportWidth = Math.max(0, viewportWidth - scrollbarReserve)
   const effectiveDataViewportWidth = Math.max(0, dataViewportWidth - scrollbarReserve)
+
+  console.log(effectiveDataViewportWidth)
+  console.log(effectiveViewportWidth)
+  // Calculate vertical scrollbar width to adjust header overlay width
+  const verticalScrollbarWidth = useMemo(() => getScrollbarWidth(), [])
 
   const {
     virtualResizeState,
@@ -258,6 +291,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     treeColumnId,
     clearSelection,
     handleColumnSort,
+    selectedColumns,
   })
 
   const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
@@ -293,7 +327,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
           )}
 
           <GridHeader
-            width={effectiveDataViewportWidth}
+            width={effectiveViewportWidth - scrollbarReserve - 6}
+            scrollbarWidth={verticalScrollbarWidth}
             height={headerHeightPx}
             effectiveHeight={effectiveHeaderHeight}
             headerLayerStyle={headerLayerStyle ?? undefined}
@@ -322,6 +357,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
             isAllRowsSelected={isAllRowsSelected}
             hasPartialRowSelection={hasPartialRowSelection}
             onSelectAllChange={handleSelectAllChange}
+            selectedColumns={headerSelectedColumns}
+            onColumnClick={handleHeaderColumnClick}
           />
 
           <div className="basic-grid-body" ref={gridBodyRef} style={gridBodyStyle}>

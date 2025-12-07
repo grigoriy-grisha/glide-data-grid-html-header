@@ -67,6 +67,7 @@ export const useCanvasLifecycle = ({
     setRootReady(true)
     return () => {
       stopLoop()
+      root.destroy()
       rootRef.current = null
       setRootReady(false)
     }

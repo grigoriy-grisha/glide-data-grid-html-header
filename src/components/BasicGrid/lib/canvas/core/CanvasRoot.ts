@@ -8,6 +8,7 @@ export class CanvasRoot {
     ctx: CanvasRenderingContext2D
     rootNode: CanvasNode
     private hoverController: CanvasHoverController
+    private eventHandlers: Map<string, (event: MouseEvent) => void> = new Map()
 
     private batcher: DrawBatcher = new DrawBatcher()
     onCursorChange?: (cursor: string) => void
@@ -29,8 +30,17 @@ export class CanvasRoot {
     private setupEvents() {
         const types: CanvasEvent['type'][] = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick']
         types.forEach(type => {
-            this.canvas.addEventListener(type, (event) => this.dispatchPointerEvent(event, type))
+            const handler = (event: MouseEvent) => this.dispatchPointerEvent(event, type)
+            this.eventHandlers.set(type, handler)
+            this.canvas.addEventListener(type, handler)
         })
+    }
+
+    destroy() {
+        this.eventHandlers.forEach((handler, type) => {
+            this.canvas.removeEventListener(type, handler)
+        })
+        this.eventHandlers.clear()
     }
 
     private dispatchPointerEvent(e: MouseEvent, type: CanvasEvent['type']) {

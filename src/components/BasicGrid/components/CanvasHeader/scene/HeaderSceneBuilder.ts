@@ -11,9 +11,11 @@ import { GridHeaderCell } from '../../../models/GridHeaderCell'
 import { GridColumn } from '../../../models/GridColumn'
 import { getHeaderColor, getHeaderTextColor, getHeaderFontSize, getHeaderFontWeight } from '../../headerConstants'
 import { GRIP_ICON_SVG, SORT_ASC_ICON, SORT_DESC_ICON, SORT_DEFAULT_ICON } from '../utils/icons'
+import { COLUMN_HIGHLIGHT_COLOR } from '../../../constants'
 
 const DEFAULT_BORDER_COLOR = '#e0e0e0'
 const DEFAULT_BORDER_WIDTH = 1
+const SELECTED_BORDER_WIDTH = 1
 const CONTENT_COLUMN_GAP = 6
 const CONTENT_PADDING = 12
 const GRIP_ICON_SIZE = 12
@@ -26,7 +28,7 @@ const HOVER_COLOR_MAP: Record<string, string> = {
     '#f5f5f5': '#e0e0e0',
     '#fafafa': '#eeeeee',
     '#ffffff': '#f5f5f5',
-};
+}
 
 export interface GripIconHandlers {
     onMouseEnter: () => void
@@ -54,6 +56,9 @@ export interface BuildSceneConfig {
         width: number,
         height: number
     ) => GripIconHandlers
+    // Column selection
+    selectedColumns?: Set<number>
+    onColumnClick?: (startIndex: number, colSpan: number, ctrlKey: boolean) => void
 }
 
 function getHoverColor(color: string): string {
@@ -76,8 +81,11 @@ export class HeaderSceneBuilder {
         const dimensions = this.calculateCellDimensions(cell, columnPositions, columnWidths, scrollLeft, headerRowHeight)
         const colors = this.getCellColors(cell.level)
         const column = this.getColumn(cell, orderedColumns)
+        
+        // Check if any column in this cell's span is selected
+        const isSelected = this.isCellSelected(cell, config.selectedColumns)
 
-        const wrapper = this.createWrapper(cellId, dimensions, colors)
+        const wrapper = this.createWrapper(cellId, dimensions, colors, isSelected, cell, config)
         const contentContainer = this.createContentContainer(cellId, dimensions)
         const { left, right } = this.createContentSections(cellId)
 
@@ -88,6 +96,20 @@ export class HeaderSceneBuilder {
         this.assembleHierarchy(contentContainer, wrapper, left, right, hasCustomContent)
 
         return wrapper
+    }
+
+    private isCellSelected(cell: GridHeaderCell, selectedColumns?: Set<number>): boolean {
+        if (!selectedColumns || selectedColumns.size === 0) {
+            return false
+        }
+        
+        // Check if any column index in this cell's span is selected
+        for (let i = 0; i < cell.colSpan; i++) {
+            if (selectedColumns.has(cell.startIndex + i)) {
+                return true
+            }
+        }
+        return false
     }
 
     private calculateCellDimensions(
@@ -135,7 +157,10 @@ export class HeaderSceneBuilder {
     private createWrapper(
         cellId: string,
         dimensions: { x: number; y: number; width: number; height: number },
-        colors: { normal: string; hover: string }
+        colors: { normal: string; hover: string },
+        isSelected: boolean,
+        cell: GridHeaderCell,
+        config: BuildSceneConfig
     ): CanvasAbsoluteContainer {
         const wrapper = new CanvasAbsoluteContainer(`${cellId}-wrapper`)
         wrapper.rect.x = dimensions.x
@@ -143,10 +168,32 @@ export class HeaderSceneBuilder {
         wrapper.rect.width = dimensions.width
         wrapper.rect.height = dimensions.height
         wrapper.backgroundColor = colors.normal
-        wrapper.borderColor = DEFAULT_BORDER_COLOR
-        wrapper.borderWidth = DEFAULT_BORDER_WIDTH
+        
+        // Apply selection styling
+        if (isSelected) {
+            wrapper.borderColor = COLUMN_HIGHLIGHT_COLOR
+            wrapper.borderWidth = SELECTED_BORDER_WIDTH
+        } else {
+            wrapper.borderColor = DEFAULT_BORDER_COLOR
+            wrapper.borderWidth = DEFAULT_BORDER_WIDTH
+        }
+        
         wrapper.onMouseEnter = () => { wrapper.backgroundColor = colors.hover }
         wrapper.onMouseLeave = () => { wrapper.backgroundColor = colors.normal }
+        
+        // Add click handler for column selection
+        if (config.onColumnClick) {
+            const onClickHandler = config.onColumnClick
+            const startIndex = cell.startIndex
+            const colSpan = cell.colSpan
+            
+            wrapper.onClick = (event) => {
+                event.stopPropagation()
+                const ctrlKey = event.originalEvent.ctrlKey || event.originalEvent.metaKey
+                onClickHandler(startIndex, colSpan, ctrlKey)
+            }
+        }
+        
         return wrapper
     }
 

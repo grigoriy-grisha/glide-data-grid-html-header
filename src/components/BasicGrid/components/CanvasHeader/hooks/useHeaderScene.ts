@@ -39,6 +39,9 @@ export interface UseHeaderSceneProps {
     isVisible?: boolean
     nodeRegistry?: React.MutableRefObject<Map<string, ReactElement>>
     subscribeToRegistryChange?: SubscribeFn
+    // Column selection
+    selectedColumns?: Set<number>
+    onColumnClick?: (startIndex: number, colSpan: number, ctrlKey: boolean) => void
 }
 
 export function useHeaderScene({
@@ -60,6 +63,8 @@ export function useHeaderScene({
     isVisible = true,
     nodeRegistry,
     subscribeToRegistryChange,
+    selectedColumns,
+    onColumnClick,
 }: UseHeaderSceneProps): void {
     const builderRef = useRef<HeaderSceneBuilder>()
     if (!builderRef.current) {
@@ -115,6 +120,8 @@ export function useHeaderScene({
             onColumnSort,
             getCustomContent: createCustomContentGetter(nodeRegistry),
             createGripHandlers,
+            selectedColumns,
+            onColumnClick,
         })
     }, [
         columnPositions,
@@ -125,10 +132,12 @@ export function useHeaderScene({
         headerRowHeight,
         isVisible,
         nodeRegistry,
+        onColumnClick,
         onColumnSort,
         orderedColumns,
         rootRef,
         scrollLeft,
+        selectedColumns,
         sortColumn,
         sortDirection,
         visibleCells,

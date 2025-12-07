@@ -50,6 +50,9 @@ interface CanvasHeaderProps {
   isAllRowsSelected?: boolean
   hasPartialRowSelection?: boolean
   onSelectAllChange?: (checked: boolean) => void
+  // Column selection props
+  selectedColumns?: Set<number>
+  onColumnClick?: (startIndex: number, colSpan: number, ctrlKey: boolean) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +116,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   isAllRowsSelected = false,
   hasPartialRowSelection = false,
   onSelectAllChange,
+  selectedColumns,
+  onColumnClick,
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
   const markerWidthValue = showRowMarkers ? markerWidth : 0
@@ -195,6 +200,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     isVisible,
     nodeRegistry: registryRef,
     subscribeToRegistryChange: subscribe,
+    selectedColumns,
+    onColumnClick,
   })
 
   const rootInstance = rootRef.current

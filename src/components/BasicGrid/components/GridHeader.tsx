@@ -8,6 +8,7 @@ interface GridHeaderProps<RowType extends Record<string, unknown>> {
   height: number
   effectiveHeight: number
   headerLayerStyle: React.CSSProperties | undefined
+  scrollbarWidth?: number
   headerCells: GridHeaderCell[]
   orderedColumns: GridColumn<RowType>[]
   columnPositions: number[]
@@ -33,6 +34,9 @@ interface GridHeaderProps<RowType extends Record<string, unknown>> {
   isAllRowsSelected: boolean
   hasPartialRowSelection: boolean
   onSelectAllChange: (checked: boolean) => void
+  // Column selection
+  selectedColumns?: Set<number>
+  onColumnClick?: (startIndex: number, colSpan: number, ctrlKey: boolean) => void
 }
 
 export function GridHeader<RowType extends Record<string, unknown>>({
@@ -65,6 +69,8 @@ export function GridHeader<RowType extends Record<string, unknown>>({
   isAllRowsSelected,
   hasPartialRowSelection,
   onSelectAllChange,
+  selectedColumns,
+  onColumnClick,
 }: GridHeaderProps<RowType>) {
   if (columnPositions.length === 0 || levelCount === 0) {
     return null
@@ -75,6 +81,7 @@ export function GridHeader<RowType extends Record<string, unknown>>({
       className="basic-grid-header-overlay"
       style={{
         height: effectiveHeight,
+        width: width,
         ...(headerLayerStyle ?? {}),
       }}
     >
@@ -107,6 +114,8 @@ export function GridHeader<RowType extends Record<string, unknown>>({
         isAllRowsSelected={isAllRowsSelected}
         hasPartialRowSelection={hasPartialRowSelection}
         onSelectAllChange={onSelectAllChange}
+        selectedColumns={selectedColumns}
+        onColumnClick={onColumnClick}
       />
     </div>
   )

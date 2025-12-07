@@ -11,6 +11,8 @@ interface UseGridEventHandlersParams<RowType extends Record<string, unknown>> {
   treeColumnId: string | undefined
   clearSelection: () => void
   handleColumnSort: (columnIndex: number, direction?: 'asc' | 'desc' | null) => void
+  // Column selection
+  selectedColumns?: Set<number>
 }
 
 export function useGridEventHandlers<RowType extends Record<string, unknown>>({
@@ -22,6 +24,7 @@ export function useGridEventHandlers<RowType extends Record<string, unknown>>({
   treeColumnId,
   clearSelection,
   handleColumnSort,
+  selectedColumns,
 }: UseGridEventHandlersParams<RowType>) {
   const handleCellClicked = useCallback(
     (cell: Item, event?: CellClickedEventArgs) => {
@@ -41,7 +44,18 @@ export function useGridEventHandlers<RowType extends Record<string, unknown>>({
         return
       }
 
-      if (treeEnabled) {
+      // Clear column selection when clicking on a cell outside selected columns
+      // or when clicking on any cell without Ctrl key
+      if (selectedColumns && selectedColumns.size > 0) {
+        const isCtrlPressed = event?.ctrlKey || event?.metaKey
+        const isInSelectedColumn = selectedColumns.has(colIndex)
+        
+        if (!isCtrlPressed && !isInSelectedColumn) {
+          // Click outside selected columns without Ctrl - clear selection
+          clearSelection()
+        }
+      } else if (treeEnabled) {
+        // Legacy behavior for tree mode
         clearSelection()
       }
     },
@@ -49,6 +63,7 @@ export function useGridEventHandlers<RowType extends Record<string, unknown>>({
       clearSelection,
       orderedColumns,
       rowSelectionEnabled,
+      selectedColumns,
       selectionColumnId,
       toggleRowSelection,
       treeColumnId,
@@ -79,4 +94,3 @@ export function useGridEventHandlers<RowType extends Record<string, unknown>>({
     handleDataEditorHeaderClick,
   }
 }
-

@@ -1,77 +1,129 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Highlight } from '@glideapps/glide-data-grid'
 
-import type { ColumnSelectionRange } from '../types'
 import { COLUMN_HIGHLIGHT_COLOR } from '../constants'
 
 export function useColumnSelection(rowCount: number, columnCount: number) {
-  const [selection, setSelection] = useState<ColumnSelectionRange | null>(null)
+  const [selectedColumns, setSelectedColumns] = useState<Set<number>>(new Set())
 
+  // Clamp selection when columnCount changes
   useEffect(() => {
-    setSelection((prev) => {
-      if (!prev) {
+    setSelectedColumns((prev) => {
+      if (prev.size === 0 || columnCount === 0) {
+        return prev.size === 0 ? prev : new Set()
+      }
+      
+      const clamped = new Set<number>()
+      for (const idx of prev) { 
+        if (idx < columnCount) {
+          clamped.add(idx)
+        }
+      }
+      
+      if (clamped.size === prev.size) {
         return prev
       }
-      if (columnCount === 0 || prev.start >= columnCount) {
-        return null
-      }
-      const allowedLength = Math.min(prev.length, columnCount - prev.start)
-      if (allowedLength <= 0) {
-        return null
-      }
-      if (allowedLength !== prev.length) {
-        return { start: prev.start, length: allowedLength }
-      }
-      return prev
+      return clamped
     })
   }, [columnCount])
 
-  const selectRange = useCallback((startIndex: number, span: number) => {
-    const safeSpan = Math.max(0, span)
+  /**
+   * Toggle column selection.
+   * - Regular click: replaces selection with new range (or clears if same range)
+   * - Ctrl+click: toggles the range within existing selection
+   */
+  const toggleColumn = useCallback((startIndex: number, colSpan: number, isMultiSelect: boolean) => {
+    const safeSpan = Math.max(0, colSpan)
     if (safeSpan === 0) {
-      setSelection(null)
       return
     }
-    setSelection((prev) => {
-      if (prev && prev.start === startIndex && prev.length === safeSpan) {
-        return null
+
+    setSelectedColumns((prev) => {
+      const rangeIndices = new Set<number>()
+      for (let i = 0; i < safeSpan; i++) {
+        rangeIndices.add(startIndex + i)
       }
-      return { start: startIndex, length: safeSpan }
+
+      if (isMultiSelect) {
+        // Ctrl+click: toggle the range
+        const next = new Set(prev)
+        const allSelected = [...rangeIndices].every((idx) => prev.has(idx))
+        
+        if (allSelected) {
+          // Remove all from range
+          for (const idx of rangeIndices) {
+            next.delete(idx)
+          }
+        } else {
+          // Add all from range
+          for (const idx of rangeIndices) {
+            next.add(idx)
+          }
+        }
+        return next
+      } else {
+        // Regular click: replace or toggle
+        const sameSelection = 
+          prev.size === rangeIndices.size && 
+          [...rangeIndices].every((idx) => prev.has(idx))
+        
+        if (sameSelection) {
+          return new Set()
+        }
+        return rangeIndices
+      }
     })
   }, [])
 
+  const isColumnSelected = useCallback((columnIndex: number): boolean => {
+    return selectedColumns.has(columnIndex)
+  }, [selectedColumns])
+
+  // Legacy API compatibility
+  const selectRange = useCallback((startIndex: number, span: number) => {
+    toggleColumn(startIndex, span, false)
+  }, [toggleColumn])
+
   const selectedBounds = useMemo(() => {
-    if (!selection) {
+    if (selectedColumns.size === 0) {
       return null
     }
+    
+    const indices = [...selectedColumns].sort((a, b) => a - b)
     return {
-      start: selection.start,
-      end: selection.start + selection.length - 1,
+      start: indices[0],
+      end: indices[indices.length - 1],
     }
-  }, [selection])
+  }, [selectedColumns])
 
   const highlightRegions = useMemo<Highlight[] | undefined>(() => {
-    if (!selection || rowCount === 0) {
+    if (selectedColumns.size === 0 || rowCount === 0) {
       return undefined
     }
-    const { start, length } = selection
 
-    return Array.from({ length }, (_, offset) => ({
+    return [...selectedColumns].map((colIndex) => ({
       color: COLUMN_HIGHLIGHT_COLOR,
       range: {
-        x: start + offset,
+        x: colIndex,
         y: 0,
         width: 1,
         height: rowCount,
       },
       style: 'solid-outline',
     }))
-  }, [rowCount, selection])
+  }, [rowCount, selectedColumns])
 
   const clearSelection = useCallback(() => {
-    setSelection(null)
+    setSelectedColumns(new Set())
   }, [])
 
-  return { selectRange, selectedBounds, highlightRegions, clearSelection }
+  return {
+    selectedColumns,
+    toggleColumn,
+    isColumnSelected,
+    selectRange,
+    selectedBounds,
+    highlightRegions,
+    clearSelection,
+  }
 }
-
