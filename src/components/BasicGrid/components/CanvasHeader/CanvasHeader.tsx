@@ -12,6 +12,7 @@ import { ResizeHandles } from './components/ResizeHandles'
 import { DragOverlays } from './components/DragOverlays'
 import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
 import { CanvasPortalOverlay } from './components/CanvasPortalOverlay'
+import { SortButtonOverlay } from './components/SortButtonOverlay'
 import type { CanvasEvent, CanvasNode } from '../../lib/canvas'
 import { dispatchCanvasPortalHover } from '../../lib/canvas'
 
@@ -333,6 +334,11 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         )}
       </div>
       <CanvasPortalOverlay />
+      <SortButtonOverlay
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onColumnSort={onColumnSort}
+      />
     </div>
   )
 })

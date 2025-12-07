@@ -2,17 +2,15 @@ import {useMemo, useState, useEffect, useRef} from 'react'
 import { createPortal } from 'react-dom'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
-import { subscribeToCanvasPortalHover, type CanvasPortalHoverDetail } from '../components/BasicGrid/lib/canvas'
-import { IconBookOpenOutline } from '@salutejs/plasma-icons';
+import { subscribeToCanvasPortalHover } from '../components/BasicGrid/lib/canvas'
+import {IconSortAlphabetAsc } from '@salutejs/plasma-icons';
 import {renderToString} from "react-dom/server";
 // import {renderToString} from "react-dom/server";
 import {Tooltip} from '@salutejs/sdds-finai'
 // console.log(renderToString(<Icon icon="apps"/>))
 
-// console.log()
-const svgIcon = renderToString(<IconBookOpenOutline />).match(/<svg[\s\S]*?<\/svg>/)![0]
+const svgIcon = renderToString(<IconSortAlphabetAsc />).match(/<svg[\s\S]*?<\/svg>/)![0]
 
-console.log(svgIcon)
 function CounterHeader() {
   const [count, setCount] = useState(0)
 
@@ -353,7 +351,7 @@ export function BasicGridExample() {
 
   return (
     <div className="data-grid-section">
-      <HeaderHoverPortal />
+      {/* <HeaderHoverPortal /> */}
       <h2 className="section-title">Basic Grid</h2>
       <p className="section-description">Базовая таблица Glide Data Grid без редактирования.</p>
       <BasicGrid<DataRow>

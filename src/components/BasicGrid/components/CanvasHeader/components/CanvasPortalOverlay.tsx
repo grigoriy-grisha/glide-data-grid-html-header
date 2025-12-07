@@ -17,7 +17,7 @@ function ensurePortalElement(): HTMLDivElement | null {
 
   portalElement = document.createElement('div')
   portalElement.id = PORTAL_ROOT_ID
-  portalElement.className = PORTAL_CLASS_NAME
+  // portalElement.className = PORTAL_CLASS_NAME
   document.body.appendChild(portalElement)
   return portalElement
 }

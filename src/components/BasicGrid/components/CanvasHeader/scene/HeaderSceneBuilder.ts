@@ -5,7 +5,6 @@ import {
   CanvasNode,
   CanvasText,
   CanvasIcon,
-  CanvasIconButton,
   buildCanvasTree,
 } from '../../../lib/canvas'
 import { GridHeaderCell } from '../../../models/GridHeaderCell'
@@ -18,7 +17,7 @@ const DEFAULT_BORDER_WIDTH = 1
 const CONTENT_COLUMN_GAP = 6
 const CONTENT_PADDING = 12
 const GRIP_ICON_SIZE = 12
-const SORT_BUTTON_SIZE = 20
+const SORT_BUTTON_SIZE = 24
 const CONTENT_WIDTH_MULTIPLIER = 2
 const CELL_ID_PREFIX = 'cell'
 
@@ -302,49 +301,25 @@ export class HeaderSceneBuilder {
         column: GridColumn<any>,
         config: BuildSceneConfig
     ): void {
-        const { sortColumn, sortDirection, onColumnSort } = config
-        const icon = this.getSortIcon(sortColumn, column.id, sortDirection)
+        const { sortColumn, sortDirection } = config
+        const isActive = sortColumn === column.id
 
-        const sortButton = new CanvasIconButton(`${cellId}-sort`, icon, {
+        // Show sort icon when active, null (empty placeholder) when not
+        const icon = isActive ? this.getSortIcon(sortDirection) : null
+
+        const sortButton = new CanvasIcon(`${cellId}-sort:${column.id}`, icon, {
             size: SORT_BUTTON_SIZE,
-            variant: 'secondary',
         })
         sortButton.style = { flexShrink: 0, alignSelf: 'center' }
-
-        if (onColumnSort) {
-            sortButton.onClick = () => {
-                const newDirection = this.calculateNextSortDirection(sortColumn, column.id, sortDirection)
-                onColumnSort(column.id, newDirection)
-            }
-        }
+        sortButton.portalHoverEnabled = true
 
         container.addChild(sortButton)
     }
 
-    private getSortIcon(sortColumn: string | undefined, columnId: string, sortDirection: 'asc' | 'desc' | undefined): string {
-        if (sortColumn !== columnId) {
-            return SORT_DEFAULT_ICON
-        }
+    private getSortIcon(sortDirection: 'asc' | 'desc' | undefined): string {
         return sortDirection === 'asc' ? SORT_ASC_ICON
              : sortDirection === 'desc' ? SORT_DESC_ICON
              : SORT_DEFAULT_ICON
-    }
-
-    private calculateNextSortDirection(
-        sortColumn: string | undefined,
-        columnId: string,
-        currentDirection: 'asc' | 'desc' | undefined
-    ): 'asc' | 'desc' | undefined {
-        if (sortColumn !== columnId) {
-            return 'asc'
-        }
-        if (currentDirection === 'asc') {
-            return 'desc'
-        }
-        if (currentDirection === 'desc') {
-            return undefined
-        }
-        return 'asc'
     }
 }
 
