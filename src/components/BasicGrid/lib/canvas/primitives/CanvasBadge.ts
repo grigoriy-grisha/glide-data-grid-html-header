@@ -1,0 +1,175 @@
+import { CanvasLeaf } from '../core/CanvasLeaf'
+import { DrawBatcher } from '../core/DrawBatcher'
+
+// Badge view types based on sdds_finai__light theme
+export type BadgeView = 
+    | 'default'
+    | 'accent'
+    | 'positive'
+    | 'warning'
+    | 'negative'
+    | 'dark'
+    | 'light'
+
+// Badge size types
+export type BadgeSize = 'xs' | 's' | 'm' | 'l'
+
+// Size configuration
+interface SizeConfig {
+    height: number
+    fontSize: number
+    paddingX: number
+    borderRadius: number
+}
+
+const SIZE_CONFIG: Record<BadgeSize, SizeConfig> = {
+    xs: { height: 16, fontSize: 10, paddingX: 4, borderRadius: 4 },
+    s: { height: 20, fontSize: 11, paddingX: 6, borderRadius: 5 },
+    m: { height: 24, fontSize: 12, paddingX: 8, borderRadius: 6 },
+    l: { height: 28, fontSize: 13, paddingX: 10, borderRadius: 7 },
+}
+
+// View colors based on sdds_finai__light theme
+interface ViewColors {
+    bgColor: string
+    bgColorTransparent: string
+    textColor: string
+    textColorOnTransparent: string
+}
+
+const VIEW_COLORS: Record<BadgeView, ViewColors> = {
+    default: {
+        bgColor: '#060A0C',
+        bgColorTransparent: 'rgba(6, 10, 12, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#060A0C',
+    },
+    accent: {
+        bgColor: '#118CDF',
+        bgColorTransparent: 'rgba(17, 140, 223, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#118CDF',
+    },
+    positive: {
+        bgColor: '#1A9E32',
+        bgColorTransparent: 'rgba(26, 158, 50, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#1A9E32',
+    },
+    warning: {
+        bgColor: '#FA5F05',
+        bgColorTransparent: 'rgba(250, 95, 5, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#FA5F05',
+    },
+    negative: {
+        bgColor: '#FF293E',
+        bgColorTransparent: 'rgba(255, 41, 62, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#FF293E',
+    },
+    dark: {
+        bgColor: '#13181B',
+        bgColorTransparent: 'rgba(19, 24, 27, 0.12)',
+        textColor: '#FFFFFF',
+        textColorOnTransparent: '#13181B',
+    },
+    light: {
+        bgColor: '#FFFFFF',
+        bgColorTransparent: 'rgba(255, 255, 255, 0.56)',
+        textColor: '#060A0C',
+        textColorOnTransparent: '#060A0C',
+    },
+}
+
+const CACHE_SEPARATOR = '|'
+const textWidthCache = new Map<string, number>()
+
+export interface CanvasBadgeOptions {
+    view?: BadgeView
+    size?: BadgeSize
+    transparent?: boolean
+    clear?: boolean
+}
+
+export class CanvasBadge extends CanvasLeaf {
+    text: string
+    view: BadgeView = 'default'
+    size: BadgeSize = 's'
+    transparent = false
+    clear = false
+
+    constructor(id: string, text: string, options?: CanvasBadgeOptions) {
+        super(id)
+        this.text = text
+        if (options) {
+            if (options.view !== undefined) this.view = options.view
+            if (options.size !== undefined) this.size = options.size
+            if (options.transparent !== undefined) this.transparent = options.transparent
+            if (options.clear !== undefined) this.clear = options.clear
+        }
+    }
+
+    measure(ctx: CanvasRenderingContext2D) {
+        const sizeConfig = SIZE_CONFIG[this.size]
+        const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+        const textWidth = getCachedTextWidth(ctx, font, this.text)
+
+        this.rect.width = textWidth + sizeConfig.paddingX * 2
+        this.rect.height = sizeConfig.height
+    }
+
+    onPaint(batcher: DrawBatcher, _ctx: CanvasRenderingContext2D) {
+        const { x, y, width, height } = this.rect
+        const sizeConfig = SIZE_CONFIG[this.size]
+        const viewColors = VIEW_COLORS[this.view]
+        const font = `${sizeConfig.fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+
+        // Determine colors based on transparent/clear mode
+        let bgColor: string
+        let textColor: string
+
+        if (this.clear) {
+            // Clear mode: no background, colored text
+            bgColor = 'transparent'
+            textColor = viewColors.textColorOnTransparent
+        } else if (this.transparent) {
+            // Transparent mode: semi-transparent background
+            bgColor = viewColors.bgColorTransparent
+            textColor = viewColors.textColorOnTransparent
+        } else {
+            // Solid mode: solid background
+            bgColor = viewColors.bgColor
+            textColor = viewColors.textColor
+        }
+
+        // Draw background (only if not clear)
+        if (!this.clear) {
+            batcher.roundedRect(x, y, width, height, sizeConfig.borderRadius, {
+                fillStyle: bgColor,
+            })
+        }
+
+        // Draw text
+        batcher.fillText(
+            this.text,
+            x + sizeConfig.paddingX,
+            y + height / 2,
+            font,
+            textColor,
+            'middle'
+        )
+    }
+}
+
+function getCachedTextWidth(ctx: CanvasRenderingContext2D, font: string, text: string): number {
+    const cacheKey = `${font}${CACHE_SEPARATOR}${text}`
+    let width = textWidthCache.get(cacheKey)
+    if (width === undefined) {
+        ctx.font = font
+        width = ctx.measureText(text).width
+        textWidthCache.set(cacheKey, width)
+    }
+    return width
+}
+
