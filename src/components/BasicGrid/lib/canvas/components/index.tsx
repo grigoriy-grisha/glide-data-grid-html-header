@@ -11,6 +11,7 @@ import {CanvasBadge, type BadgeView, type BadgeSize} from '../primitives/CanvasB
 import type {FlexBoxOptions} from '../miniflex'
 import {preloadIconSprites, type ButtonIcon} from '../cells/iconSprites'
 import {SIZE_CONFIG, type ButtonView, type ButtonSize} from '../cells/buttons'
+import {normalizeIcon, isReactIcon} from '../utils/iconUtils'
 
 
 interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
@@ -216,6 +217,20 @@ export const Canvas = {
   IconButton: IconButtonComponent,
   Rect: RectComponent,
   Badge: BadgeComponent,
+  /**
+   * Convert a React icon component to SVG string.
+   * Results are cached for performance.
+   * 
+   * @example
+   * import { IconCheck } from '@salutejs/plasma-icons'
+   * 
+   * // Option 1: Use directly in Canvas.Icon (auto-converted)
+   * <Canvas.Icon icon={<IconCheck />} size={16} />
+   * 
+   * // Option 2: Convert manually if needed
+   * const checkSvg = Canvas.icon(<IconCheck />)
+   */
+  icon: normalizeIcon,
 }
 
 function wrapEventHandler<T extends CanvasNode>(
@@ -289,25 +304,29 @@ function buildNode(
   const nodeSuffix = elementKey ?? index
   const nodeId = props.id ?? `${idPrefix}-${canvasType.toLowerCase()}-${nodeSuffix}`
 
-  // Collect icons for preloading
+  // Collect icons for preloading (normalize React icons to SVG strings)
+  const normalizeIconForPreload = (icon: ButtonIcon): ButtonIcon => {
+    return isReactIcon(icon) ? normalizeIcon(icon) : icon
+  }
+  
   if (canvasType === 'Icon' && props.icon) {
-    iconsToPreload.push({ icon: props.icon, size: props.size ?? 16 })
+    iconsToPreload.push({ icon: normalizeIconForPreload(props.icon), size: props.size ?? 16 })
   } else if (canvasType === 'IconButton' && props.icon) {
     const buttonSize: ButtonSize = props.buttonSize ?? 's'
     const iconSize = SIZE_CONFIG[buttonSize].iconSize
-    iconsToPreload.push({ icon: props.icon, size: iconSize })
+    iconsToPreload.push({ icon: normalizeIconForPreload(props.icon), size: iconSize })
   } else if (canvasType === 'Button') {
     const buttonSize: ButtonSize = props.size ?? 's'
     const iconSize = SIZE_CONFIG[buttonSize].iconSize
-    if (props.leftIcon) iconsToPreload.push({ icon: props.leftIcon, size: iconSize })
-    if (props.rightIcon) iconsToPreload.push({ icon: props.rightIcon, size: iconSize })
+    if (props.leftIcon) iconsToPreload.push({ icon: normalizeIconForPreload(props.leftIcon), size: iconSize })
+    if (props.rightIcon) iconsToPreload.push({ icon: normalizeIconForPreload(props.rightIcon), size: iconSize })
   } else if (canvasType === 'Badge') {
     // Badge icon sizes: xs=10, s=12, m=14, l=16
     const badgeSize = props.size ?? 's'
     const iconSizeMap: Record<string, number> = { xs: 10, s: 12, m: 14, l: 16 }
     const iconSize = iconSizeMap[badgeSize] ?? 12
-    if (props.leftIcon) iconsToPreload.push({ icon: props.leftIcon, size: iconSize })
-    if (props.rightIcon) iconsToPreload.push({ icon: props.rightIcon, size: iconSize })
+    if (props.leftIcon) iconsToPreload.push({ icon: normalizeIconForPreload(props.leftIcon), size: iconSize })
+    if (props.rightIcon) iconsToPreload.push({ icon: normalizeIconForPreload(props.rightIcon), size: iconSize })
   }
 
   const node = createNode(canvasType, nodeId, props)
@@ -400,7 +419,9 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
 
     case 'Icon': {
       const { icon, size, color, backgroundColor, onClick, onMouseEnter, onMouseLeave, onMouseDown, portalHoverEnabled: _phe } = props
-      const node = new CanvasIcon(id, icon, { size, color })
+      // Normalize React icon components to SVG strings
+      const normalizedIcon = isReactIcon(icon) ? normalizeIcon(icon) : icon
+      const node = new CanvasIcon(id, normalizedIcon, { size, color })
       if (backgroundColor) node.backgroundColor = backgroundColor
       const click = wrapEventHandler(onClick, node)
       const enter = wrapEventHandler(onMouseEnter, node)
@@ -416,7 +437,10 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
     case 'Button': {
       const { children, variant, view, size, leftIcon, rightIcon, disabled, onClick, portalHoverEnabled: _phe } = props
       const text = typeof children === 'string' ? children : ''
-      const node = new CanvasButton(id, text, { variant, view, size, leftIcon, rightIcon, disabled })
+      // Normalize React icon components to SVG strings
+      const normalizedLeftIcon = isReactIcon(leftIcon) ? normalizeIcon(leftIcon) : leftIcon
+      const normalizedRightIcon = isReactIcon(rightIcon) ? normalizeIcon(rightIcon) : rightIcon
+      const node = new CanvasButton(id, text, { variant, view, size, leftIcon: normalizedLeftIcon, rightIcon: normalizedRightIcon, disabled })
       const click = wrapEventHandler(onClick, node)
       if (click) node.onClick = click
       return node
@@ -424,7 +448,9 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
 
     case 'IconButton': {
       const { icon, size, variant, view, buttonSize, disabled, onClick, portalHoverEnabled: _phe } = props
-      const node = new CanvasIconButton(id, icon, { size, variant, view, buttonSize, disabled })
+      // Normalize React icon components to SVG strings
+      const normalizedIcon = isReactIcon(icon) ? normalizeIcon(icon) : icon
+      const node = new CanvasIconButton(id, normalizedIcon, { size, variant, view, buttonSize, disabled })
       const click = wrapEventHandler(onClick, node)
       if (click) node.onClick = click
       return node
@@ -440,7 +466,10 @@ function createNode(type: string, id: string, props: Record<string, any>): Canva
 
     case 'Badge': {
       const { text, view, size, transparent, clear, leftIcon, rightIcon, portalHoverEnabled: _phe } = props
-      return new CanvasBadge(id, text, { view, size, transparent, clear, leftIcon, rightIcon })
+      // Normalize React icon components to SVG strings
+      const normalizedLeftIcon = isReactIcon(leftIcon) ? normalizeIcon(leftIcon) : leftIcon
+      const normalizedRightIcon = isReactIcon(rightIcon) ? normalizeIcon(rightIcon) : rightIcon
+      return new CanvasBadge(id, text, { view, size, transparent, clear, leftIcon: normalizedLeftIcon, rightIcon: normalizedRightIcon })
     }
 
     default:

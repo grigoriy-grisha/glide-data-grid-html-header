@@ -2,7 +2,9 @@
 // Types
 // ============================================================================
 
-export type ButtonIcon = string | HTMLImageElement | null | undefined
+import type { ReactElement } from 'react'
+
+export type ButtonIcon = string | HTMLImageElement | ReactElement | null | undefined
 
 export type IconSpriteOptions = {
   size: number

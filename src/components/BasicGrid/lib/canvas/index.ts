@@ -111,6 +111,12 @@ export {
   lockPortalHover,
   isPortalHoverLocked,
   subscribeToPortalHoverLock,
+  // Icon utilities
+  reactIconToSvg,
+  isReactIcon,
+  normalizeIcon,
+  clearIconCache,
+  getIconCacheSize,
 } from './utils'
 export type {
   CanvasPortalSource,

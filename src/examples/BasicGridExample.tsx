@@ -1,15 +1,7 @@
-import {useMemo, useState, useEffect, useRef} from 'react'
-import { createPortal } from 'react-dom'
+import {useMemo, useState, useEffect} from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn, Canvas } from '../components'
 import { basicGridRows, type DataRow } from './data'
-import { subscribeToCanvasPortalHover } from '../components/BasicGrid/lib/canvas'
-import {IconSortAlphabetAsc } from '@salutejs/plasma-icons';
-import {renderToString} from "react-dom/server";
-// import {renderToString} from "react-dom/server";
-import {Tooltip} from '@salutejs/sdds-finai'
-// console.log(renderToString(<Icon icon="apps"/>))
-
-const svgIcon = renderToString(<IconSortAlphabetAsc />).match(/<svg[\s\S]*?<\/svg>/)![0]
+import { IconSortAlphabetAsc } from '@salutejs/plasma-icons'
 
 function CounterHeader() {
   const [count, setCount] = useState(0)
@@ -193,7 +185,7 @@ const columns: BasicGridColumn<DataRow>[] = [
           >
             <Canvas.Text color="#666">Текст:</Canvas.Text>
             <Canvas.Icon
-              icon={svgIcon}
+              icon={<IconSortAlphabetAsc />}
               size={18}
               color="#1565c0"
               onClick={() => console.log('SVG Icon clicked via CanvasNode!')}

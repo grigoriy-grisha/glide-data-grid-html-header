@@ -12,3 +12,11 @@ export type {
   CanvasPortalHoverListener,
 } from './portalHoverEvents'
 
+export {
+  reactIconToSvg,
+  isReactIcon,
+  normalizeIcon,
+  clearIconCache,
+  getIconCacheSize,
+} from './iconUtils'
+

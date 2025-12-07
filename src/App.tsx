@@ -17,6 +17,11 @@ const UsersExample = lazy(() => import('./examples/UsersExample').then(m => ({ d
 const CanvasButtonsExample = lazy(() => import('./examples/CanvasButtonsExample').then(m => ({ default: m.CanvasButtonsExample })))
 const CanvasIconButtonsExample = lazy(() => import('./examples/CanvasIconButtonsExample').then(m => ({ default: m.CanvasIconButtonsExample })))
 const CanvasBadgesExample = lazy(() => import('./examples/CanvasBadgesExample').then(m => ({ default: m.CanvasBadgesExample })))
+const UserDashboardExample = lazy(() => import('./examples/UserDashboardExample').then(m => ({ default: m.UserDashboardExample })))
+const ProjectBoardExample = lazy(() => import('./examples/ProjectBoardExample').then(m => ({ default: m.ProjectBoardExample })))
+const OrdersWithDetailsExample = lazy(() => import('./examples/OrdersWithDetailsExample').then(m => ({ default: m.OrdersWithDetailsExample })))
+const AnalyticsDashboardExample = lazy(() => import('./examples/AnalyticsDashboardExample').then(m => ({ default: m.AnalyticsDashboardExample })))
+const NotificationsExample = lazy(() => import('./examples/NotificationsExample').then(m => ({ default: m.NotificationsExample })))
 
 const tabs: Tab[] = [
   { id: 'basic', label: 'Basic Grid', icon: '📊' },
@@ -33,6 +38,11 @@ const tabs: Tab[] = [
   { id: 'canvas-buttons', label: 'Canvas Buttons', icon: '🎨' },
   { id: 'canvas-icon-buttons', label: 'Canvas Icon Buttons', icon: '🖼️' },
   { id: 'canvas-badges', label: 'Canvas Badges', icon: '🏷️' },
+  { id: 'user-dashboard', label: 'User Dashboard', icon: '👤' },
+  { id: 'project-board', label: 'Project Board', icon: '📋' },
+  { id: 'orders-details', label: 'Orders (Overlay)', icon: '📦' },
+  { id: 'analytics', label: 'Analytics', icon: '📈' },
+  { id: 'notifications', label: 'Notifications', icon: '🔔' },
 ]
 
 function LoadingSpinner() {
@@ -115,6 +125,26 @@ function App() {
 
             <TabPanel id="canvas-badges" activeTab={activeTab}>
               <CanvasBadgesExample />
+            </TabPanel>
+
+            <TabPanel id="user-dashboard" activeTab={activeTab}>
+              <UserDashboardExample />
+            </TabPanel>
+
+            <TabPanel id="project-board" activeTab={activeTab}>
+              <ProjectBoardExample />
+            </TabPanel>
+
+            <TabPanel id="orders-details" activeTab={activeTab}>
+              <OrdersWithDetailsExample />
+            </TabPanel>
+
+            <TabPanel id="analytics" activeTab={activeTab}>
+              <AnalyticsDashboardExample />
+            </TabPanel>
+
+            <TabPanel id="notifications" activeTab={activeTab}>
+              <NotificationsExample />
             </TabPanel>
           </Suspense>
         </div>
