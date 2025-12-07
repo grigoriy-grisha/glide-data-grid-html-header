@@ -18,5 +18,4 @@ export type { CanvasBadgeOptions, BadgeView, BadgeSize } from './CanvasBadge'
 export { CanvasChevron } from './CanvasChevron'
 export type { CanvasChevronOptions } from './CanvasChevron'
 
-export { CanvasFlex } from './CanvasFlex'
 

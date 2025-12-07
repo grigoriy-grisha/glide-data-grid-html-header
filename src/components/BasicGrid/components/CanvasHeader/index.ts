@@ -20,7 +20,6 @@ export {
   CanvasText,
   CanvasRect,
   CanvasIcon,
-  CanvasFlex,
   CanvasIconButton,
   CanvasBadge,
   CanvasChevron,
@@ -115,8 +114,10 @@ export type {
 export { useNodeRegistry } from './hooks/useNodeRegistry'
 export { useVisibleCells } from './hooks/useVisibleCells'
 export { useHeaderScene } from './hooks/useHeaderScene'
+export { usePortalHover } from './hooks/usePortalHover'
 export type { NodeRegistry, SubscribeFn, UnsubscribeFn } from './hooks/useNodeRegistry'
 export type { UseHeaderSceneProps } from './hooks/useHeaderScene'
+export type { PortalHoverState, UsePortalHoverOptions } from './hooks/usePortalHover'
 
 // Scene Builder
 export { HeaderSceneBuilder, createCustomContentGetter } from './scene/HeaderSceneBuilder'

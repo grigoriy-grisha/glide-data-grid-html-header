@@ -188,13 +188,13 @@ const columns: BasicGridColumn<DataRow>[] = [
               color="#1565c0"
               onClick={() => console.log('SVG Icon clicked via CanvasNode!')}
             />
-            <Canvas.Button variant="secondary" onClick={(event) => {
+            <Canvas.Button view="primary" onClick={(event) => {
               event.stopPropagation()
               console.log('Button clicked!')
             }}>
               Button
             </Canvas.Button>
-            <Canvas.Button variant="secondary" onClick={(event) => {
+            <Canvas.Button view="primary" onClick={(event) => {
               event.stopPropagation()
               console.log('Button clicked!')
             }}>

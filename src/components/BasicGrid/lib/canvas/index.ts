@@ -33,7 +33,6 @@ export {
   CanvasRect,
   CanvasBadge,
   CanvasChevron,
-  CanvasFlex,
 } from './primitives'
 export type {
   CanvasTextOptions,

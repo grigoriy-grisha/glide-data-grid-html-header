@@ -57,6 +57,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   editable = false,
   onCellChange,
   enableRowSelection = false,
+  selectedRows,
   onRowSelectionChange,
   getRowSelectable,
   getRowId,
@@ -131,6 +132,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   } = useRowSelectionState({
     gridRows,
     rowSelectionEnabled,
+    selectedRows,
     getRowSelectable,
     onRowSelectionChange,
     nodesByRowIndex,

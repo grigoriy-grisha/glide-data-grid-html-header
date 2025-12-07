@@ -139,6 +139,11 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
     editable?: boolean
     onCellChange?: (change: BasicGridCellChange<RowType>) => void
     enableRowSelection?: boolean
+    /**
+     * Controlled selected rows. When provided, row selection becomes controlled.
+     * Use together with onRowSelectionChange to manage selection state externally.
+     */
+    selectedRows?: RowType[]
     onRowSelectionChange?: (selection: BasicGridRowSelectionChange<RowType>) => void
     getRowSelectable?: (row: RowType) => boolean
     /**

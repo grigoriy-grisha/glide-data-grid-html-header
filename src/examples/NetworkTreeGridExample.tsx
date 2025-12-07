@@ -1,8 +1,20 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridRowSelectionChange } from '../components'
 import { networkData, type NetworkNode } from './data'
 
 const isTreeNodeSelectable = (node: NetworkNode) => node.type !== 'edge'
+
+// Helper to find nodes by id in nested structure
+function findNodeById(nodes: NetworkNode[], id: string): NetworkNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.items) {
+      const found = findNodeById(node.items, id)
+      if (found) return found
+    }
+  }
+  return undefined
+}
 
 const columns: BasicGridColumn<NetworkNode>[] = [
   createColumn<NetworkNode>('name', 'string', 'Узел', { width: 260 }),
@@ -19,8 +31,18 @@ const columns: BasicGridColumn<NetworkNode>[] = [
   }),
 ]
 
+// Pre-selected node IDs
+const INITIAL_SELECTED_IDS = ['31469', '31471'] // Кластер API, Кластер хранения
+
 export function NetworkTreeGridExample() {
-  const [selectedNetworkNodes, setSelectedNetworkNodes] = useState<NetworkNode[]>([])
+
+  const initialSelectedNodes = useMemo(() => {
+    return INITIAL_SELECTED_IDS
+      .map(id => findNodeById(networkData, id))
+      .filter((node): node is NetworkNode => node !== undefined)
+  }, [])
+
+  const [selectedNetworkNodes, setSelectedNetworkNodes] = useState<NetworkNode[]>(initialSelectedNodes)
 
   const handleNetworkSelectionChange = useCallback((selection: BasicGridRowSelectionChange<NetworkNode>) => {
     setSelectedNetworkNodes(selection.rows)
@@ -44,6 +66,7 @@ export function NetworkTreeGridExample() {
         headerRowHeight={48}
         enableRowSelection
         showRowMarkers={false}
+        selectedRows={selectedNetworkNodes}
         onRowSelectionChange={handleNetworkSelectionChange}
         getRowSelectable={isTreeNodeSelectable}
         treeOptions={{

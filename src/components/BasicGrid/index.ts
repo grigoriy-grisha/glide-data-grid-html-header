@@ -20,7 +20,7 @@ export {
 export type { NumericAnimationOptions, AnimationEasing } from './utils/cellAnimations'
 
 // Canvas JSX Components
-export { Canvas } from './components/CanvasHeader'
+export { Canvas, usePortalHover } from './components/CanvasHeader'
 export type {
   CanvasContainerProps,
   CanvasTextProps,
@@ -28,4 +28,6 @@ export type {
   CanvasButtonProps,
   CanvasIconButtonProps,
   CanvasRectProps,
+  PortalHoverState,
+  UsePortalHoverOptions,
 } from './components/CanvasHeader'

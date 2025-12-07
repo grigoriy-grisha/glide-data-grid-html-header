@@ -13,6 +13,7 @@ import { DragOverlays } from './components/DragOverlays'
 import { HeadlessHeaderRenderer } from './components/HeadlessHeaderRenderer'
 import { CanvasPortalOverlay } from './components/CanvasPortalOverlay'
 import { SortButtonOverlay } from './components/SortButtonOverlay'
+import { GripTooltipOverlay } from './components/GripTooltipOverlay'
 import type { CanvasEvent, CanvasNode } from '../../lib/canvas'
 import { dispatchCanvasPortalHover } from '../../lib/canvas'
 
@@ -346,6 +347,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         sortDirection={sortDirection}
         onColumnSort={onColumnSort}
       />
+      <GripTooltipOverlay />
     </div>
   )
 })

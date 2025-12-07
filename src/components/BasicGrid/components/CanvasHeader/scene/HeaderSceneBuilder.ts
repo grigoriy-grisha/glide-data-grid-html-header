@@ -323,6 +323,7 @@ export class HeaderSceneBuilder {
 
         const gripIcon = new CanvasIcon(`${cellId}-grip`, GRIP_ICON_SVG, { size: GRIP_ICON_SIZE })
         gripIcon.style = { flexShrink: 0, alignSelf: 'center' }
+        gripIcon.portalHoverEnabled = true
 
         const handlers = config.createGripHandlers(
             cell.columnIndex,
