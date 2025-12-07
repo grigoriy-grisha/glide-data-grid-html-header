@@ -7,8 +7,6 @@ const BasicGridExample = lazy(() => import('./examples/BasicGridExample').then(m
 const LargeGridExample = lazy(() => import('./examples/LargeGridExample').then(m => ({ default: m.LargeGridExample })))
 const EditableGridExample = lazy(() => import('./examples/EditableGridExample').then(m => ({ default: m.EditableGridExample })))
 const SelectableGridExample = lazy(() => import('./examples/SelectableGridExample').then(m => ({ default: m.SelectableGridExample })))
-const ButtonCellsExample = lazy(() => import('./examples/ButtonCellsExample').then(m => ({ default: m.ButtonCellsExample })))
-const SelectCellsExample = lazy(() => import('./examples/SelectCellsExample').then(m => ({ default: m.SelectCellsExample })))
 const NetworkTreeGridExample = lazy(() => import('./examples/NetworkTreeGridExample').then(m => ({ default: m.NetworkTreeGridExample })))
 const ProductsExample = lazy(() => import('./examples/ProductsExample').then(m => ({ default: m.ProductsExample })))
 const TasksExample = lazy(() => import('./examples/TasksExample').then(m => ({ default: m.TasksExample })))
@@ -28,8 +26,6 @@ const tabs: Tab[] = [
   { id: 'large', label: 'Large Grid', icon: '🚀' },
   { id: 'editable', label: 'Editable', icon: '✏️' },
   { id: 'selectable', label: 'Selectable', icon: '☑️' },
-  { id: 'buttons', label: 'Buttons', icon: '🔘' },
-  { id: 'select', label: 'Select Cells', icon: '📋' },
   { id: 'tree', label: 'Tree Grid', icon: '🌳' },
   { id: 'products', label: 'Products', icon: '🛍️' },
   { id: 'tasks', label: 'Tasks', icon: '✅' },
@@ -85,14 +81,6 @@ function App() {
 
             <TabPanel id="selectable" activeTab={activeTab}>
               <SelectableGridExample />
-            </TabPanel>
-
-            <TabPanel id="buttons" activeTab={activeTab}>
-              <ButtonCellsExample />
-            </TabPanel>
-
-            <TabPanel id="select" activeTab={activeTab}>
-              <SelectCellsExample />
             </TabPanel>
 
             <TabPanel id="tree" activeTab={activeTab}>

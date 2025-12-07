@@ -23,10 +23,8 @@ const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Прогресс',
     children: [
-      createColumn<DataRow>('status.name', 'select', 'Статус', {
+      createColumn<DataRow>('status.name', 'string', 'Статус', {
         width: 160,
-        selectOptionsAccessor: 'status.options',
-        selectPlaceholder: 'Выберите статус',
       }),
       createColumn<DataRow>('progress', 'percent', 'Прогресс %', { width: 140 }),
     ],

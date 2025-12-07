@@ -18,10 +18,8 @@ const columns: BasicGridColumn<Product>[] = [
         formatter: (value) => (typeof value === 'number' ? `${Math.round(value).toLocaleString('ru-RU')} ₽` : ''),
       }),
       createColumn<Product>('stock', 'number', 'Остаток', { width: 120 }),
-      createColumn<Product>('status.name', 'select', 'Статус', {
+      createColumn<Product>('status.name', 'string', 'Статус', {
         width: 150,
-        selectOptionsAccessor: 'status.options',
-        selectPlaceholder: 'Выберите статус',
       }),
     ],
   },

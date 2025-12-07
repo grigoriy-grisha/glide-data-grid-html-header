@@ -1,8 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
 
-import { createSelectCell } from '../customCells/selectCell'
-import { createButtonCell } from '../customCells/buttonCell'
 import { createCanvasCell, CellCanvasRoot } from '../lib/canvas'
 import { buildCanvasTree } from '../lib/canvas'
 import type { CanvasRenderResult } from '../lib/canvas/cells/types'
@@ -25,9 +23,6 @@ interface CanvasCellCacheEntry {
   cacheKey: CanvasCacheKey
   canvasRoot: CellCanvasRoot
 }
-
-/** Handler function type for button cell events */
-type ButtonEventHandler = () => void
 
 interface UseGridCellContentParams<RowType extends Record<string, unknown>> {
   orderedColumns: GridColumn<RowType>[]
@@ -60,25 +55,7 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
   treeColumnId,
   onTreeToggle,
 }: UseGridCellContentParams<RowType>) {
-  const cellHandlerCache = useMemo(() => new WeakMap<RowType, Map<string, ButtonEventHandler>>(), [])
   const canvasCellCache = useMemo(() => new WeakMap<RowType, Map<string, CanvasCellCacheEntry>>(), [])
-
-  const getCachedHandler = useCallback(
-    (row: RowType, handlerKey: string, handlerFactory: () => ButtonEventHandler): ButtonEventHandler | undefined => {
-      let rowCache = cellHandlerCache.get(row)
-      if (!rowCache) {
-        rowCache = new Map()
-        cellHandlerCache.set(row, rowCache)
-      }
-
-      if (!rowCache.has(handlerKey)) {
-        rowCache.set(handlerKey, handlerFactory())
-      }
-
-      return rowCache.get(handlerKey)
-    },
-    [cellHandlerCache]
-  )
 
   return useCallback(
     (cell: Item): GridCell => {
@@ -128,63 +105,6 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
           },
           readonly: true,
         } as GridCell
-      }
-
-      if (column.isSelect() && editable) {
-        const options = column.getSelectOptions(dataRow)
-        if (options && options.length > 0) {
-          const rawValue = column.getValue(dataRow)
-          const stringValue = rawValue == null ? '' : String(rawValue)
-          return createSelectCell(stringValue, options, column.selectPlaceholder)
-        }
-      }
-
-      if (column.isButton()) {
-        const buttonOptions = column.buttonOptions
-        if (buttonOptions) {
-          const resolveButtonValue = <Value,>(
-            value: Value | ((row: RowType) => Value) | undefined,
-            fallback: Value
-          ): Value => {
-            if (typeof value === 'function') {
-              return (value as (row: RowType) => Value)(dataRow)
-            }
-            return value ?? fallback
-          }
-
-          const label = resolveButtonValue(buttonOptions.label, 'Кнопка')
-          const disabled = resolveButtonValue(buttonOptions.disabled, false)
-          const buildHandler = (
-            suffix: string,
-            handler?: (row: RowType, rowIndex: number) => void
-          ) =>
-            handler
-              ? getCachedHandler(dataRow, `button-${suffix}-${col}`, () => () => handler(dataRow, row))
-              : undefined
-
-          const buttonCell = createButtonCell(
-            label,
-            buildHandler('click', buttonOptions.onClick),
-            buttonOptions.variant ?? 'primary',
-            disabled
-          )
-
-          const handlerMap = {
-            onMouseEnter: buildHandler('mouseenter', buttonOptions.onMouseEnter),
-            onMouseLeave: buildHandler('mouseleave', buttonOptions.onMouseLeave),
-            onMouseDown: buildHandler('mousedown', buttonOptions.onMouseDown),
-            onMouseUp: buildHandler('mouseup', buttonOptions.onMouseUp),
-          } as const
-
-          (Object.keys(handlerMap) as Array<keyof typeof handlerMap>).forEach((key) => {
-            const handler = handlerMap[key]
-            if (handler) {
-              buttonCell.data[key] = handler
-            }
-          })
-
-          return buttonCell
-        }
       }
 
       const renderCellContent = column.renderCellContent
@@ -330,17 +250,20 @@ export function useGridCellContent<RowType extends Record<string, unknown>>({
       return decoratedCell
     },
     [
+      canvasCellCache,
       decorateCell,
       editable,
-      getCachedHandler,
       getRowSelectable,
       getSelectionStateForRow,
       gridRows,
+      nodesByRowIndex,
+      onTreeToggle,
       orderedColumns,
       rowSelectionEnabled,
       selectionColumnId,
       summaryRows,
+      treeColumnId,
+      treeEnabled,
     ]
   )
 }
-

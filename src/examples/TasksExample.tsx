@@ -13,10 +13,8 @@ const columns: BasicGridColumn<Task>[] = [
   {
     title: 'Статус и приоритет',
     children: [
-      createColumn<Task>('status.name', 'select', 'Статус', {
+      createColumn<Task>('status.name', 'string', 'Статус', {
         width: 150,
-        selectOptionsAccessor: 'status.options',
-        selectPlaceholder: 'Выберите статус',
       }),
       createColumn<Task>('priority', 'string', 'Приоритет', { width: 120 }),
       createColumn<Task>('progress', 'percent', 'Прогресс', { width: 140 }),

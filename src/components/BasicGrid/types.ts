@@ -20,7 +20,7 @@ export interface GridTheme {
 
 // CanvasRenderData is now exported from lib/canvas/cells/types.ts as CanvasRenderResult
 
-export type BasicGridDataType = 'string' | 'number' | 'percent' | 'select' | 'button' | 'canvas'
+export type BasicGridDataType = 'string' | 'number' | 'percent' | 'canvas'
 
 export interface BasicGridSelectOption {
     label: string
@@ -30,17 +30,6 @@ export interface BasicGridSelectOption {
 export interface BasicGridHeaderOptions {
     columnGroupText?: string
     columnGroupContent?: React.ReactNode
-}
-
-export interface ButtonCellOptions<RowType = Record<string, unknown>> {
-    label?: string | ((row: RowType) => string)
-    onClick?: (row: RowType, rowIndex: number) => void
-    onMouseEnter?: (row: RowType, rowIndex: number) => void
-    onMouseLeave?: (row: RowType, rowIndex: number) => void
-    onMouseDown?: (row: RowType, rowIndex: number) => void
-    onMouseUp?: (row: RowType, rowIndex: number) => void
-    variant?: 'primary' | 'secondary' | 'danger'
-    disabled?: boolean | ((row: RowType) => boolean)
 }
 
 
@@ -88,14 +77,8 @@ export interface BasicGridColumn<RowType = Record<string, unknown>> {
     sortable?: boolean
     headerOptions?: BasicGridHeaderOptions
     children?: BasicGridColumn<RowType>[]
-    selectOptionsAccessor?: keyof RowType | string
-    selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
-    selectPlaceholder?: string
-    buttonOptions?: ButtonCellOptions<RowType>
     canvasOptions?: CanvasCellOptions<RowType>
-    /** Render custom JSX content in the column header using Canvas.* components */
     renderColumnContent?: () => ReactElement
-    /** Render custom JSX content in cells using Canvas.* components */
     renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
 }
 

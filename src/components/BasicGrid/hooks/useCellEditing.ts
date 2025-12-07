@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import { GridCellKind, type EditableGridCell, type Item } from '@glideapps/glide-data-grid'
 
 import type { BasicGridProps } from '../types'
-import { isSelectCell } from '../customCells/selectCell'
 import type { GridColumn } from '../models/GridColumn'
 
 type TextEditableCell = Extract<EditableGridCell, { kind: GridCellKind.Text }>
@@ -48,9 +47,6 @@ export function useCellEditing<RowType extends Record<string, unknown>>({
         nextRawValue = data ?? null
         nextValueDisplay =
           typeof data === 'number' && Number.isFinite(data) ? String(data) : data == null ? '' : String(data)
-      } else if (newValue.kind === GridCellKind.Custom && isSelectCell(newValue)) {
-        nextRawValue = newValue.data.value
-        nextValueDisplay = newValue.data.displayValue ?? ''
       } else {
         return
       }
@@ -72,4 +68,3 @@ export function useCellEditing<RowType extends Record<string, unknown>>({
     [editable, gridRows, onCellChange, orderedColumns]
   )
 }
-

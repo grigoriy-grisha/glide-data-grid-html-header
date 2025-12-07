@@ -9,7 +9,6 @@ export type {
   BasicGridCellChange,
   BasicGridSelectOption,
   BasicGridRowSelectionChange,
-  ButtonCellOptions,
   CanvasCellOptions,
 } from './types'
 export { drawButton, drawIconButton, drawTag, onAnyIconLoad } from './lib/canvas'

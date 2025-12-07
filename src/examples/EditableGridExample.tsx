@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridCellChange, type BasicGridSelectOption } from '../components'
+import { BasicGrid, createColumn, type BasicGridColumn, type BasicGridCellChange } from '../components'
 import { basicGridRows, type DataRow } from './data'
 
 const cloneDataRow = (row: DataRow): DataRow => ({
@@ -9,7 +9,7 @@ const cloneDataRow = (row: DataRow): DataRow => ({
       status: row.status
         ? {
             name: row.status.name,
-            options: row.status.options.map((option: BasicGridSelectOption) => ({ ...option })),
+            options: [...row.status.options],
           }
         : row.status,
   progress: row.progress,
@@ -69,10 +69,8 @@ const columns: BasicGridColumn<DataRow>[] = [
   {
     title: 'Прогресс',
     children: [
-      createColumn<DataRow>('status.name', 'select', 'Статус', {
+      createColumn<DataRow>('status.name', 'string', 'Статус', {
         width: 160,
-        selectOptionsAccessor: 'status.options',
-        selectPlaceholder: 'Выберите статус',
       }),
       createColumn<DataRow>('progress', 'percent', 'Прогресс %', { width: 140 }),
     ],

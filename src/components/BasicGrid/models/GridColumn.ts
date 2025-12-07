@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react'
-import type { BasicGridDataType, BasicGridSelectOption, ButtonCellOptions, CanvasCellOptions, SortDirection } from '../types'
-import { resolveAccessorValue } from './utils'
+import type { BasicGridDataType, CanvasCellOptions, SortDirection } from '../types'
 
 export interface GridHeaderSegment {
   title: string
@@ -22,10 +21,6 @@ export interface GridColumnOptions<RowType extends Record<string, unknown>> {
   sortValueGetter?: (row: RowType) => string | number | null | undefined
   sortComparator?: (a: RowType, b: RowType) => number
   accessorPath?: string
-  selectOptionsAccessor?: string
-  selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
-  selectPlaceholder?: string
-  buttonOptions?: ButtonCellOptions<RowType>
   canvasOptions?: CanvasCellOptions<RowType>
   renderColumnContent?: () => ReactElement
   renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
@@ -43,10 +38,6 @@ export class GridColumn<RowType extends Record<string, unknown>> {
   readonly grow: number
   readonly sortable: boolean
   readonly accessorPath?: string
-  readonly selectOptionsAccessor?: string
-  readonly selectOptionsGetter?: (row: RowType) => BasicGridSelectOption[] | undefined
-  readonly selectPlaceholder?: string
-  readonly buttonOptions?: ButtonCellOptions<RowType>
   readonly canvasOptions?: CanvasCellOptions<RowType>
   readonly renderColumnContent?: () => ReactElement
   readonly renderCellContent?: (row: RowType, rowIndex: number) => ReactElement
@@ -66,10 +57,6 @@ export class GridColumn<RowType extends Record<string, unknown>> {
     this.grow = options.grow
     this.sortable = options.sortable
     this.accessorPath = options.accessorPath
-    this.selectOptionsAccessor = options.selectOptionsAccessor
-    this.selectOptionsGetter = options.selectOptionsGetter
-    this.selectPlaceholder = options.selectPlaceholder
-    this.buttonOptions = options.buttonOptions
     this.canvasOptions = options.canvasOptions
     this.renderColumnContent = options.renderColumnContent
     this.renderCellContent = options.renderCellContent
@@ -81,14 +68,6 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
   isNumeric(): boolean {
     return NUMERIC_DATA_TYPES.includes(this.dataType)
-  }
-
-  isSelect(): boolean {
-    return this.dataType === 'select'
-  }
-
-  isButton(): boolean {
-    return this.dataType === 'button'
   }
 
   isCanvas(): boolean {
@@ -110,23 +89,6 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
     const multiplier = direction === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => this.compareRows(a, b) * multiplier)
-  }
-
-  getSelectOptions(row: RowType): BasicGridSelectOption[] | undefined {
-    if (!this.isSelect()) {
-      return undefined
-    }
-
-    if (this.selectOptionsGetter) {
-      return normalizeSelectOptions(this.selectOptionsGetter(row))
-    }
-
-    if (this.selectOptionsAccessor) {
-      const source = resolveAccessorValue(row as Record<string, unknown>, this.selectOptionsAccessor)
-      return normalizeSelectOptions(source)
-    }
-
-    return undefined
   }
 
   private getSortValue(row: RowType): string | number | null | undefined {
@@ -163,33 +125,4 @@ export class GridColumn<RowType extends Record<string, unknown>> {
 
     return String(aValue ?? '').localeCompare(String(bValue ?? ''), 'ru', { sensitivity: 'base' })
   }
-}
-
-function normalizeSelectOptions(source: unknown): BasicGridSelectOption[] | undefined {
-  if (!source || !Array.isArray(source)) {
-    return undefined
-  }
-
-  const options: BasicGridSelectOption[] = []
-
-  for (const option of source) {
-    if (typeof option === 'string') {
-      options.push({ label: option, value: option })
-      continue
-    }
-
-    if (option && typeof option === 'object') {
-      const label = 'label' in option ? String(option.label) : undefined
-      const value =
-        'value' in option
-          ? String(option.value)
-          : label ?? String((option as Record<string, unknown>)[0] ?? '')
-
-      if (label || value) {
-        options.push({ label: label ?? value, value })
-      }
-    }
-  }
-
-  return options.length > 0 ? options : undefined
 }

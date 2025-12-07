@@ -219,11 +219,10 @@ function extractLeafColumns<RowType extends Record<string, unknown>>(
           ? (row: RowType) => resolveAccessorValue(row as Record<string, unknown>, accessorPath)
           : undefined)
 
-      const isButton = column.dataType === 'button'
       const hasRenderColumnContent = Boolean(column.renderColumnContent)
       const hasRenderCellContent = Boolean(column.renderCellContent)
       const canRenderLeaf =
-        (Boolean(valueGetter) || isButton || hasRenderColumnContent || hasRenderCellContent) &&
+        (Boolean(valueGetter) || hasRenderColumnContent || hasRenderCellContent) &&
         !hasChildren
 
       if (canRenderLeaf) {
@@ -245,11 +244,6 @@ function extractLeafColumns<RowType extends Record<string, unknown>>(
             sortValueGetter: column.sortValueGetter,
             sortComparator: column.sortComparator,
             accessorPath,
-            selectOptionsAccessor:
-              column.selectOptionsAccessor != null ? String(column.selectOptionsAccessor) : undefined,
-            selectOptionsGetter: column.selectOptionsGetter,
-            selectPlaceholder: column.selectPlaceholder,
-            buttonOptions: column.buttonOptions,
             canvasOptions: column.canvasOptions,
             renderColumnContent: column.renderColumnContent,
             renderCellContent: column.renderCellContent,
