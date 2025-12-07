@@ -68,6 +68,7 @@ export {
   getIconSpriteStats,
   getIconSprite,
   getIconImageDirect,
+  onAnyIconLoad,
   isPointInArea,
   getCellIndices,
   buildCellId,

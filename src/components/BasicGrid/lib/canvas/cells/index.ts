@@ -36,8 +36,9 @@ export {
   getIconSprite,
   getIconImageDirect,
   drawIcon as drawIconDirect,
+  onAnyIconLoad,
 } from './iconSprites'
-export type { ButtonIcon, IconSpriteOptions, IconDefinition, IconSpriteStats } from './iconSprites'
+export type { ButtonIcon, IconSpriteOptions, IconDefinition, IconSpriteStats, IconLoadCallback } from './iconSprites'
 export { isPointInArea, getCellIndices, buildCellId, resolveClickPoint, toRelativePoint, normalizeHoverPoint, isHoveringBounds } from './helpers'
 export { CellCanvasRoot } from './CellCanvasRoot'
 export { storeRenderData, retrieveRenderData, updateHoverState, getHoverState } from './state'

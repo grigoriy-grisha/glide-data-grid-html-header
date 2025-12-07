@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import type { DataEditorProps, DataEditorRef } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
 import './BasicGrid.css'
 import type { BasicGridProps } from './types'
+import { onAnyIconLoad } from './lib/canvas'
 import {
   DEFAULT_HEADER_ROW_HEIGHT,
   DEFAULT_ROW_MARKER_WIDTH,
@@ -78,6 +79,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
   const scrollbarReserve = scrollbarReserveProp ?? DEFAULT_SCROLLBAR_RESERVE
   const containerWidth = useContainerWidth(gridRef)
   const gridTheme = useGridTheme()
+
 
   const {
     markerWidth,
@@ -326,6 +328,46 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     handleVirtualScroll,
     updateStickyMetrics,
   })
+
+  // Subscribe to icon load events to trigger grid redraw when icons are loaded
+  // Uses requestAnimationFrame to batch multiple icon loads into a single redraw
+  useEffect(() => {
+    let pendingFrame: number | null = null
+    
+    const unsubscribe = onAnyIconLoad(() => {
+      // Skip if already scheduled
+      if (pendingFrame !== null) return
+      
+      pendingFrame = requestAnimationFrame(() => {
+        pendingFrame = null
+        
+        const ref = dataEditorRef.current
+        if (!ref) return
+        
+        // Only redraw first N visible rows to minimize impact
+        const numRows = Math.min(30, gridRows.length)
+        const numCols = orderedColumns.length
+        const cells: Array<{ cell: [number, number] }> = []
+        
+        for (let row = 0; row < numRows; row++) {
+          for (let col = 0; col < numCols; col++) {
+            cells.push({ cell: [col, row] })
+          }
+        }
+        
+        if (cells.length > 0) {
+          ref.updateCells(cells)
+        }
+      })
+    })
+    
+    return () => {
+      unsubscribe()
+      if (pendingFrame !== null) {
+        cancelAnimationFrame(pendingFrame)
+      }
+    }
+  }, [dataEditorRef, gridRows.length, orderedColumns.length])
 
   return (
     <HeaderVirtualizationProvider>

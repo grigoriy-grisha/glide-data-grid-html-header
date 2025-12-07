@@ -9,8 +9,8 @@ import {CanvasIconButton} from '../primitives/CanvasIconButton'
 import {CanvasRect} from '../primitives/CanvasRect'
 import {CanvasBadge, type BadgeView, type BadgeSize} from '../primitives/CanvasBadge'
 import type {FlexBoxOptions} from '../miniflex'
-import type {ButtonIcon} from '../cells/iconSprites'
-import type {ButtonView, ButtonSize} from '../cells/buttons'
+import {preloadIconSprites, type ButtonIcon} from '../cells/iconSprites'
+import {SIZE_CONFIG, type ButtonView, type ButtonSize} from '../cells/buttons'
 
 
 interface ContainerProps extends Omit<FlexBoxOptions, 'columnGap' | 'rowGap'> {
@@ -223,11 +223,30 @@ function wrapEventHandler<T extends CanvasNode>(
   }
 }
 
+type IconToPreload = { icon: ButtonIcon; size: number }
+
 export function buildCanvasTree(
   element: ReactElement,
   idPrefix = 'root'
 ): CanvasNode {
-  return buildNode(element, idPrefix, 0)
+  const iconsToPreload: IconToPreload[] = []
+  const node = buildNode(element, idPrefix, 0, iconsToPreload)
+  
+  if (iconsToPreload.length > 0) {
+    const bySize = new Map<number, ButtonIcon[]>()
+    for (const { icon, size } of iconsToPreload) {
+      if (!icon) continue
+      const list = bySize.get(size) ?? []
+      list.push(icon)
+      bySize.set(size, list)
+    }
+    
+    bySize.forEach((icons, size) => {
+      preloadIconSprites(icons, { size })
+    })
+  }
+  
+  return node
 }
 
 function extractTextFromChildren(children: ReactNode): string {
@@ -243,7 +262,8 @@ function extractTextFromChildren(children: ReactNode): string {
 function buildNode(
   element: ReactElement,
   idPrefix: string,
-  index: number
+  index: number,
+  iconsToPreload: IconToPreload[]
 ): CanvasNode {
   if (!element || !React.isValidElement(element)) {
     throw new Error('Invalid element. Use Canvas.* components.')
@@ -261,6 +281,15 @@ function buildNode(
   const nodeSuffix = elementKey ?? index
   const nodeId = props.id ?? `${idPrefix}-${canvasType.toLowerCase()}-${nodeSuffix}`
 
+  // Collect icons for preloading
+  if (canvasType === 'Icon' && props.icon) {
+    iconsToPreload.push({ icon: props.icon, size: props.size ?? 16 })
+  } else if (canvasType === 'IconButton' && props.icon) {
+    const buttonSize: ButtonSize = props.buttonSize ?? 's'
+    const iconSize = SIZE_CONFIG[buttonSize].iconSize
+    iconsToPreload.push({ icon: props.icon, size: iconSize })
+  }
+
   const node = createNode(canvasType, nodeId, props)
 
   if (props.portalHoverEnabled) {
@@ -276,7 +305,7 @@ function buildNode(
     const childArray = React.Children.toArray(children)
     childArray.forEach((child, i) => {
       if (React.isValidElement(child)) {
-        const childNode = buildNode(child, nodeId, i)
+        const childNode = buildNode(child, nodeId, i, iconsToPreload)
         node.addChild(childNode)
       }
     })

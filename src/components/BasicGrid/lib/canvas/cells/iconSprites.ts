@@ -30,6 +30,22 @@ export type IconSpriteStats = {
   pending: number
 }
 
+export type IconLoadCallback = () => void
+
+// Global listeners for any icon load event (used for grid invalidation)
+const globalIconLoadListeners = new Set<IconLoadCallback>()
+
+export function onAnyIconLoad(callback: IconLoadCallback): () => void {
+  globalIconLoadListeners.add(callback)
+  return () => {
+    globalIconLoadListeners.delete(callback)
+  }
+}
+
+function notifyGlobalIconLoad(): void {
+  globalIconLoadListeners.forEach(cb => cb())
+}
+
 const iconSourceImages = new Map<string, HTMLImageElement>()
 const svgDataUrlCache = new Map<string, string>()
 const iconIdentity = new WeakMap<HTMLImageElement, string>()
@@ -144,9 +160,14 @@ export function getIconImageDirect(icon: ButtonIcon, color?: string): HTMLImageE
   return getIconImage(icon, color)
 }
 
-export function getIconSprite(icon: ButtonIcon, size: number, color?: string): CanvasImageSource | null {
+export function getIconSprite(
+  icon: ButtonIcon, 
+  size: number, 
+  color?: string, 
+  onLoad?: IconLoadCallback
+): CanvasImageSource | null {
   if (!icon || size <= 0) return null
-  return iconSpriteManager.getSprite(icon, { size, color })
+  return iconSpriteManager.getSprite(icon, { size, color }, onLoad)
 }
 
 const DPR_REFRESH_INTERVAL = 1000
@@ -202,6 +223,7 @@ export function registerIconDefinitions(
 class IconSpriteManager {
   private sprites = new Map<string, CanvasSprite>()
   private pending = new Map<string, Promise<CanvasSprite | null>>()
+  private loadCallbacks = new Map<string, Set<IconLoadCallback>>()
   private stats: IconSpriteStats = {
     requests: 0,
     hits: 0,
@@ -211,7 +233,7 @@ class IconSpriteManager {
     pending: 0,
   }
 
-  getSprite(icon: ButtonIcon, options: IconSpriteOptions): CanvasSprite | null {
+  getSprite(icon: ButtonIcon, options: IconSpriteOptions, onLoad?: IconLoadCallback): CanvasSprite | null {
     if (!options.size || options.size <= 0) {
       return null
     }
@@ -238,8 +260,29 @@ class IconSpriteManager {
       }
     }
 
+    if (onLoad) {
+      this.addLoadCallback(variantKey, onLoad)
+    }
+
     this.scheduleWarm(record.image, variantKey, options)
     return null
+  }
+
+  private addLoadCallback(variantKey: string, callback: IconLoadCallback): void {
+    let callbacks = this.loadCallbacks.get(variantKey)
+    if (!callbacks) {
+      callbacks = new Set()
+      this.loadCallbacks.set(variantKey, callbacks)
+    }
+    callbacks.add(callback)
+  }
+
+  private notifyLoadCallbacks(variantKey: string): void {
+    const callbacks = this.loadCallbacks.get(variantKey)
+    if (callbacks) {
+      this.loadCallbacks.delete(variantKey)
+      callbacks.forEach(cb => cb())
+    }
   }
 
   warmSprite(icon: ButtonIcon, options: IconSpriteOptions): Promise<void> {
@@ -260,6 +303,7 @@ class IconSpriteManager {
   clear() {
     this.sprites.clear()
     this.pending.clear()
+    this.loadCallbacks.clear()
     this.stats.cacheSize = 0
     this.stats.pending = 0
   }
@@ -290,6 +334,8 @@ class IconSpriteManager {
           this.sprites.set(variantKey, sprite)
           this.stats.warmed += 1
           this.stats.cacheSize = this.sprites.size
+          this.notifyLoadCallbacks(variantKey)
+          notifyGlobalIconLoad()
         }
         return sprite
       })
@@ -381,9 +427,10 @@ export function drawIcon(
   x: number,
   y: number,
   size: number,
-  color?: string
+  color?: string,
+  onLoad?: IconLoadCallback
 ): void {
-  drawIconDirect(ctx, icon, x, y, size, color)
+  drawIconDirect(ctx, icon, x, y, size, color, onLoad)
 }
 
 export function drawIconDirect(
@@ -392,13 +439,14 @@ export function drawIconDirect(
   x: number,
   y: number,
   size: number,
-  color?: string
+  color?: string,
+  onLoad?: IconLoadCallback
 ): void {
   if (!icon || size <= 0) {
     return
   }
 
-  const sprite = iconSpriteManager.getSprite(icon, { size, color })
+  const sprite = iconSpriteManager.getSprite(icon, { size, color }, onLoad)
   if (sprite) {
     ctx.drawImage(sprite, x, y, size, size)
     return

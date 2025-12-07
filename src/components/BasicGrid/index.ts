@@ -12,7 +12,7 @@ export type {
   ButtonCellOptions,
   CanvasCellOptions,
 } from './types'
-export { drawButton, drawIconButton, drawTag } from './lib/canvas'
+export { drawButton, drawIconButton, drawTag, onAnyIconLoad } from './lib/canvas'
 export {
   animateNumericValue,
   easeInOutCubic,

@@ -7,6 +7,7 @@ import {
   type IconDefinition,
   type IconSpriteOptions,
   type IconSpriteStats,
+  type IconLoadCallback,
   preloadIconSprites,
   registerIconDefinitions,
   resetIconSpriteCache,
@@ -15,7 +16,7 @@ import {
 import { DrawBatcher } from '../core/DrawBatcher'
 
 export { preloadIconSprites, registerIconDefinitions, resetIconSpriteCache, getIconSpriteStats }
-export type { ButtonIcon, IconDefinition, IconSpriteOptions, IconSpriteStats }
+export type { ButtonIcon, IconDefinition, IconSpriteOptions, IconSpriteStats, IconLoadCallback }
 
 // Button view types based on sdds_finai__light theme
 export type ButtonView = 
@@ -201,13 +202,14 @@ export function drawIcon(
   x: number,
   y: number,
   size: number,
-  color?: string
+  color?: string,
+  onLoad?: IconLoadCallback
 ): void {
   if (!icon || size <= 0) {
     return
   }
 
-  const sprite = getIconSprite(icon, size, color)
+  const sprite = getIconSprite(icon, size, color, onLoad)
   if (sprite) {
     batcher.drawImage(sprite, x, y, size, size)
     return
