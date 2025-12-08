@@ -32,7 +32,6 @@ function SimpleHeader() {
   return (
     <Canvas.Container direction="row" gap={12} alignItems="center" portalHoverEnabled>
         <Canvas.Text color="blue" style={{ flexShrink: 0 }} >Simple</Canvas.Text >
-        <Canvas.Text color="red" style={{ flexShrink: 0 }}>Header</Canvas.Text>
         <Canvas.Badge text="NEW" view="warning" />
     </Canvas.Container>
   )

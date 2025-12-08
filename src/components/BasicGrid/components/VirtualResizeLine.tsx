@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import { VirtualResizeLineStyled } from '../BasicGrid.styled'
 
 interface VirtualResizeLineProps {
   style: React.CSSProperties
@@ -7,12 +8,5 @@ interface VirtualResizeLineProps {
 export function VirtualResizeLine({ style }: VirtualResizeLineProps) {
   const virtualResizeLineRef = useRef<HTMLDivElement>(null)
 
-  return (
-    <div
-      ref={virtualResizeLineRef}
-      className="basic-grid-virtual-resize-line"
-      style={style}
-    />
-  )
+  return <VirtualResizeLineStyled ref={virtualResizeLineRef} style={style} />
 }
-

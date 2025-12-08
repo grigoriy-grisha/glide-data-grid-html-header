@@ -1,6 +1,7 @@
 import React from 'react'
 import { GridColumn } from '../../../models/GridColumn'
 import { SELECTION_COLUMN_ID } from '../../../constants'
+import { ResizeHandle } from '../../../BasicGrid.styled'
 
 const HANDLE_BUFFER = 2
 const HANDLE_OFFSET = 5
@@ -94,9 +95,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
     if (!isHandleVisible(relativeX, width)) continue
 
     handles.push(
-      <div
+      <ResizeHandle
         key={`resize-${handleData.columnId}-${handleData.columnIndex}`}
-        className="resize-handle"
         style={{ left: `${handleData.position}px` }}
         onMouseDown={(e) => handleResizeMouseDown(e, handleData.columnIndex, 1)}
         onDoubleClick={(e) => handleResizeDoubleClick?.(e, handleData.columnIndex, 1)}
@@ -106,4 +106,3 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
 
   return <>{handles}</>
 })
-

@@ -2,6 +2,7 @@ import React from 'react'
 import { CanvasHeader } from './CanvasHeader'
 import type { GridColumn } from '../models/GridColumn'
 import type { GridHeaderCell } from '../models/GridHeaderCell'
+import { HeaderOverlay } from '../BasicGrid.styled'
 
 interface GridHeaderProps<RowType extends Record<string, unknown>> {
   width: number
@@ -77,8 +78,7 @@ export function GridHeader<RowType extends Record<string, unknown>>({
   }
 
   return (
-    <div
-      className="basic-grid-header-overlay"
+    <HeaderOverlay
       style={{
         height: effectiveHeight,
         width: width,
@@ -117,7 +117,6 @@ export function GridHeader<RowType extends Record<string, unknown>>({
         selectedColumns={selectedColumns}
         onColumnClick={onColumnClick}
       />
-    </div>
+    </HeaderOverlay>
   )
 }
-

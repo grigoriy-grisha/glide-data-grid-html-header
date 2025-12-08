@@ -16,6 +16,13 @@ import { SortButtonOverlay } from './components/SortButtonOverlay'
 import { GripTooltipOverlay } from './components/GripTooltipOverlay'
 import type { CanvasEvent, CanvasNode } from '../../lib/canvas'
 import { dispatchCanvasPortalHover } from '../../lib/canvas'
+import {
+  CanvasHeaderContainer,
+  CanvasHeaderMarker,
+  CanvasHeaderMain,
+  CanvasHeaderCanvas,
+  HeaderCheckbox,
+} from '../../BasicGrid.styled'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -273,7 +280,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   } as React.CSSProperties), [canvasWidth, height, effectiveMarkerWidth])
 
   return (
-    <div className="canvas-header" style={headerStyle} ref={containerRef}>
+    <CanvasHeaderContainer style={headerStyle} ref={containerRef}>
       {isVisible && (
         <HeadlessHeaderRenderer
           visibleIndices={canvasVisibleIndices}
@@ -284,27 +291,23 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         />
       )}
       {(showRowMarkers || enableRowSelection) && (
-        <div
-          className="canvas-header__marker"
+        <CanvasHeaderMarker
           style={{
             width: 'var(--canvas-marker-width)',
             height: 'var(--canvas-header-height)',
           }}
         >
           {enableRowSelection && (
-            <input
+            <HeaderCheckbox
               ref={selectAllCheckboxRef}
-              type="checkbox"
-              className="basic-grid-header-row-checkbox"
               checked={isAllRowsSelected}
               onChange={(e) => onSelectAllChange?.(e.target.checked)}
               aria-label="Выбрать все строки"
             />
           )}
-        </div>
+        </CanvasHeaderMarker>
       )}
-      <div
-        className="canvas-header__main"
+      <CanvasHeaderMain
         style={{
           width: 'var(--canvas-main-width)',
           height: 'var(--canvas-header-height)',
@@ -312,9 +315,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <canvas
+        <CanvasHeaderCanvas
           ref={canvasRef}
-          className="canvas-header__canvas"
           style={{
             width: 'var(--canvas-main-width)',
             height: 'var(--canvas-header-height)',
@@ -340,7 +342,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
             ghostRef={ghostRef}
           />
         )}
-      </div>
+      </CanvasHeaderMain>
       <CanvasPortalOverlay />
       <SortButtonOverlay
         sortColumn={sortColumn}
@@ -348,7 +350,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
         onColumnSort={onColumnSort}
       />
       <GripTooltipOverlay />
-    </div>
+    </CanvasHeaderContainer>
   )
 })
 

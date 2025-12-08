@@ -31,3 +31,6 @@ export type {
   PortalHoverState,
   UsePortalHoverOptions,
 } from './components/CanvasHeader'
+
+// Styled Components (for custom styling/theming)
+export * from './BasicGrid.styled'

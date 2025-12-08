@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { RowOverlayWrapper, RowOverlayContent } from '../BasicGrid.styled'
 
 interface RowOverlayProps<RowType> {
   overlayRow: RowType | null | undefined
@@ -29,9 +30,8 @@ export function RowOverlay<RowType>({
   }
 
   return (
-    <div className="basic-grid-row-overlay" style={{ top: overlayPosition.top }} ref={overlayRef}>
-      <div className="basic-grid-row-overlay-content">{overlayContent}</div>
-    </div>
+    <RowOverlayWrapper style={{ top: overlayPosition.top }} ref={overlayRef}>
+      <RowOverlayContent>{overlayContent}</RowOverlayContent>
+    </RowOverlayWrapper>
   )
 }
-

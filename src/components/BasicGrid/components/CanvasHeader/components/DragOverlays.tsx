@@ -1,5 +1,11 @@
 import React, { useRef, useEffect } from 'react'
 import { DragState } from '../hooks/useHeaderDragDrop'
+import {
+  DragIndicator,
+  DragGhost,
+  DragSnapshot,
+  DragSnapshotCanvas,
+} from '../../../BasicGrid.styled'
 
 const GHOST_HEIGHT_OFFSET = 8
 
@@ -40,21 +46,10 @@ const SnapshotImage: React.FC<SnapshotImageProps> = React.memo(({
   }, [snapshot, width, height])
   
   if (typeof snapshot === 'string') {
-    return (
-      <img 
-        src={snapshot} 
-        alt="" 
-        className="drag-overlay__snapshot"
-      />
-    )
+    return <DragSnapshot src={snapshot} alt="" />
   }
   
-  return (
-    <canvas 
-      ref={canvasRef}
-      className="drag-overlay__snapshot"
-    />
-  )
+  return <DragSnapshotCanvas ref={canvasRef} />
 })
 
 SnapshotImage.displayName = 'SnapshotImage'
@@ -79,15 +74,8 @@ export const DragOverlays: React.FC<DragOverlaysProps> = React.memo(({
 
   return (
     <>
-      <div
-        ref={dropIndicatorRef}
-        className="drag-overlay__indicator"
-      />
-      <div
-        ref={ghostRef}
-        className="drag-overlay__ghost"
-        style={ghostStyle}
-      >
+      <DragIndicator ref={dropIndicatorRef} />
+      <DragGhost ref={ghostRef} style={ghostStyle}>
         {dragState.snapshot ? (
           <SnapshotImage 
             snapshot={dragState.snapshot} 
@@ -97,7 +85,7 @@ export const DragOverlays: React.FC<DragOverlaysProps> = React.memo(({
         ) : (
           dragState.columnTitle
         )}
-      </div>
+      </DragGhost>
     </>
   )
 })

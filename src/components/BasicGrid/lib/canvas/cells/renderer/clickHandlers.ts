@@ -1,4 +1,4 @@
-import type { CanvasCell, CanvasRenderResult, RectBounds } from '../types'
+import type { CanvasCell, RectBounds } from '../types'
 import type { RendererClickArgs } from './types'
 import { isPointInArea, toRelativePoint } from '../helpers'
 import { retrieveRenderData } from '../state'

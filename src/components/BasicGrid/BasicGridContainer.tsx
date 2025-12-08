@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import type { DataEditorProps, DataEditorRef } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 
-import './BasicGrid.css'
+import { GridContainer, GridWrapper, GridBody } from './BasicGrid.styled'
 import type { BasicGridProps } from './types'
 import { onAnyIconLoad } from './lib/canvas'
 import {
@@ -303,7 +303,6 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
     selectedColumns,
   })
 
-  const containerClassName = ['basic-grid-container', className].filter(Boolean).join(' ')
   const rowMarkersSetting: DataEditorProps['rowMarkers'] = showRowMarkers ? 'number' : 'none'
 
   const dataEditorColumns = useMemo(
@@ -369,8 +368,8 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
 
   return (
     <HeaderVirtualizationProvider>
-      <div className={containerClassName}>
-        <div className="basic-grid-wrapper" ref={gridRef}>
+      <GridContainer className={className}>
+        <GridWrapper ref={gridRef}>
           {virtualResizeState && virtualResizeLineStyle && (
             <VirtualResizeLine style={virtualResizeLineStyle} />
           )}
@@ -410,7 +409,7 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
             onColumnClick={handleHeaderColumnClick}
           />
 
-          <div className="basic-grid-body" ref={gridBodyRef} style={{...gridBodyStyle, width: viewportWidth}}>
+          <GridBody ref={gridBodyRef} style={{...gridBodyStyle, width: viewportWidth}}>
             <DataEditorWithVirtualization
               ref={dataEditorRef}
               getCellContent={getCellContent}
@@ -441,9 +440,9 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
               overlayPosition={overlayPosition}
               onOverlayClose={onRowOverlayClose}
             />
-          </div>
-        </div>
-      </div>
+          </GridBody>
+        </GridWrapper>
+      </GridContainer>
     </HeaderVirtualizationProvider>
   )
 }
