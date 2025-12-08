@@ -72,7 +72,7 @@ export function NetworkTreeGridExample() {
         treeOptions={{
           treeColumnId: 'name',
           childrenKey: 'items',
-          defaultExpandedDepth: 2,
+          defaultExpandedDepth: Infinity,
         }}
       />
     </div>

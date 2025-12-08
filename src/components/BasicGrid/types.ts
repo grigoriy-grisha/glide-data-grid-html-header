@@ -128,10 +128,10 @@ export interface BasicGridProps<RowType = Record<string, unknown>> {
     rowHeight?: number | ((row: RowType, rowIndex: number) => number)
     rowMarkerWidth?: number
     showRowMarkers?: boolean
-    scrollbarReserve?: number
     className?: string
     enableColumnReorder?: boolean
     columnOrder?: string[]
+
     onColumnOrderChange?: (order: string[]) => void
     sortModel?: GridSortModel | null
     onSortChange?: (model: GridSortModel | null) => void

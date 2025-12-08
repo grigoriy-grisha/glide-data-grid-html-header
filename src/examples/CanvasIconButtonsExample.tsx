@@ -36,7 +36,7 @@ interface IconButtonRow {
 // Generate rows for the grid
 function generateIconButtonRows(): IconButtonRow[] {
   const rows: IconButtonRow[] = []
-  
+
   BUTTON_SIZES.forEach((size) => {
     rows.push({
       id: `size-${size}`,
@@ -45,7 +45,7 @@ function generateIconButtonRows(): IconButtonRow[] {
       disabled: false,
     })
   })
-  
+
   // Add disabled row
   rows.push({
     id: 'disabled',
@@ -53,7 +53,7 @@ function generateIconButtonRows(): IconButtonRow[] {
     label: 'Disabled',
     disabled: true,
   })
-  
+
   return rows
 }
 
@@ -113,7 +113,7 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
   ]
 
   const selectedViews: ButtonView[] = ['accent', 'secondary', 'success', 'warning', 'critical']
-  
+
   selectedViews.forEach((view) => {
     columns.push({
       title: view.charAt(0).toUpperCase() + view.slice(1),
@@ -123,7 +123,7 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
       renderCellContent: (row) => {
         const leftIcon = row.type === 'leftIcon' || row.type === 'bothIcons' ? PLUS_ICON : undefined
         const rightIcon = row.type === 'rightIcon' || row.type === 'bothIcons' ? ARROW_RIGHT_ICON : undefined
-        
+
         return (
           <Canvas.Container
             direction="row"
@@ -151,7 +151,7 @@ function createButtonWithIconsColumns(): BasicGridColumn<ButtonWithIconsRow>[] {
 export function CanvasIconButtonsExample() {
   const iconButtonRows = useMemo(() => generateIconButtonRows(), [])
   const iconButtonColumns = useMemo(() => createIconButtonColumns(), [])
-  
+
   const buttonWithIconsRows = useMemo(() => generateButtonWithIconsRows(), [])
   const buttonWithIconsColumns = useMemo(() => createButtonWithIconsColumns(), [])
 
@@ -172,7 +172,7 @@ export function CanvasIconButtonsExample() {
         showRowMarkers={false}
         getRowId={(row) => row.id}
       />
-      
+
       <h2 className="section-title" style={{ marginTop: 32 }}>Canvas Buttons with Icons</h2>
       <p className="section-description">
         Кнопки с иконками слева, справа или с обеих сторон. Отступ между текстом и иконкой — 8px.

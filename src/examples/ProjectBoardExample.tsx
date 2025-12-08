@@ -162,30 +162,30 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
       grow: 1,
       renderCellContent: (row) => (
         <Canvas.Container direction="row" gap={12} alignItems="center" padding={{ left: 12, right: 12 }}>
-          <Canvas.Container 
-            direction="row" 
-            alignItems="center" 
+          <Canvas.Container
+            direction="row"
+            alignItems="center"
             justifyContent="center"
-            style={{ width: 44, height: 44 }}
+            style={{ width: 44, height: 44  }}
           >
-            <Canvas.Rect 
-              color={PRIORITY_CONFIG[row.priority].color + '20'} 
-              style={{ width: 44, height: 44 }} 
+            <Canvas.Rect
+              color={PRIORITY_CONFIG[row.priority].color + '20'}
+              style={{ width: 44, height: 44 }}
               borderColor={PRIORITY_CONFIG[row.priority].color}
               borderWidth={2}
             />
-            <Canvas.Icon 
-              icon={FOLDER_ICON} 
-              size={22} 
-              color={PRIORITY_CONFIG[row.priority].color} 
+            <Canvas.Icon
+              icon={FOLDER_ICON}
+              size={22}
+              color={PRIORITY_CONFIG[row.priority].color}
             />
           </Canvas.Container>
           <Canvas.Container direction="column" gap={4}>
             <Canvas.Text font="600 14px -apple-system, BlinkMacSystemFont, sans-serif" color="#1a1a1a">
               {row.name}
             </Canvas.Text>
-            <Canvas.Text 
-              font="12px -apple-system, BlinkMacSystemFont, sans-serif" 
+            <Canvas.Text
+              font="12px -apple-system, BlinkMacSystemFont, sans-serif"
               color="#666"
             >
               {row.description}
@@ -219,7 +219,7 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
         const isOverdue = row.daysLeft < 0
         const isUrgent = row.daysLeft > 0 && row.daysLeft <= 14
         const textColor = isOverdue ? '#f44336' : isUrgent ? '#ff9800' : '#333'
-        
+
         return (
           <Canvas.Container direction="column" gap={12} alignItems="center" justifyContent="center">
             <Canvas.Container direction="row" gap={4} alignItems="center">
@@ -229,8 +229,8 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
               </Canvas.Text>
             </Canvas.Container>
             <Canvas.Badge
-              text={isOverdue ? `Просрочено: ${Math.abs(row.daysLeft)}д` : 
-                    row.daysLeft === 0 ? 'Сегодня' : 
+              text={isOverdue ? `Просрочено: ${Math.abs(row.daysLeft)}д` :
+                    row.daysLeft === 0 ? 'Сегодня' :
                     `Осталось: ${row.daysLeft}д`}
               view={isOverdue ? 'negative' : isUrgent ? 'warning' : 'positive'}
               size="xs"
@@ -247,8 +247,8 @@ function createProjectColumns(): BasicGridColumn<Project>[] {
       renderCellContent: (row) => (
         <Canvas.Container direction="row" gap={6} alignItems="center" justifyContent="center">
           <Canvas.Icon icon={GIT_BRANCH_ICON} size={14} color="#6366f1" />
-          <Canvas.Text 
-            font="12px 'Fira Code', monospace" 
+          <Canvas.Text
+            font="12px 'Fira Code', monospace"
             color="#6366f1"
           >
             {row.branch}
@@ -284,8 +284,8 @@ export function ProjectBoardExample() {
     <div className="data-grid-section">
       <h2 className="section-title">Project Board</h2>
       <p className="section-description">
-        Доска проектов с индикаторами прогресса, статусами, приоритетами, 
-        командой и дедлайнами. Показывает возможности комбинирования 
+        Доска проектов с индикаторами прогресса, статусами, приоритетами,
+        командой и дедлайнами. Показывает возможности комбинирования
         бейджей, иконок и прогресс-баров в ячейках таблицы.
       </p>
       <BasicGrid<Project>

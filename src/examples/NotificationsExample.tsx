@@ -9,7 +9,7 @@ import {
   IconSber,
   IconLock,
   IconBankCard,
-  IconPersone,
+  IconMessagePersonFill,
   IconTrashFill,
   IconDoneCircleFill,
   IconEye,
@@ -30,37 +30,37 @@ interface Notification extends Record<string, unknown> {
   source: string
 }
 
-const SEVERITY_CONFIG: Record<NotificationSeverity, { 
+const SEVERITY_CONFIG: Record<NotificationSeverity, {
   icon: React.ReactElement
   iconColor: string
   bgColor: string
   badge: BadgeView
-  label: string 
+  label: string
 }> = {
-  info: { 
-    icon: <IconInfo />, 
-    iconColor: '#3b82f6', 
+  info: {
+    icon: <IconInfo />,
+    iconColor: '#3b82f6',
     bgColor: '#dbeafe',
     badge: 'accent',
     label: 'Информация'
   },
-  success: { 
-    icon: <IconDone />, 
-    iconColor: '#10b981', 
+  success: {
+    icon: <IconDone />,
+    iconColor: '#10b981',
     bgColor: '#d1fae5',
     badge: 'positive',
     label: 'Успех'
   },
-  warning: { 
-    icon: <IconAttention />, 
-    iconColor: '#f59e0b', 
+  warning: {
+    icon: <IconAttention />,
+    iconColor: '#f59e0b',
     bgColor: '#fef3c7',
     badge: 'warning',
     label: 'Внимание'
   },
-  error: { 
-    icon: <IconClose />, 
-    iconColor: '#ef4444', 
+  error: {
+    icon: <IconClose />,
+    iconColor: '#ef4444',
     bgColor: '#fee2e2',
     badge: 'negative',
     label: 'Ошибка'
@@ -74,7 +74,7 @@ const CATEGORY_CONFIG: Record<NotificationCategory, {
   system: { icon: <IconSber />, label: 'Система' },
   security: { icon: <IconLock />, label: 'Безопасность' },
   payment: { icon: <IconBankCard />, label: 'Платежи' },
-  user: { icon: <IconPersone />, label: 'Пользователи' },
+  user: { icon: <IconMessagePersonFill />, label: 'Пользователи' },
 }
 
 function generateNotifications(): Notification[] {
@@ -206,39 +206,39 @@ function createNotificationColumns(
         const config = SEVERITY_CONFIG[row.severity]
         return (
           <Canvas.Container direction="row" gap={14} alignItems="center" padding={{ left: 12, right: 12 }}>
-            <Canvas.Container 
-              direction="row" 
-              alignItems="center" 
+            <Canvas.Container
+              direction="row"
+              alignItems="center"
               justifyContent="center"
               style={{ width: 44, height: 44, flexShrink: 0 }}
             >
-              <Canvas.Rect 
-                color={config.bgColor} 
-                style={{ width: 44, height: 44 }} 
+              <Canvas.Rect
+                color={config.bgColor}
+                style={{ width: 44, height: 44 }}
               />
-              <Canvas.Icon 
-                icon={config.icon} 
-                size={22} 
+              <Canvas.Icon
+                icon={config.icon}
+                size={22}
                 color={config.iconColor}
               />
             </Canvas.Container>
             <Canvas.Container direction="column" gap={4} style={{ flexGrow: 1 }}>
               <Canvas.Container direction="row" gap={8} alignItems="center">
-                <Canvas.Text 
-                  font={`${row.read ? '500' : '700'} 14px -apple-system, BlinkMacSystemFont, sans-serif`} 
+                <Canvas.Text
+                  font={`${row.read ? '500' : '700'} 14px -apple-system, BlinkMacSystemFont, sans-serif`}
                   color={row.read ? '#64748b' : '#0f172a'}
                 >
                   {row.title}
                 </Canvas.Text>
                 {!row.read && (
-                  <Canvas.Rect 
-                    color="#3b82f6" 
-                    style={{ width: 8, height: 8 }} 
+                  <Canvas.Rect
+                    color="#3b82f6"
+                    style={{ width: 8, height: 8 }}
                   />
                 )}
               </Canvas.Container>
-              <Canvas.Text 
-                font="13px -apple-system, BlinkMacSystemFont, sans-serif" 
+              <Canvas.Text
+                font="13px -apple-system, BlinkMacSystemFont, sans-serif"
                 color={row.read ? '#94a3b8' : '#475569'}
                 wordWrap
               >
@@ -288,8 +288,8 @@ function createNotificationColumns(
       grow: 0,
       renderCellContent: (row) => (
         <Canvas.Container direction="row" alignItems="center" justifyContent="center">
-          <Canvas.Text 
-            font="12px 'Fira Code', monospace" 
+          <Canvas.Text
+            font="12px 'Fira Code', monospace"
             color="#6366f1"
           >
             {row.source}
@@ -347,9 +347,9 @@ function createNotificationColumns(
 
 export function NotificationsExample() {
   const [notifications, setNotifications] = useState(() => generateNotifications())
-  
+
   const handleMarkRead = useCallback((id: string) => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     )
   }, [])
@@ -370,12 +370,12 @@ export function NotificationsExample() {
       <h2 className="section-title">
         Notifications Center
         {unreadCount > 0 && (
-          <span style={{ 
-            marginLeft: 12, 
-            background: '#ef4444', 
-            color: 'white', 
-            padding: '4px 10px', 
-            borderRadius: 12, 
+          <span style={{
+            marginLeft: 12,
+            background: '#ef4444',
+            color: 'white',
+            padding: '4px 10px',
+            borderRadius: 12,
             fontSize: 14,
             fontWeight: 600
           }}>
@@ -384,8 +384,8 @@ export function NotificationsExample() {
         )}
       </h2>
       <p className="section-description">
-        Центр уведомлений с разными уровнями важности (info, success, warning, error), 
-        категориями, статусами прочтения и действиями. Демонстрация интерактивных 
+        Центр уведомлений с разными уровнями важности (info, success, warning, error),
+        категориями, статусами прочтения и действиями. Демонстрация интерактивных
         элементов с обновлением состояния.
       </p>
       <BasicGrid<Notification>

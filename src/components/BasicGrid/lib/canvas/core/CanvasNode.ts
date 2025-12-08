@@ -1,5 +1,5 @@
-import { FlexStyle } from '../miniflex/types'
-import { DrawBatcher } from './DrawBatcher'
+import {FlexStyle} from '../miniflex/types'
+import {DrawBatcher} from './DrawBatcher'
 
 export type DimensionValue = number | '100%'
 
@@ -134,7 +134,7 @@ export abstract class CanvasNode {
                 1
             )
         }
-        
+
         batcher.setZIndex(prevZ)
     }
 

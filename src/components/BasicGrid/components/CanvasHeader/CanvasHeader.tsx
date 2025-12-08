@@ -129,6 +129,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   onColumnClick,
 }) => {
   const { visibleIndices } = useHeaderVirtualization()
+
   const markerWidthValue = showRowMarkers ? markerWidth : 0
   const [isHovered, setIsHovered] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -140,7 +141,6 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
     }
   }, [hasPartialRowSelection])
 
-  // Node registry for React-managed content
   const { registryRef, notifyChange, subscribe } = useNodeRegistry()
 
   const {
