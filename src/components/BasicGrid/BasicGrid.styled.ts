@@ -1,4 +1,4 @@
-import styled, { css, keyframes } from 'styled-components'
+import styled, { css } from 'styled-components'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Design Tokens
@@ -84,20 +84,6 @@ const typography = {
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 } as const
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Animations
-// ═══════════════════════════════════════════════════════════════════════════
-
-const overlayEnter = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Main Container & Wrapper
@@ -181,15 +167,6 @@ export const HeaderOverlay = styled.div<{ $hasShadow?: boolean }>`
 // ═══════════════════════════════════════════════════════════════════════════
 // Row Overlay
 // ═══════════════════════════════════════════════════════════════════════════
-
-export const RowOverlayWrapper = styled.div`
-  position: absolute;
-  left: ${spacing.lg};
-  right: ${spacing.lg};
-  z-index: 5;
-  pointer-events: none;
-  animation: ${overlayEnter} ${transitions.normal};
-`
 
 export const RowOverlayContent = styled.div`
   pointer-events: auto;

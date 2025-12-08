@@ -434,15 +434,16 @@ export function BasicGridContainer<RowType extends Record<string, unknown>>({
               smoothScrollY={true}
               headerHeight={effectiveHeaderHeight}
             />
-            <RowOverlay
-              overlayRow={overlayRow}
-              overlayContent={overlayContent}
-              overlayPosition={overlayPosition}
-              onOverlayClose={onRowOverlayClose}
-            />
           </GridBody>
         </GridWrapper>
       </GridContainer>
+      <RowOverlay
+        overlayRow={overlayRow}
+        overlayContent={overlayContent}
+        overlayPosition={overlayPosition}
+        onOverlayClose={onRowOverlayClose}
+        gridBodyRef={gridBodyRef}
+      />
     </HeaderVirtualizationProvider>
   )
 }
