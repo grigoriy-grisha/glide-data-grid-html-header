@@ -16,6 +16,8 @@ interface ResizeHandlesProps {
   width: number
   handleResizeMouseDown: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
   handleResizeDoubleClick?: (event: React.MouseEvent<HTMLDivElement>, columnIndex: number, span: number) => void
+  headerRowHeight: number
+  levelCount: number
 }
 
 interface ResizeHandleData {
@@ -69,6 +71,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
   width,
   handleResizeMouseDown,
   handleResizeDoubleClick,
+  headerRowHeight,
+  levelCount,
 }) => {
   if (!visibleIndices) {
     return null
@@ -76,6 +80,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
 
   const { start, end } = calculateVisibleRange(visibleIndices, orderedColumns.length)
   const handles: React.ReactNode[] = []
+
+  const leafLevelTop = (levelCount - 1) * headerRowHeight
 
   for (let i = start; i < end; i++) {
     const column = orderedColumns[i]
@@ -97,7 +103,12 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
     handles.push(
       <ResizeHandle
         key={`resize-${handleData.columnId}-${handleData.columnIndex}`}
-        style={{ left: `${handleData.position}px` }}
+        style={{
+          left: `${handleData.position}px`,
+          top: `${leafLevelTop}px`,
+          height: `${headerRowHeight}px`,
+          bottom: 'auto',
+        }}
         onMouseDown={(e) => handleResizeMouseDown(e, handleData.columnIndex, 1)}
         onDoubleClick={(e) => handleResizeDoubleClick?.(e, handleData.columnIndex, 1)}
       />

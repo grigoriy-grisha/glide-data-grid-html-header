@@ -107,6 +107,7 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
   orderedColumns,
   columnPositions,
   columnWidths,
+  levelCount,
   headerRowHeight,
   markerWidth = 0,
   showRowMarkers = false,
@@ -332,6 +333,8 @@ export const CanvasHeader = React.memo<CanvasHeaderProps>(({
             width={canvasWidth}
             handleResizeMouseDown={handleResizeMouseDown}
             handleResizeDoubleClick={handleResizeDoubleClick}
+            headerRowHeight={headerRowHeight}
+            levelCount={levelCount}
           />
         )}
         {isVisible && (
