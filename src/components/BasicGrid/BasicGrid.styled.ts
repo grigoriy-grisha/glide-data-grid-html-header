@@ -379,10 +379,13 @@ export const DragSnapshotCanvas = styled.canvas`
 export const ResizeHandle = styled.div`
   position: absolute;
   top: 0;
-  bottom: 0;
+  left: 0;
   width: 10px;
   cursor: col-resize;
   z-index: 10;
+  will-change: transform;
+  transform: translate(var(--x), var(--y));
+  height: var(--h);
 `
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -104,11 +104,10 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = React.memo(({
       <ResizeHandle
         key={`resize-${handleData.columnId}-${handleData.columnIndex}`}
         style={{
-          left: `${handleData.position}px`,
-          top: `${leafLevelTop}px`,
-          height: `${headerRowHeight}px`,
-          bottom: 'auto',
-        }}
+          '--x': `${handleData.position}px`,
+          '--y': `${leafLevelTop}px`,
+          '--h': `${headerRowHeight}px`,
+        } as React.CSSProperties}
         onMouseDown={(e) => handleResizeMouseDown(e, handleData.columnIndex, 1)}
         onDoubleClick={(e) => handleResizeDoubleClick?.(e, handleData.columnIndex, 1)}
       />
