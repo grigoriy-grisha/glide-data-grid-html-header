@@ -136,11 +136,14 @@ export const GridWrapper = styled.div`
     border: none !important;
   }
 
-  /* Optimize shadow elements */
-  #shadow-y,
+  /* Hide shadow elements to prevent layout shifts */
+  #shadow-y {
+    display: none !important;
+  }
+
   #shadow-x {
     contain: strict !important;
-    will-change: opacity, transform !important;
+    pointer-events: none !important;
   }
 `
 
@@ -152,6 +155,7 @@ export const GridBody = styled.div`
   position: relative;
   overflow: visible;
   min-height: 0;
+  contain: layout style;
 `
 
 // ═══════════════════════════════════════════════════════════════════════════
