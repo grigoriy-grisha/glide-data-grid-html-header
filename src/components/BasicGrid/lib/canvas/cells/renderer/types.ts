@@ -64,3 +64,4 @@ export interface CanvasCellRendererConfig {
   onPaste: () => undefined
 }
 
+

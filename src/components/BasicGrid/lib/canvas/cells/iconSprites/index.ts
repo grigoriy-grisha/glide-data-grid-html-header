@@ -78,3 +78,4 @@ export function resetIconSpriteCache(): void {
 // Backward compatibility alias
 export const drawIconDirect = drawIcon
 
+

@@ -12,3 +12,4 @@ export function parseGripNodeId(detail: CanvasPortalHoverDetail): GripData | nul
   return match ? { cellId: match[1] } : null
 }
 
+

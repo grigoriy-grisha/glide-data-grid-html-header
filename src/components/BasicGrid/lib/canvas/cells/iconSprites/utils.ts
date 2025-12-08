@@ -31,3 +31,4 @@ export function createSvgDataUrl(svg: string, color?: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(processed)}`
 }
 
+
