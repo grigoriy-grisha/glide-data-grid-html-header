@@ -19,7 +19,6 @@ function extractSvgFromElement(element: ReactElement): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const GRIP_ICON_SVG = extractSvgFromElement(createElement(IconDrag))
-
 export const SORT_ASC_ICON = extractSvgFromElement(createElement(IconSortAlphabetAsc))
 export const SORT_DESC_ICON = extractSvgFromElement(createElement(IconSortAlphabetDesc))
 export const SORT_DEFAULT_ICON = extractSvgFromElement(createElement(IconSettingsFilter))
